@@ -8,7 +8,7 @@ Model names are deployment-specific, so these assignments are operational defaul
 
 | Model | Role | Use it for | Do not use it for |
 |---|---|---|---|
-| **gpt-5.6-astra** | Lead/orchestrator | Lock scope, split tasks, architecture decisions, integration, final go/no-go | Bulk CSV work or simultaneous file edits |
+| **gpt-6-astra** | Lead/orchestrator | Lock scope, split tasks, architecture decisions, integration, final go/no-go | Bulk CSV work or simultaneous file edits |
 | **gpt-5.6-sol** | Primary code owner | Implement core modules, tests, debugging, integrate reviewed patches | Unbounded brainstorming |
 | **claude-opus-5** | Adversarial reviewer + pitch editor | Compliance review, claim audit, UX critique, judge Q&A, final narrative | Owning the same files as Sol |
 | **deepseek-v4-flash-0731** | Evidence/data specialist | HAR parsing, DuckDB queries, bundle searches, quick independent investigations | Final compliance sign-off |
@@ -25,10 +25,9 @@ If a model proves notably better/worse during the first task, change the assignm
 ```text
 Astra lead (planning/integration)
 ├── Sol code owner (prototype + tests)
-├── DeepSeek evidence owner (HAR + DuckDB, disjoint files)
-└── Opus review gate (read-only until review is accepted)
+└── DeepSeek evidence owner (HAR + DuckDB, disjoint files)
 
-Luna runs after each milestone as QA/demo rehearsal, not continuously.
+Pause one specialist before running Opus as the read-only review gate. Luna runs after each milestone as QA/demo rehearsal, not continuously.
 ```
 
 Maximum active workers: 3. Browser experiment concurrency: 1.
