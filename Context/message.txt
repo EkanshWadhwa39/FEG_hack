@@ -1,0 +1,170 @@
+# Making the Cache Do What It Already Does — On Purpose
+
+**FEG Innovation Hackathon 2026 — Challenge 3: Game Load Time**
+**Track: Croatian brand (PSK) · Web platform**
+
+---
+
+## The short version
+
+We didn't start by designing a caching system. We started by measuring what already happens when a player loads the same game twice.
+
+Same title, same session, cold versus warm, captured as HAR:
+
+| | Cold | Warm |
+|---|---|---|
+| Load time | 35.5s | **6.7s** |
+| Bytes transferred | 16.6 MB | **12 KB** |
+| Requests served from cache | 15 / 150 | **139 / 149** |
+
+The warm number already beats the challenge's 500ms-per-asset-path target and lands inside its stated 6–8s baseline for the whole experience — with zero code written, using nothing but the browser's own HTTP cache. Our entire proposal is: make that warm state exist *before* the player clicks, instead of after. Everything below is how, where it breaks, and what we still don't know.
+
+We're not guessing at the size of the problem, either. FEG's own web-platform telemetry shows **25–31 seconds** as the average time to first game launched, consistently across 12 months — not the 6–8s the brief opens with. Our own HAR capture (29–35s) and a static analysis of a real certified bundle both independently land in the same range. Three sources agree the real number is worse than the stated baseline. We'll show all of this and ask which number we're being judged against.
+
+---
+
+## 1. What's actually slow, and why
+
+We captured the full request waterfall for a real game launch (SavannaSunriseDeluxe, provider infrastructure at `v1t.eu`) on the public production site, cold cache:
+
+| Phase | Cost | Ours to fix? |
+|---|---|---|
+| Lobby/launcher shell | ~1s | Yes |
+| Session handshake (`session/create`) | 1,850ms — **86% of which is DNS+SSL+TCP connect, only 303ms server think time** | Yes — this is a connection problem, not a server problem |
+| A wasted 404 probe before fallback | 712ms | Yes — trivial fix, real measured waste |
+| Engine bootstrap JS | ~3s | Yes |
+| Static asset burst (textures, audio, fonts) | ~15–20s | Yes — this is 60%+ of the total |
+| Exclusion/age verification | **unmeasured** — every capture so far is anonymous demo mode | Partially — see §3 |
+
+The asset burst is the dominant cost, and it's the most cacheable part of the whole path. A separate static analysis of a certified SDK bundle (Empire of Gold, provider Spiniq) confirms why: **zero anti-tamper, zero automation detection, content-hashed and stable JS filenames, standard cache-friendly headers.** Nothing about this bundle resists caching. The game loads in five staged tiers — PRELOADER → COMMON → SPLASH → PRIMARY (the ~15–20MB wall) → SECONDARY (lazy, backgroundable) — which gives us a concrete priority order to warm rather than one undifferentiated blob.
+
+---
+
+## 2. Architecture: cache-warming from the parent page
+
+The platform here is web, on every device including mobile — we have no native app in scope, and no access to build one even if we wanted to. That simplifies the mechanism considerably compared to a native interception layer: there's no `WebViewClient` to hook, no VRAM/GL-context invariant to enforce at the OS level. The browser's own HTTP cache is the entire caching primitive, and our job is triggering it early.
+
+```
+        [ Player browsing lobby / has game open ]
+                          |
+              Resource Governor (JS, browser-native)
+     navigator.connection, Performance Observer, data budget
+                          |
+        Prefetch trigger: hover/dwell (150ms+) or drawer-open
+                          |
+     fetch(url, {mode:'no-cors'}) / <link rel="prefetch">
+     against the target game's PRELOADER + COMMON + PRIMARY assets
+                          |
+     Resolution & locale resolved BEFORE prefetch fires — not after
+                          |
+              [ Player taps to switch/launch ]
+                          |
+     preconnect/dns-prefetch already warmed the session endpoint
+                          |
+     Neutral transition screen, carrying live RG state
+                          |
+     Game iframe loads — requests same URLs already in HTTP cache
+                          |
+     Screen clears only when the spin control accepts input
+```
+
+**The one assumption this whole architecture rests on: same-site cache partitioning.** The game iframe (`gamelauncher-*.psk.hr` or a provider CDN) and the parent lobby (`casino.psk.hr`) share the top-level site `psk.hr`. Chrome's HTTP cache partitions by top-level site in most current implementations, which means a fetch issued from the parent page can pre-populate a cache entry the iframe later hits. **We verified this holds** with a direct test: fetch a known asset URL from the parent page, then load the game iframe, and confirm the matching request shows as a cache hit rather than a new transfer. This is the load-bearing claim in the whole proposal, and it's the first thing we checked, not an assumption we're hoping survives contact with staging.
+
+### 2.1 Prefetch target: the game the player hasn't opened, not their favourite
+
+Prefetching a player's favourite title is nearly free to predict and nearly worthless to do — that title's assets are already warm from repeat play. We prefetch the highest-ranked title the player has **not** launched recently, because that's the expensive cold start, and it's exactly the discovery problem the brief names directly.
+
+We don't have to guess at the shape of this distribution. Two independent real sources agree:
+
+- **12 months of Croatian-brand stake data** (4.2M rows, aggregated, no player-level information): top 10 games = 17.8% of stake, top 100 (3% of the catalogue) = 58%, and 29% of the catalogue each contributes under 0.001% — a hard power law.
+- **A real event log of actual `casino_game_launch` events** (887 distinct titles, 13,682 launches, pseudonymized player IDs): top 10 games by real launch count = **34.7% of all launches** — the same shape, confirmed by actual behavior rather than money moved.
+
+And provider concentration answers the "is 5-provider integration realistic" question directly: **top 5 providers = 69.8% of stake, top 10 = 90.9%.** Five providers is a tractable integration surface, not a guess.
+
+**One number we report knowing it looks worse, on purpose — and we demo it live, not just claim it.** We implement both policies, not just the one we recommend: favourite-title prefetch and unplayed-title prefetch run side by side behind a toggle in the demo. Prefetching a favourite gets a high hit rate and saves almost no time, because the asset was already warm. Prefetching the top unplayed title gets a lower hit rate and saves several times more time per hit, because that's the genuinely cold path. A judge can flip the toggle and watch both run against the same catalogue in real time — the comparison table below isn't an argument, it's what the toggle shows.
+
+### 2.2 Timing anchor: the login window, not a manufactured pause
+
+The first prefetch fires during login/verification — several seconds of mandated, unavoidable dead time where the network is idle anyway. We overlay onto checkpoints that already exist. We do not invent a checkpoint to fill time — see §3 for exactly where we drew that line and why.
+
+### 2.3 Resolution and locale — the two failure modes the bundle analysis actually found
+
+Static analysis of the real SDK bundle surfaced two specific risks, not hypothetical ones:
+
+- **Resolution branching.** The game selects `@1x` or `@0.5x` texture sets based on device characteristics resolved *after* the JS executes. A prefetch that warms both wastes ~30MB per session; one that warms the wrong tier cold-misses anyway. We resolve device tier from viewport/connection info **before** the prefetch job runs, not after.
+- **Locale branching.** Asset paths are built as `assets/locale/${language}/...`, where `language` is injected by the operator frame at runtime — it isn't present in the URL for us to key on ahead of time. We read the launch configuration for the target locale before warming, rather than assuming a default.
+
+### 2.4 Governor — browser-native, not OS-native
+
+`navigator.connection` gates prefetch off on metered or slow connections. The Performance Observer / Long Animation Frames API watches for frame-time regression on the foreground page and pauses background fetches if it detects jank. A per-session data budget and a visible toggle satisfy the ePrivacy point in §4 — this is non-essential storage on the player's device, and it needs real opt-in.
+
+---
+
+## 3. Regulatory design — Croatia/PSK specifically
+
+The binding layer here isn't a generic "EU baseline" — it's Croatia's Act on Games of Chance and its implementing Regulation, supervised by the Ministry of Finance, with AZOP for data protection. Three decisions came directly out of that.
+
+**We rejected using the RG interstitial as a loading mask.** It was our first idea. Reality checks are time-triggered — typically every 30 or 60 minutes — and require explicit acknowledgment plus a display of session duration and net position. Firing one on every game switch would put it in front of a player dozens of times a session, and acknowledgment fatigue on a mandated protection tool is exactly the pattern regulators cite when issuing fines. We ship a neutral, operator-branded transition screen carrying live RG state instead — same perceptual benefit, no claim that a regulatory obligation was discharged by a loading screen. A real reality check, if one lands mid-transition, takes priority and the transition waits.
+
+**The exclusion-register check is blocking, never raced, never cached.** Croatian law requires verification against the register of excluded players before play is allowed — this is binding, not soft guidance. Every capture we have so far is anonymous demo mode, so **we do not yet know this check's real latency**, and we're not guessing at it. It's the first thing we'll measure on staging, and it's the one call in the entire pipeline we've committed, in writing, to never optimizing around — no caching, no racing against the asset load, no optimistic rendering. If it's slow, the transition screen tells the truth and waits.
+
+**The predictor never becomes a recommender the player sees.** Our prediction model drives the disk-cache decision only — its output never reaches the UI. The switch drawer itself is user-initiated, ordered by the player's own favourites, recents, and search, never an algorithmic "picks for you." That keeps it out of AI Act scope for manipulative personalization and out of the non-inducement problem entirely, because there's no persuasive surface for it to occupy.
+
+**Age verification models the EUDI Wallet pattern** — attribute-based proof of "over 18" rather than transmitting a full identity document, per eIDAS 2.0. It's a genuinely better design, not just a compliant one, and it costs us little since age-gating already has to sit in the native-equivalent layer above everything else.
+
+**Accessibility (EAA/WCAG 2.1 AA)** applies to the transition screen and drawer as new consumer-facing surfaces. One real interaction with our design worth naming: a fast-clearing transition screen is too quick for a screen reader to announce. We ship an extended-duration path that holds state until announced, and honour `prefers-reduced-motion` for the fade — speed is the default, not a requirement that overrides accessibility.
+
+**Non-inducement, with a tripwire, not just a hope.** We pair discovery-breadth uplift with counter-metrics on stake velocity and time-on-device, pre-register a non-inferiority band at 95% CI, and commit to a kill criterion: if a counter-metric breaches the band in pilot, the feature defaults off pending review.
+
+---
+
+## 4. What we already know about PSK specifically
+
+FEG's own telemetry, compared across five FEG markets (CASA, CZ, PSK, RO, SK), shows something the brief describes in the abstract and this makes concrete: **PSK has the lowest games-per-session of all five markets (2.43) while having the highest session frequency (16.2 sessions per player, the most loyal of any market).** Croatian players come back more often than players anywhere else in the group, but explore less per visit than every other market, including ones with far worse retention. That's consistent with the discovery-suppression story the brief opens with — we're not claiming causality, but it's the exact shape of problem this architecture targets, measured, not assumed.
+
+Session-to-game conversion on web sits at 42–54% — nearly half of sessions end without a game ever launching. That's our real D3 baseline, not a projection.
+
+---
+
+## 5. Scope note: web is what we have access to, not the whole picture
+
+Real usage telemetry we've seen shows the large majority of actual game launches happen on a platform we don't have access to build for or test against in this challenge. Our solution targets the web/mobile-web surface, because that's what the provided SDK and staging environment support. The underlying mechanism — warming the browser's own HTTP cache against stable, content-hashed asset URLs — is standard HTTP behavior, not something bespoke to a browser tab, so it should carry over cleanly to any client built as a WebView around the same web content. Where that's not the architecture, it doesn't transfer, and we'd rather say that plainly than imply a claim we haven't verified.
+
+---
+
+## 6. Failure modes
+
+**Same-title, different-provider generalization is unverified beyond one provider.** The zero-anti-tamper finding is confirmed for one SDK bundle (Spiniq/Empire of Gold). We do not yet know if this holds across the other 41 providers in the catalogue. We're capturing cold/warm pairs against titles from the top three providers by stake volume tonight, using the same public demo mechanism that produced the SavannaSunriseDeluxe result, to turn "verified on one" into a real small sample before we ever reach staging.
+
+**Coverage is per-provider, not platform-wide.** Expect high hit rates on the providers we've actually tested and unknown behavior elsewhere. Any catalogue-wide number we show will be scoped to what we've verified, not extrapolated.
+
+**Orphaned sessions and timeout handling.** If the session handshake succeeds server-side but the client never receives it, we need an explicit close-on-abort and idempotency keys so a retry can't double-open a session. If a switch attempt times out, the transition screen degrades to a truthful progress state, and past a hard limit, rolls back to the previous game — never a "ready" state before input is actually live.
+
+**Poor network conditions.** Static assets are protected by the cache; the session handshake is not. Connection pre-warming, request hedging, and a defined degradation ladder (extend the honest progress state rather than fake instant) cover this.
+
+---
+
+## 7. What we'll show
+
+Two arms, side by side, on real devices: our mechanism versus the same experience with prefetching disabled. Cold run and warm run, both measured to the same definition — the moment the spin control accepts input, not first paint. A live overlay of the network waterfall and cache-hit status, because "instrumented, not slideware" is the brief's own phrase and we intend to earn it. A live toggle between favourite-prefetch and unplayed-prefetch policies, so the hit-rate/seconds-saved trade-off in §2.1 is something a judge watches happen, not a table they take on faith. One deliberate failure — a network cut mid-switch — showing clean rollback rather than a frozen or dead UI.
+
+Every number on screen will be labelled as measured, simulated, or provided-by-FEG. Where we don't know something — the exclusion-register latency, cross-provider generalization — we'll say so rather than paper over it.
+
+---
+
+## 8. Open questions for FEG
+
+1. **What is the exclusion-register check's real latency, and does it run per session or per game launch?** This is the one call in our architecture we've committed to never optimizing, and we don't yet know what it costs.
+2. Do other providers share the cache-control and CORS conventions we found on the one bundle we've analyzed, or does this vary meaningfully?
+3. Is the 6–8s baseline in the brief measured to first paint or to first accepted bet? Our own numbers and FEG's own telemetry both suggest the real figure is closer to 25–35s either way.
+4. The event data shows a large share of real launches happening on a platform we don't have access to. Is that in scope for any future extension of this challenge, or purely out of bounds?
+
+---
+
+## 9. Known ceiling
+
+Modifying provider code is out of scope, and that's where this stops. The static analysis found no `KHR_parallel_shader_compile` or equivalent async-compile hint in the one bundle we checked — shader compilation is a real cold-start cost we can't touch without provider cooperation. Precompiled shader binaries and CORS-enabled cross-provider caching are the natural next asks, and they're negotiations, not code.
+
+---
+
+*Every figure in this document is either independently measured (cited to its source above), drawn from FEG-provided data, or explicitly labelled as a target pending further verification. Nothing here is presented as measured unless it was.*

@@ -1,0 +1,36 @@
+# cptr: keep reusable workspace skills, ignore ephemeral chats/task logs
+/.cptr/*
+!/.cptr/skills/
+!/.cptr/skills/**
+
+# Raw hackathon inputs and evidence (large and/or potentially sensitive)
+/FEG Innovation Hackathon 2026/
+/Devtools_games/
+/001.zip
+/002.zip
+*.har
+*.mp4
+
+# Generated/private evidence
+/evidence/private/
+/evidence/derived/*
+!/evidence/derived/.gitkeep
+*.duckdb
+*.db
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.py[cod]
+
+# Node/editor/OS
+node_modules/
+.DS_Store
+.vscode/*.log
+
+# Secrets
+.env
+.env.*
+!.env.example

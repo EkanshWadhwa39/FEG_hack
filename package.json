@@ -1,0 +1,10 @@
+{
+  "name": "feg-cache-warming-prototype",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test prototype/tests/*.test.mjs",
+    "check:js": "find prototype -type f -name '*.js' -o -name '*.mjs' | xargs -r -n1 node --check",
+    "serve": "python3 -m http.server 8080 --directory prototype --bind 0.0.0.0"
+  }
+}

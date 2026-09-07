@@ -1,0 +1,25 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "FEG: check all",
+      "type": "shell",
+      "command": "./scripts/check.sh",
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "FEG: serve prototype",
+      "type": "shell",
+      "command": "./scripts/serve.sh",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "FEG: compare existing HARs",
+      "type": "shell",
+      "command": ".venv/bin/python tools/measure_har.py Devtools_games/casino.psk.hr_cold.har Devtools_games/casino.psk.hr_warm.har",
+      "problemMatcher": []
+    }
+  ]
+}

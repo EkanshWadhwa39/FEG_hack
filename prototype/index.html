@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>PSK Cache Warming — Instrumented Demo</title>
+    <link rel="stylesheet" href="./styles/app.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <p class="eyebrow">Browser prototype · no build step</p>
+        <h1>Instrumented cache-warming demo</h1>
+        <p class="lede">
+          Scaffold only. It evaluates an illustrative local manifest and never sends provider requests.
+          It is not evidence that cache warming is proven.
+        </p>
+        <div class="notice" role="note">
+          <strong>Authorization boundary: <span class="label unknown">UNKNOWN</span></strong>
+          <span>No exclusion-register integration or launch path exists here; no check is bypassed.</span>
+        </div>
+      </header>
+
+      <section class="panel" aria-labelledby="controls-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Operator controls</p>
+            <h2 id="controls-title">Prefetch policy</h2>
+          </div>
+          <span class="label simulated">SIMULATED</span>
+        </div>
+
+        <div class="controls">
+          <label class="toggle-row" for="prefetch-enabled">
+            <span>
+              <strong>Prefetch enabled</strong>
+              <small>Evaluation only; this scaffold does not call fetch().</small>
+            </span>
+            <input id="prefetch-enabled" type="checkbox" checked>
+          </label>
+
+          <label class="field" for="byte-budget">
+            <span>Per-session byte budget <span class="label simulated">SIMULATED</span></span>
+            <select id="byte-budget">
+              <option value="1048576">1 MiB — SIMULATED</option>
+              <option value="3145728" selected>3 MiB — SIMULATED</option>
+              <option value="5242880">5 MiB — SIMULATED</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="status-grid" aria-label="Instrumented demo status">
+        <article class="metric">
+          <span>Governor decision</span>
+          <strong id="governor-decision">UNKNOWN</strong>
+          <small id="governor-reason">Awaiting evaluation · UNKNOWN</small>
+        </article>
+        <article class="metric">
+          <span>Resolved branch</span>
+          <strong id="resolved-branch">UNKNOWN</strong>
+          <small>Exact locale and tier · SIMULATED</small>
+        </article>
+        <article class="metric">
+          <span>Planned transfer</span>
+          <strong id="planned-bytes">UNKNOWN</strong>
+          <small>No request sent · SIMULATED</small>
+        </article>
+      </section>
+
+      <section class="panel" aria-labelledby="plan-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Eligible assets only</p>
+            <h2 id="plan-title">Resolved warm plan</h2>
+          </div>
+          <span class="label simulated">SIMULATED</span>
+        </div>
+        <p class="supporting-copy">
+          The resolver selects one exact locale/tier branch. SECONDARY assets and non-critical PRIMARY
+          assets are excluded before governor evaluation.
+        </p>
+        <ul id="asset-list" class="asset-list" aria-live="polite"></ul>
+      </section>
+
+      <footer>
+        Demo environment, asset sizes, manifest, and decisions are <span class="label simulated">SIMULATED</span>.
+        Production provider behavior and exclusion latency remain <span class="label unknown">UNKNOWN</span>.
+      </footer>
+    </main>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
