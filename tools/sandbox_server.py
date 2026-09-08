@@ -36,6 +36,8 @@ from http.server import BaseHTTPRequestHandler, SimpleHTTPRequestHandler, Thread
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
+from spine_shim import SHIM_HEADER, SHIM_VALUE, build_shims, describe
+
 # Extensions treated as immutable versioned static assets.
 STATIC_SUFFIXES = frozenset({
     ".js", ".css", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".ttf", ".woff",
@@ -61,10 +63,15 @@ class SandboxHandler(SimpleHTTPRequestHandler):
 
     def __init__(self, *args, directory: str, throttle_kbps: int = 0,
                  manifest: bytes | None = None, latency_ms: int = 0,
-                 posters: dict[str, bytes] | None = None, **kwargs):
+                 posters: dict[str, bytes] | None = None,
+                 shims: dict[str, bytes] | None = None, **kwargs):
         self._throttle_kbps = throttle_kbps
         self._manifest = manifest
         self._latency_ms = latency_ms
+        # Atlas pages the package references but does not contain. Serving them
+        # is what lets the unmodified bundle reach a playable screen at all;
+        # see tools/spine_shim.py for why, and for the honesty constraints.
+        self._shims = shims or {}
         # Generated lobby thumbnails. They belong to the LOBBY origin, mirroring
         # production where PSK serves game posters from its own CDN and the
         # provider serves only the game package.
@@ -88,7 +95,39 @@ class SandboxHandler(SimpleHTTPRequestHandler):
             return self._send_manifest()
         if self._manifest is not None and path == MANIFEST_PATH:
             return self._send_manifest()
+        shim = self._shim_for(path, match)
+        if shim is not None:
+            return self._send_shim(shim)
         super().do_GET()
+
+    def _shim_for(self, path: str, match: re.Match[str] | None) -> bytes | None:
+        """Placeholder bytes for a missing atlas page, if this is one.
+
+        Only ever consulted for paths with no file behind them, so a package
+        that later ships these textures serves the real ones and this returns
+        None without the caller noticing.
+        """
+        if not self._shims:
+            return None
+        relative = (match.group(2) or "/") if match else path
+        key = posixpath.normpath(unquote(relative)).lstrip("/")
+        if key not in self._shims:
+            return None
+        if Path(self.translate_path(self.path)).exists():
+            return None
+        return self._shims[key]
+
+    def _send_shim(self, body: bytes):
+        self.send_response(200)
+        self.send_header("Content-Type", "image/png")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", IMMUTABLE)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Timing-Allow-Origin", "*")
+        # Identifiable on the wire, in a HAR, and in any measurement run.
+        self.send_header(SHIM_HEADER, SHIM_VALUE)
+        BaseHTTPRequestHandler.end_headers(self)
+        self.wfile.write(body)
 
     def _send_bytes(self, body: bytes, content_type: str, cache_control: str):
         self.send_response(200)
@@ -163,10 +202,11 @@ class SandboxHandler(SimpleHTTPRequestHandler):
 def serve(directory: Path, port: int, throttle_kbps: int,
           host: str = "127.0.0.1", manifest: bytes | None = None,
           latency_ms: int = 0,
-          posters: dict[str, bytes] | None = None) -> ThreadingHTTPServer:
+          posters: dict[str, bytes] | None = None,
+          shims: dict[str, bytes] | None = None) -> ThreadingHTTPServer:
     handler = partial(SandboxHandler, directory=str(directory),
                       throttle_kbps=throttle_kbps, manifest=manifest,
-                      latency_ms=latency_ms, posters=posters)
+                      latency_ms=latency_ms, posters=posters, shims=shims)
     try:
         server = ThreadingHTTPServer((host, port), handler)
     except OSError as error:
@@ -243,9 +283,14 @@ def main() -> None:
     # third-party thumbnails and needs no network. See tools/poster_builder.py.
     posters = build_posters(game_dir, args.games)
 
+    # Ten atlas pages are declared by the package's own atlases and absent from
+    # the ZIP. PixiJS fails a whole asset bundle on one missing page, so without
+    # these the game never leaves its preloader. Nothing on disk is touched.
+    shims = build_shims(game_dir)
+
     serve(lobby_dir, args.lobby_port, 0, args.host, posters=posters)
     serve(game_dir, args.game_port, args.throttle_kbps, args.host, manifest_bytes,
-          args.latency_ms)
+          args.latency_ms, shims=shims)
 
     shown = "127.0.0.1" if args.host in {"127.0.0.1", "localhost"} else args.host
     print(f"lobby  http://{shown}:{args.lobby_port}/sandbox.html   ({lobby_dir})", flush=True)
@@ -259,6 +304,7 @@ def main() -> None:
           f"{manifest['totalBytes'] / 1048576:.1f} MB "
           f"({100 * manifest['warmBytes'] / manifest['totalBytes']:.0f}% of package)",
           flush=True)
+    print(f"shims  {describe(shims)}", flush=True)
     if args.host == "0.0.0.0":  # noqa: S104 - deliberate, demo on a local network
         print("Reachable from other devices on this network. Sandbox data only.", flush=True)
     if args.throttle_kbps:

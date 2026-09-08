@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+import io
 import sys
+import urllib.error
 import urllib.request
 from pathlib import Path
 
 import pytest
+from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
 
 from sandbox_server import resolve_bundle, serve  # noqa: E402
+from spine_shim import SHIM_HEADER, SHIM_VALUE, build_shims, transparent_png  # noqa: E402
 
 
 def make_bundle(root: Path, nested: bool = False) -> Path:
@@ -87,3 +91,54 @@ def test_parent_traversal_cannot_escape_the_bundle(server, tmp_path):
     with pytest.raises(urllib.error.HTTPError) as excinfo:
         fetch(f"{server}/../secret.txt")
     assert excinfo.value.code == 404
+
+
+@pytest.fixture
+def shimmed_server(tmp_path):
+    """A bundle whose atlas declares a page the package does not ship."""
+    bundle = resolve_bundle(make_bundle(tmp_path))
+    spines = bundle / "assets/spines/@1x"
+    spines.mkdir(parents=True, exist_ok=True)
+    (spines / "book.atlas").write_text("book.png\nsize:64,32\nfilter:Linear,Linear\n")
+    (spines / "chest.atlas").write_text("chest.png\nsize:8,8\nfilter:Linear,Linear\n")
+    (spines / "chest.png").write_bytes(transparent_png(8, 8))
+
+    httpd = serve(bundle, 0, 0, shims=build_shims(bundle))
+    yield f"http://127.0.0.1:{httpd.server_address[1]}"
+    httpd.shutdown()
+
+
+def test_a_missing_atlas_page_is_served_at_its_declared_size(shimmed_server):
+    """Without this the whole PixiJS bundle rejects and the game never starts."""
+    status, headers, body = fetch(f"{shimmed_server}/assets/spines/@1x/book.png")
+    assert status == 200
+    assert headers["Content-Type"] == "image/png"
+    assert Image.open(io.BytesIO(body)).size == (64, 32)
+
+
+def test_a_shimmed_response_is_labelled_on_the_wire(shimmed_server):
+    """A synthesized asset must never be mistakable for a real one in a HAR."""
+    _, headers, _ = fetch(f"{shimmed_server}/assets/spines/@1x/book.png")
+    assert headers[SHIM_HEADER] == SHIM_VALUE
+
+
+def test_a_real_asset_is_never_replaced_by_a_shim(shimmed_server):
+    """The package's own bytes always win; the shim only fills absences."""
+    _, headers, body = fetch(f"{shimmed_server}/assets/spines/@1x/chest.png")
+    assert SHIM_HEADER not in headers
+    assert Image.open(io.BytesIO(body)).size == (8, 8)
+
+
+def test_shims_are_served_under_every_virtual_game_namespace(shimmed_server):
+    """Each tile is its own cache namespace, so /gN must resolve shims too."""
+    for prefix in ("/g1", "/g7"):
+        status, headers, _ = fetch(f"{shimmed_server}{prefix}/assets/spines/@1x/book.png")
+        assert status == 200
+        assert headers[SHIM_HEADER] == SHIM_VALUE
+
+
+def test_an_unrelated_missing_file_is_still_a_404(shimmed_server):
+    """The shim fills declared atlas pages only, not any absent path."""
+    with pytest.raises(urllib.error.HTTPError) as caught:
+        fetch(f"{shimmed_server}/assets/spines/@1x/not-an-atlas-page.png")
+    assert caught.value.code == 404

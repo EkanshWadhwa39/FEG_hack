@@ -125,7 +125,7 @@ path. Details in *Automated measurement* below.
 ### 1. Automated suite — nothing to set up
 
 ```bash
-./scripts/check.sh          # 232 JS + 58 Python tests, ruff, shellcheck
+./scripts/check.sh          # 260 JS + 75 Python tests, ruff, shellcheck
 ```
 
 Covers the dwell tracker, prefetch policy, pre-init manager, progressive rendering, manifest
@@ -220,13 +220,24 @@ Every arm is driven through the page's own intent path: a real hover on a real t
 test-only button. `sandbox_measure` reports launch-phase bytes, time to engine-canvas, and time to
 assets-quiet. Raise `SANDBOX_SETTLE_MS` if the warmed manifest looks short under heavy throttling.
 
-Measured on this machine (40 ms per-request latency, headless Chromium, median of 3):
+Measured on this machine (40 ms per-request latency, no bandwidth throttle, headless Chromium,
+median of 3), **with the atlas-page shim active**, so the game runs to completion rather than
+stalling on its preloader:
 
 | Arm | Launch-phase bytes | click → canvas | click → assets quiet |
 |---|---:|---:|---:|
-| cold | 52,220,191 | 542 ms | 4,848 ms |
-| warm | 49,845,707 | 450 ms | 4,767 ms |
-| preinit | **0** | **124 ms** | no further network |
+| cold | 52,102,952 | 616 ms | 7,106 ms |
+| warm | 50,497,086 | 403 ms | 5,248 ms |
+| preinit | **0** | **205 ms** | no further network |
+
+Every arm now transfers slightly more and settles later than it did before the shim, because the
+game gets **further**: it reaches its intro and reel screens instead of dying at the first rejected
+asset bundle. Roughly 164–172 responses per cold launch, against 138–143 before. That makes the
+comparison harder, not easier, and the gap holds anyway.
+
+Nothing else on this machine may drive a browser while these run. The measurement harness and the
+Playwright test suite both take Chromium, and sharing it produces failures that look like
+regressions — this is the same "never run two browser experiments at once" rule as in `AGENTS.md`.
 
 ### Serving the demo to another device
 
@@ -260,33 +271,74 @@ live site — `public, max-age=31536000, immutable` for versioned static assets,
 `Timing-Allow-Origin: *`, and no-store for entry documents. Query-string versioning
 (`common.css?v=1788443825853`) resolves to the real file, as it does in production.
 
-**Does not:** provide the game's backend. Two things are absent and neither can be conjured:
+**Does supply 20 atlas page textures the package declares and does not contain.** This is the one
+place the sandbox puts bytes on the wire that did not come off the disk, and it is disclosed here,
+stamped on every such response as `X-Sandbox-Shim: synthesized-placeholder`, and printed in full at
+server startup. See [`tools/spine_shim.py`](../tools/spine_shim.py).
+
+The package is internally inconsistent. Ten Spine atlases at each resolution tier (`@0.5x` and
+`@1x`) name page images that were never included in the ZIP:
+
+```
+book.png  cards.png  jp_jackpots.png  jakpots.png  jakpots_2.png … jakpots_7.png
+```
+
+PixiJS loads Spine assets as a *bundle*, and a bundle rejects as a unit. One missing page aborts
+the entire load with `Error loading bundles`, the promise never settles, and the game sits on its
+preloader indefinitely. The engine boots, the canvas is created, WebGL initialises — and then
+nothing, because 1 texture out of 379 files is absent.
+
+The shim reads the size the package's **own atlas** declares for each page (`size:1981,803`) and
+serves a transparent PNG of exactly those dimensions. The declared size is the part that matters:
+Spine addresses sub-regions by absolute pixel bounds, so a wrongly sized placeholder would shift
+every frame packed on that page. A correctly sized transparent one leaves geometry untouched and
+renders those regions as nothing. Total cost: 216 KB across all 20.
+
+Nothing is written into the bundle, and no response is rewritten. No game logic, certified code,
+mechanic or payout is touched — these are image bytes for image URLs, which is what a CDN would
+have to serve too.
+
+**Does not:** provide the game's backend.
 
 - `offline-data-*.js` is **not present in the provided package**. The bundle dynamically imports
   it; the file does not exist.
 - The package calls `https://api.spiniq.io`, which the sandbox has no access to.
 
-One asset is also genuinely missing from the package: `assets/spines/@1x/book.png` returns 404.
-141 of 142 requests succeed.
+Neither turns out to block the demo: with the atlas pages supplied, the package runs to a playable
+screen and makes **zero external requests**. It carries its own demo-mode state.
 
 ## The milestone, stated precisely
 
-Because there is no backend, the game **cannot reach playable** in the sandbox. We therefore
-measure to a milestone we can actually observe:
+With the atlas pages supplied, the unmodified package **does reach a playable screen** in the
+sandbox: intro card, `Play game`, reels, balance, bet controls and a working spin button.
+Verified in Chromium at 1280×720.
+
+We nonetheless keep measuring to a narrower milestone:
 
 > **engine-canvas-present** — the first `<canvas>` appearing inside `#gameStage`, i.e. the engine
 > has started and is rendering.
 
-This is **not** "playable" and **not** "interactive". No authoritative input-accepted signal
-exists in the sandbox, so none is claimed. The transition state machine in
+This is **not** "playable" and **not** "interactive". Reaching a playable screen by eye is not the
+same as an authoritative input-accepted signal, and no such signal exists in the sandbox, so none
+is claimed. The transition state machine in
 [`transition.js`](../prototype/src/transition.js) would refuse to clear on this signal, and that
 refusal is correct.
+
+The honest form of the claim is: *the milestone is engine-canvas-present; separately, the same
+build reaches a hand-verified playable screen.* Do not merge those two sentences.
 
 ## Results
 
 Chromium 136, local sandbox, game origin throttled to ~12 Mbps to imitate a mobile link. Warming
 is executed by [`warmer.js`](../prototype/src/warmer.js) at concurrency 2 before the iframe is
 created.
+
+> **These runs predate the atlas-page shim.** They were taken while the game still aborted at the
+> first rejected asset bundle, so both arms stop earlier than they now would. The comparison
+> between the two arms is still like-for-like — both were cut off at the same place — but the
+> absolute figures are not comparable with the unthrottled table above, and the throttled
+> experiment has not been re-run since. Treat this table as a same-conditions A/B, not as a
+> current absolute.
 
 3 paired runs, full 141-asset manifest discovered and warmed:
 
