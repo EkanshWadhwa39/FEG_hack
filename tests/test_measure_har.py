@@ -144,6 +144,45 @@ def test_standard_har_sizes_are_wire_byte_fallback():
     assert report["unknowns"] == 1
 
 
+def test_exact_request_set_milestone_uses_successful_completion():
+    first_url = "https://cdn.example/first.bin?v=exact"
+    second_url = "https://cdn.example/second.bin?v=exact"
+    failed = entry(url=second_url, duration=5)
+    failed["response"]["status"] = 404
+    successful_first = entry(url=first_url, duration=25)
+    successful_first["response"]["status"] = 200
+    successful_second = entry(
+        url=second_url,
+        started="2026-01-01T00:00:00.010Z",
+        duration=40,
+    )
+    successful_second["response"]["status"] = 200
+
+    report = measure_har.measure_har(
+        har(failed, successful_first, successful_second),
+        frozenset({first_url, second_url}),
+    )
+
+    assert report["milestone_elapsed_ms"] == 50.0
+    assert report["milestone_elapsed_ms_label"] == "MEASURED"
+    assert report["milestone_target_count"] == 2
+    assert report["milestone_matched_count"] == 2
+
+
+def test_milestone_exact_url_mismatch_is_unknown():
+    captured_url = "https://cdn.example/asset.bin?v=one"
+    requested_url = "https://cdn.example/asset.bin?v=two"
+    value = entry(url=captured_url)
+    value["response"]["status"] = 200
+
+    report = measure_har.measure_har(har(value), frozenset({requested_url}))
+
+    assert report["milestone_elapsed_ms"] is None
+    assert report["milestone_elapsed_ms_label"] == "UNKNOWN"
+    assert report["milestone_target_count"] == 1
+    assert report["milestone_matched_count"] == 0
+
+
 @pytest.mark.parametrize("output_option", [[], ["--json"], ["--format", "json"]])
 def test_cli_outputs_aggregates_without_secrets(tmp_path, output_option):
     cold_path = tmp_path / "cold.har"

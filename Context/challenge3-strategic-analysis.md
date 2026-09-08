@@ -1,5 +1,7 @@
 # Empire of Gold vs. Challenge 3 Requirements — Strategic Analysis
 
+> **SUPERSEDED BACKGROUND — DO NOT IMPLEMENT:** this document's native interception, custom disk-cache, SDK, production-demo, and projected-performance proposals conflict with the authoritative web-only plan in `CODE.md` and `Context/FINAL-PLAN.md`. Retain it only as historical analysis; do not treat its claims as current evidence.
+
 **FEG Innovation Hackathon 2026 — Challenge 3: Game Load Time (6-8 Seconds → Near-Instant)**
 
 ---

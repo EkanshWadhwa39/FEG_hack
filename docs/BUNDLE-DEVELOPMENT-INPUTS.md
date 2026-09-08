@@ -7,9 +7,7 @@ ignored reference material. Do not copy them into `prototype/`, commit them, or 
 them. They contain third-party provider code and media and are not required at runtime
 by the lobby prototype.
 
-Only derived, non-sensitive descriptions and manifests may be committed. A deployable
-manifest must be generated from observed staging requests, not guessed from archive
-paths.
+Only derived, non-sensitive descriptions and manifests may be committed. A deployable manifest must eventually be generated from observed staging requests, not guessed from archive paths. Staging is unavailable during the hackathon, so the generic resolver, governor, requester interface, and sandbox controls are built and locally tested now; environment-specific manifest promotion waits until staging is introduced later.
 
 ## What the bundle establishes
 
@@ -45,7 +43,7 @@ reuse, production cacheability, CORS permission, or launch interactivity.
   and an explicit critical flag for proactively requested `PRIMARY` entries.
 - A tested request governor and simulated warming flow with concurrency capped at two.
 
-### Must come from controlled staging capture
+### Must come from a later controlled staging capture
 
 1. Exact production request URLs, including origin, path, case, and query strings.
 2. Exact browser, title build/version, locale, and resolution tier.
@@ -58,9 +56,9 @@ reuse, production cacheability, CORS permission, or launch interactivity.
 8. Clean control/treatment HARs from isolated profiles or contexts, with at least one
    repeat of each arm.
 
-## Manifest promotion gate
+## Manifest promotion gate for later staging introduction
 
-A candidate resource can enter the staging manifest only when all of these are true:
+No candidate is promoted during the staging outage. Once staging is introduced, a candidate resource can enter the staging manifest only when all of these are true:
 
 - Its exact URL was observed in the target staging launch.
 - Locale and resolution tier were resolved before speculative requesting.
@@ -87,14 +85,21 @@ prototype/src/manifest.js                            # generic exact-manifest re
 Do not create a public `empireofgold/` asset tree. For local forensic work, read directly
 from the ignored archive or extract only into an ignored/private temporary directory.
 
-## Next development sequence
+## Development and later staging sequence
+
+### During the staging outage
+
+1. Build and test the environment-neutral manifest resolver, governor, maximum-two-concurrency warmer, cancellation, and fail-closed authorization boundary using synthetic fixtures only.
+2. Keep exact environment URLs in an external sandbox configuration; never commit credentials, player data, launch URLs with credentials, or unapproved provider resources.
+3. Ensure the sandbox can run a disabled control and enabled treatment under otherwise identical settings and produce redacted evidence.
+4. Keep the user-facing demo labelled `SIMULATED`; do not claim staging or production validation.
+
+### When staging is introduced later
 
 1. Obtain approved staging access and record browser/title/build/locale/tier.
 2. Capture a clean control launch after exclusion authorization.
 3. Derive a redacted candidate manifest from requests before the defined milestone.
 4. Validate CORS, cache headers, and exact parent-to-iframe reuse one request at a time.
-5. Add only the proven bounded manifest to a staging adapter.
-6. Capture isolated control/treatment pairs and analyze them with
-   `tools/measure_har.py`.
-7. Publish only redacted aggregate evidence and the non-sensitive manifest fields
-   approved for the demo.
+5. Add only the proven bounded manifest to the sandbox adapter.
+6. Capture isolated control/treatment pairs and analyze them with `tools/measure_har.py`.
+7. Publish only redacted aggregate evidence and the non-sensitive manifest fields approved for the demo.

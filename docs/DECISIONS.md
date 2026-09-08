@@ -31,3 +31,11 @@ Resolve locale and resolution before warming and use exact versioned production 
 **Status:** accepted
 
 Exclusion authorization fails closed and is never bypassed. A game becomes `interactive` only from an authoritative signal; otherwise the demo labels the milestone precisely as simulated or weaker.
+
+## ADR-006 — Staging unavailable during the hackathon
+
+**Status:** accepted external constraint
+
+The staging URL was reported unavailable due to a technical issue and will remain inaccessible throughout the hackathon. The team will not substitute production traffic, guessed URLs, embedded credentials, or a mock for staging evidence. The submitted prototype therefore remains a clearly labelled local simulation, while the local parent-to-iframe experiment remains browser-mechanism evidence only.
+
+Build the prototype now for later sandbox testing on staging, with environment-specific URLs and integration configuration kept outside the generic core. The staging control/treatment capture, authenticated exclusion-register timing, exact deployable manifest, real CORS/cache-policy validation, and authoritative input-accepted signal remain mandatory later validation gates—not cancelled requirements. When staging is introduced, resume those gates serially under the existing evidence protocol before enabling player-facing warming.

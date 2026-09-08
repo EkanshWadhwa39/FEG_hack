@@ -6,7 +6,9 @@ This is the starting context for this project. Read this fully before writing an
 
 ## Mission, one line
 
-Cut PSK's game-switch time by warming the browser's own HTTP cache before the player clicks, instead of after — proven today to already produce a 5.3x improvement with zero code, using nothing but standard browser caching.
+Test whether PSK can reduce same-title launch transfer/time by warming eligible static assets in the browser's own HTTP cache after authorization and before the player clicks. Historical repeat-state HARs show a 5.3× asset-batch opportunity; they do not prove prototype causality.
+
+**Environment update:** the staging URL is unavailable because of a technical issue and will not be accessible during the hackathon. Build the generic integration for later sandbox testing on staging; do not substitute production traffic or claim staging validation during the outage.
 
 ---
 
@@ -20,36 +22,36 @@ There is real telemetry showing a native-labeled "Casino Android" platform accou
 
 ## VERIFIED — real measurements, do not re-model these
 
-### The core mechanism already works (proof, not projection)
-Same game (SavannaSunriseDeluxe), same session, cold vs warm HAR capture, cache enabled:
-- Cold: 35.5s load, 16.6 MB over the wire, 15/150 requests cached
-- Warm: **6.7s load, 12 KB over the wire, 139/149 requests cached**
-- This is the entire thesis of the project, proven before we wrote a line of code.
+### Historical warm-state opportunity and local mechanism proof
+Same game (SavannaSunriseDeluxe), historical cold vs repeat HAR captures, cache enabled:
+- Cold: exact final 16-request asset batch completed at 35.568s from capture start; 16,597,198 wire bytes over 177 requests; parser classification: 27 confirmed cache hits, 148 misses, 2 unknown
+- Warm: **the same exact batch completed at 6.714s; 12,431 wire bytes over 155 requests; parser classification: 140 confirmed cache hits, 14 misses, 1 unknown**
+- The HAR pair measures repeat-state opportunity, not click-to-interactive or prototype causality. A separate controlled local experiment proves parent-to-iframe cache reuse for one exact object; staging proof remains required.
 
 ### Real baseline is worse than the brief states
 - Brief says 6–8s. FEG's own web-platform telemetry shows **25–31s consistently across 12 months** (session-to-first-game-launched).
-- Our own HAR capture independently shows 29–35s for a real launch.
+- The historical cold HAR's exact final asset batch completes at 35.568s from capture start; it does not contain an authoritative input-accepted event.
 - Static bundle analysis independently corroborates the same order of magnitude.
 - Three independent sources agree. State both numbers; ask FEG which one we're judged against.
 
 ### The session/handshake call is a connection problem, not a server problem
-`session/create` measured at 1,850ms total: DNS 494ms + SSL 321ms + TCP connect 1,046ms + actual server wait only 303ms. **86% of the cost is connection setup.** This directly justifies `preconnect`/`dns-prefetch` on drawer-open — it's not a theoretical optimization, we measured the exact bottleneck.
+One historical `session/create` request measured 1,849.593ms total: DNS 494.022ms, connect 1,046.412ms (including an SSL subset of 321.076ms), and server wait 302.772ms. DNS plus connect is **83.3%** of total; SSL must not be double-counted. This measures a connection-setup opportunity for `preconnect`/`dns-prefetch` on drawer-open, but the causal milliseconds saved by hints remain **UNKNOWN** until an isolated approved-environment comparison is run.
 
 ### A real, measured, trivial waste
 A 404 probe (`GameView/Egaming`) costs 712ms before falling back to a generic container view. Fix it; it's free.
 
 ### Bundle structure (static analysis, one provider: Spiniq / Empire of Gold SDK)
-- **Zero anti-tamper, zero automation/headless detection, zero SRI hashes, standard minification only.** Native-style interception or JS-level cache warming is clean against this bundle — nothing fights us.
-- Asset URLs are **stable**: JS is content-hashed at build time, no session tokens or `Date.now()` in fetch paths. Safe to cache aggressively.
-- Staged load order: **PRELOADER → COMMON → SPLASH → PRIMARY (~15–20MB, the real wall) → SECONDARY (lazy, safe to background-prefetch even after first spin)**.
+- **STATICALLY-INFERRED for this supplied build:** no anti-tamper, automation/headless detection, service worker, or SRI hashes were found. This narrows implementation risk but does not prove production cacheability or permission to warm.
+- The archive contains content-hashed JavaScript and ordinary asset paths. Exact deployable URLs, response policy, credentials, and cache eligibility must come from a later approved staging capture; never infer them from archive paths.
+- Staged load order: **PRELOADER → COMMON → SPLASH → PRIMARY → SECONDARY**. Proactive warming is limited to PRELOADER, COMMON, SPLASH, and a proven critical PRIMARY subset; SECONDARY is never proactively warmed.
 - **Two real failure modes to design around, found in the actual code:**
   1. **Resolution branching** — game picks `@1x` or `@0.5x` texture sets *after* JS executes, based on device info. Resolve device tier BEFORE issuing prefetch, or you waste ~30MB warming both tiers, or cold-miss on the wrong one.
   2. **Locale branching** — asset path is `assets/locale/${language}/...`, where `language` is injected at runtime by the operator frame, not present in the URL ahead of time. Read the launch config for target locale before warming.
 - No `KHR_parallel_shader_compile` or async shader-compile hint — shader compilation is a real, unfixable-by-us cold-start cost. This is a "known ceiling" item, not a bug to chase.
-- Cache-control on this CDN: `max-age` in the tens of years, full CORS (`Access-Control-Allow-Origin: *`). Not opaque — no Cache API storage-padding penalty applies here.
+- Production/staging cache-control, CORS, `Vary`, credential, redirect, and partition behavior remain **UNKNOWN**. The supplied archive cannot establish response headers, and this project does not use the Cache API.
 
-### Cache-partitioning assumption — VERIFY THIS FIRST, BEFORE ANYTHING ELSE
-The entire architecture rests on: browser HTTP cache partitions by top-level **site** (e.g. `psk.hr`), not exact origin, so a `fetch()` issued from the parent lobby page (`casino.psk.hr`) can pre-warm a cache entry that a same-site game iframe (`gamelauncher-*.psk.hr` or similar) later hits. **This must be the first thing tested in this session** — two `fetch()` calls and a DevTools check. If it fails, the whole mechanism needs rethinking before anything else is built.
+### Parent-to-iframe cache-reuse gate
+The load-bearing behavior is exact parent-to-iframe browser HTTP-cache reuse under the target environment's real top-level context, URL, request semantics, and response policy. A controlled local Chromium diagnostic passed for one exact object, including exact-key and `no-store` negative controls. Its mapped top-level-site result must not be generalized. Staging/production partition and reuse behavior remain **UNKNOWN** until the later approved serial control/treatment gate.
 
 ### Real popularity distribution — use this, not a synthetic one
 Two independent real sources agree on a hard power law:
@@ -63,7 +65,7 @@ Two independent real sources agree on a hard power law:
 
 ### Still unmeasured — do not fabricate a number for these
 - **Exclusion-register check latency.** Every HAR so far is anonymous demo mode. This requires a real login on staging. Until measured, treat it as an unknown-latency BLOCKING call — never cache it, never race it, never optimize around it, regardless of what its real cost turns out to be.
-- **Cross-provider generalization.** Bundle analysis is confirmed for one provider only (Spiniq). Verify against 2–3 more titles from top-stake providers (Amusnet, Pragmatic, Playtech) via the public demo button before claiming this generalizes.
+- **Cross-provider generalization.** Bundle analysis is confirmed for one provider only (Spiniq). Verify additional providers only in an organiser-approved environment after access is restored; do not use public production traffic as an outage substitute.
 
 ---
 
@@ -72,25 +74,27 @@ Two independent real sources agree on a hard power law:
 No native interception layer. No `WebViewClient`, no Kotlin, no iOS parity questions. The mechanism is entirely JS/browser-native:
 
 ```
+[ Authorization state: exclusion-register check has succeeded ]
+        |  denial, timeout, malformed response, or unknown => no warming
 [ Player browsing lobby ]
         |
 Resource Governor (JS): navigator.connection, Performance Observer / Long Animation Frames, data budget
         |
 Prefetch trigger: hover/dwell 150ms+, or drawer-open
         |
-fetch(url, {mode:'no-cors'}) or <link rel="prefetch">
-  against target game's PRELOADER + COMMON + PRIMARY tier assets
-  (resolution + locale resolved BEFORE this fires)
+credential-free fetch of exact PRELOADER + COMMON + SPLASH URLs
+  plus only a proven critical PRIMARY subset
+  (resolution + locale resolved BEFORE this fires; SECONDARY excluded)
         |
 [ Player taps switch/launch ]
         |
-preconnect/dns-prefetch already warmed the session endpoint
+Neutral transition screen, live RG state
         |
-Neutral transition screen, live RG state, clears ONLY on input-accepted
+Authorization is rechecked if required by the approved integration contract
         |
-Exclusion-register check fires here — BLOCKING, never cached, never raced
+Game iframe loads; cache reuse remains an observed outcome, not an assumption
         |
-Game iframe loads — requests hit warm cache
+Screen clears only on an authoritative input-accepted signal
 ```
 
 ---
@@ -100,21 +104,21 @@ Game iframe loads — requests hit warm cache
 **Module 1 — Measurement harness.** Reusable script: takes a HAR pair (cold/warm), outputs load time, bytes-over-wire, cache-hit %. You'll run this constantly — build it once, properly, first.
 
 **Module 2 — Cache-warming core (build this first, it's the highest-risk assumption).**
-1. Verify same-site cache partitioning directly (see VERIFIED section above) — do this before anything else.
+1. Preserve the local parent-to-iframe diagnostic and later verify exact reuse in the approved target environment before enablement.
 2. Build the prefetch trigger (hover/dwell, drawer-open).
 3. Resolve device tier + locale BEFORE prefetching (the two real failure modes above).
-4. Warm PRELOADER + COMMON + PRIMARY only. Never proactively warm SECONDARY — background it opportunistically after first spin instead.
+4. After authorization, warm PRELOADER + COMMON + SPLASH and only a proven critical PRIMARY subset. Never proactively warm SECONDARY.
 5. `preconnect`/`dns-prefetch` to the session endpoint on drawer-open.
 6. Exit criteria: a cold/warm HAR pair where "warm" was achieved by our own prefetch trigger, not a manual replay.
 
 **Module 3 — Prefetch policy (the best differentiator — protect the time for this).**
 1. Build the real popularity model from the CSV/event-log data (see VERIFIED), not synthetic.
-2. Implement **both** policies — favourite-prefetch and unplayed-prefetch — with a **live toggle**, not a precomputed chart. A judge needs to flip it and watch both run against the real cache.
-3. Exit criteria: live toggle, real hit-rate and seconds-saved numbers computed from the actual running system for both policies.
+2. Implement **both** policies—favourite-prefetch and unplayed-prefetch—behind an operator/demo toggle that affects speculative cache requests only, never player-visible ordering.
+3. During the outage, label policy outcomes `SIMULATED`. Real hit-rate and time-saved exit criteria require a later approved, isolated staging experiment.
 
 **Module 4 — Transition pipeline & UI.**
 1. Transition screen: session clock, net position, limit headroom (synthetic data for demo).
-2. Clears ONLY on interactive (spin control accepts input), never on first paint.
+2. Clears as `interactive` ONLY on an authoritative input-accepted signal, never on iframe load or first paint; otherwise use the precise weaker or `SIMULATED` state.
 3. Drawer: user-initiated only, ordered by favourites/recents/search — never an algorithmic "picks for you."
 4. Accessibility: contrast, keyboard nav, `prefers-reduced-motion`, extended-duration path so screen readers can announce the transition state before it clears.
 
@@ -142,7 +146,7 @@ Game iframe loads — requests hit warm cache
 - **Never surface the predictor's output to the player.** It drives the cache only. The drawer shows favourites/recents/search — never an algorithmic recommendation. This is what keeps us out of AI Act / non-inducement problems.
 - **Never use real player data.** CSV/event-log data used for the popularity model is aggregated or pseudonymized (SHA-256 hashed player IDs) — do not attempt to de-anonymize, join across datasets to re-identify, or display individual player hashes anywhere, including logs or debug output.
 - **Never fabricate a number for the exclusion-register latency or claim cross-provider generalization beyond what's tested.** Label unknowns as unknown.
-- **Never manufacture a fake checkpoint** (e.g., a fake reality check or fake age prompt) to fill loading time. Only overlay onto checkpoints that already exist (login/verification window).
+- **Never manufacture a fake checkpoint** (e.g., a fake reality check or fake age prompt) to fill loading time. Warming may use idle time only after exclusion authorization has succeeded; it must never overlap or race the authorization check.
 
 ---
 
@@ -155,17 +159,21 @@ Game iframe loads — requests hit warm cache
 
 ---
 
-## Tonight, before staging opens — do these in this order
+## During the staging outage — do these in this order
 
-1. Verify cache-partitioning (Module 2, step 1) — this is the whole architecture's foundation, confirm it first.
-2. Capture 2–3 more cold/warm HAR pairs from different providers (Amusnet, Pragmatic, Playtech) via the public demo button — free, no permission needed, turns "one provider" into a real sample.
-3. Build Module 1 (measurement harness) — you'll need it constantly starting tomorrow.
-4. Start Module 2's actual prefetch trigger against the public production site.
+1. Maintain the reproducible local cache-partitioning diagnostic, scoped as browser-mechanism evidence only.
+2. Build and test the generic sandbox integration using synthetic, credential-free fixtures: exact manifest resolution, conservative governor, maximum concurrency two, cancellation, and fail-closed authorization boundary.
+3. Keep staging URLs and environment-specific configuration outside the generic core. Never guess URLs from the private archive or substitute production traffic for staging.
+4. Build the measurement and redaction path needed for identical disabled-control and enabled-treatment captures.
+5. Present the current UI as `SIMULATED`; the historical HAR pair demonstrates warm-state opportunity, not the prototype's causal effect.
 
-## Tomorrow, first thing on staging
+## When staging is introduced later
 
-1. Cold/warm HAR pair through a real login — capture the exclusion-register check for the first time.
-2. Ask FEG the four open questions above, in person, before assuming answers.
+1. Obtain approved access and record exact browser, title/build, locale, tier, top-level context, URLs, and request semantics.
+2. Capture isolated control/treatment runs through the real authorization path without logging exclusion payloads or credentials.
+3. Measure exclusion-register timing only through an approved, non-sensitive event; authorization remains blocking and fail-closed.
+4. Validate exact parent-to-iframe cache reuse, CORS/cache policy, and the authoritative input-accepted milestone before any player-facing enablement.
+5. Ask FEG the open questions above before assuming answers.
 
 ---
 

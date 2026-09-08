@@ -44,6 +44,7 @@ Review, correct, clearly mark obsolete, or remove internal documents that confli
 
 - [ ] Do not submit native interception, service-worker, custom-cache, or cache-key-normalisation proposals as the implemented architecture.
 - [ ] Never recommend stripping, reordering, or normalising version query strings.
+- [ ] State that staging was unavailable during the hackathon and that sandbox validation is planned when it is introduced later; do not imply staging testing occurred.
 - [ ] Do not claim the local parent-to-iframe cache diagnostic proves staging or production behavior.
 - [ ] Do not describe the historical cold/repeat HAR comparison as causal proof of proactive warming.
 - [ ] Scope claims to the tested browser, title, provider, and run count.
