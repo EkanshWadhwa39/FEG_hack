@@ -8,7 +8,8 @@
     "test:lobby-flow": "node tools/test_lobby_flow.mjs",
     "benchmark:cold-vs-warm": "node tools/benchmark_cold_vs_warm.mjs",
     "experiment:cache-reuse": "node tools/run_cache_reuse.mjs --runs 2",
-    "serve": "python3 -m http.server 8080 --directory prototype --bind 0.0.0.0"
+    "serve": "node scripts/serve-node.mjs",
+    "serve:python": "python3 -m http.server 8080 --directory prototype --bind 0.0.0.0"
   },
   "devDependencies": {
     "playwright": "^1.63.0"
