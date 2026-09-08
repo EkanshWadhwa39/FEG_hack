@@ -24,6 +24,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import errno
 import os
 import posixpath
 import threading
@@ -97,9 +98,23 @@ class SandboxHandler(SimpleHTTPRequestHandler):
         return str(resolved)
 
 
-def serve(directory: Path, port: int, throttle_kbps: int) -> ThreadingHTTPServer:
+def serve(directory: Path, port: int, throttle_kbps: int,
+          host: str = "127.0.0.1") -> ThreadingHTTPServer:
     handler = partial(SandboxHandler, directory=str(directory), throttle_kbps=throttle_kbps)
-    server = ThreadingHTTPServer(("127.0.0.1", port), handler)
+    try:
+        server = ThreadingHTTPServer((host, port), handler)
+    except OSError as error:
+        if error.errno != errno.EADDRINUSE:
+            raise
+        # A stale sandbox from a previous run is the usual cause, and finding
+        # that out mid-demo is expensive. Say exactly how to clear it.
+        raise SystemExit(
+            f"Port {port} is already in use.\n"
+            f"  Find it:  ss -lptn 'sport = :{port}'\n"
+            f"  Free it:  kill $(ss -lptn 'sport = :{port}' "
+            f"| grep -oP 'pid=\\K[0-9]+' | head -1)\n"
+            f"  Or pick another port: --lobby-port / --game-port"
+        ) from error
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return server
 
@@ -125,20 +140,26 @@ def main() -> None:
     parser.add_argument("--game-port", type=int, default=8091)
     parser.add_argument("--throttle-kbps", type=int, default=0,
                         help="throttle game-origin responses, e.g. 12000 for ~12 Mbps")
+    parser.add_argument("--host", default="127.0.0.1",
+                        help="bind address; use 0.0.0.0 to let another device on the "
+                             "same network open the demo")
     args = parser.parse_args()
 
     root = Path(__file__).resolve().parent.parent
     lobby_dir = root / "prototype"
     game_dir = resolve_bundle(args.bundle.expanduser().resolve())
 
-    serve(lobby_dir, args.lobby_port, 0)
-    serve(game_dir, args.game_port, args.throttle_kbps)
+    serve(lobby_dir, args.lobby_port, 0, args.host)
+    serve(game_dir, args.game_port, args.throttle_kbps, args.host)
 
-    print(f"lobby  http://127.0.0.1:{args.lobby_port}/   ({lobby_dir})")
-    print(f"game   http://127.0.0.1:{args.game_port}/    ({game_dir})")
+    shown = "127.0.0.1" if args.host in {"127.0.0.1", "localhost"} else args.host
+    print(f"lobby  http://{shown}:{args.lobby_port}/sandbox.html   ({lobby_dir})", flush=True)
+    print(f"game   http://{shown}:{args.game_port}/    ({game_dir})", flush=True)
+    if args.host == "0.0.0.0":  # noqa: S104 - deliberate, demo on a local network
+        print("Reachable from other devices on this network. Sandbox data only.", flush=True)
     if args.throttle_kbps:
-        print(f"game origin throttled to ~{args.throttle_kbps} kbps")
-    print("Ctrl+C to stop.")
+        print(f"game origin throttled to ~{args.throttle_kbps} kbps", flush=True)
+    print("Ctrl+C to stop.", flush=True)
     try:
         threading.Event().wait()
     except KeyboardInterrupt:
