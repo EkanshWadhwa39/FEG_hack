@@ -146,8 +146,15 @@ def _metric(report: dict[str, Any], name: str, value: Any, label: str) -> None:
     report[f"{name}_label"] = label
 
 
-def measure_har(har: Mapping[str, Any]) -> dict[str, Any]:
-    """Measure one parsed HAR document, excluding data URLs."""
+def measure_har(
+    har: Mapping[str, Any], milestone_urls: frozenset[str] | None = None
+) -> dict[str, Any]:
+    """Measure one parsed HAR document, excluding data URLs.
+
+    When an exact URL set is supplied, the optional milestone is the earliest
+    point at which every URL has a completed successful response. URLs are
+    compared byte-for-byte and are never included in the report.
+    """
 
     log = har.get("log")
     if not isinstance(log, Mapping):
@@ -189,8 +196,60 @@ def measure_har(har: Mapping[str, Any]) -> dict[str, Any]:
         else None
     )
 
+    milestone_elapsed_ms: float | None = None
+    milestone_matched = 0
+    if milestone_urls:
+        first_start = min(starts) if starts else None
+        first_successful_ends: list[float] = []
+        for target_url in milestone_urls:
+            matching_ends: list[float] = []
+            for entry in entries:
+                request = entry.get("request")
+                request = request if isinstance(request, Mapping) else {}
+                response = entry.get("response")
+                response = response if isinstance(response, Mapping) else {}
+                status = _nonnegative(response.get("status"))
+                start = _timestamp_ms(entry.get("startedDateTime"))
+                duration = _nonnegative(entry.get("time"))
+                if (
+                    request.get("url") == target_url
+                    and status is not None
+                    and 200 <= status < 300
+                    and start is not None
+                    and duration is not None
+                ):
+                    matching_ends.append(start + duration)
+            if matching_ends:
+                milestone_matched += 1
+                first_successful_ends.append(min(matching_ends))
+
+        if (
+            first_start is not None
+            and milestone_matched == len(milestone_urls)
+            and first_successful_ends
+        ):
+            milestone_elapsed_ms = round(max(first_successful_ends) - first_start, 3)
+
     report: dict[str, Any] = {}
     _metric(report, "elapsed_ms", elapsed_ms, MEASURED if elapsed_ms is not None else UNKNOWN)
+    _metric(
+        report,
+        "milestone_elapsed_ms",
+        milestone_elapsed_ms,
+        MEASURED if milestone_elapsed_ms is not None else UNKNOWN,
+    )
+    _metric(
+        report,
+        "milestone_target_count",
+        len(milestone_urls) if milestone_urls else None,
+        MEASURED if milestone_urls else UNKNOWN,
+    )
+    _metric(
+        report,
+        "milestone_matched_count",
+        milestone_matched if milestone_urls else None,
+        MEASURED if milestone_urls else UNKNOWN,
+    )
     _metric(report, "wire_bytes", wire_bytes, MEASURED if wire_bytes is not None else UNKNOWN)
     _metric(report, "request_count", len(entries), MEASURED)
     _metric(report, "confirmed_hits", hits, MEASURED)
@@ -200,13 +259,22 @@ def measure_har(har: Mapping[str, Any]) -> dict[str, Any]:
     return report
 
 
-def compare_hars(cold: Mapping[str, Any], warm: Mapping[str, Any]) -> dict[str, Any]:
-    cold_report = measure_har(cold)
-    warm_report = measure_har(warm)
+def compare_hars(
+    cold: Mapping[str, Any],
+    warm: Mapping[str, Any],
+    milestone_urls: frozenset[str] | None = None,
+) -> dict[str, Any]:
+    cold_report = measure_har(cold, milestone_urls)
+    warm_report = measure_har(warm, milestone_urls)
     comparison: dict[str, Any] = {}
 
     for output_name, metric_name, operation in (
         ("elapsed_ms_saved", "elapsed_ms", lambda a, b: a - b),
+        (
+            "milestone_elapsed_ms_saved",
+            "milestone_elapsed_ms",
+            lambda a, b: a - b,
+        ),
         ("wire_bytes_saved", "wire_bytes", lambda a, b: a - b),
         ("request_count_delta", "request_count", lambda a, b: b - a),
         ("confirmed_hits_delta", "confirmed_hits", lambda a, b: b - a),
@@ -257,6 +325,9 @@ def format_readable(result: Mapping[str, Any]) -> str:
             result["cold"],
             (
                 "elapsed_ms",
+                "milestone_elapsed_ms",
+                "milestone_target_count",
+                "milestone_matched_count",
                 "wire_bytes",
                 "request_count",
                 "confirmed_hits",
@@ -270,6 +341,9 @@ def format_readable(result: Mapping[str, Any]) -> str:
             result["warm"],
             (
                 "elapsed_ms",
+                "milestone_elapsed_ms",
+                "milestone_target_count",
+                "milestone_matched_count",
                 "wire_bytes",
                 "request_count",
                 "confirmed_hits",
@@ -283,6 +357,7 @@ def format_readable(result: Mapping[str, Any]) -> str:
             result["comparison"],
             (
                 "elapsed_ms_saved",
+                "milestone_elapsed_ms_saved",
                 "wire_bytes_saved",
                 "request_count_delta",
                 "confirmed_hits_delta",
@@ -299,6 +374,26 @@ def format_readable(result: Mapping[str, Any]) -> str:
                 f"[{values[name + '_label']}]"
             )
     return "\n".join(lines)
+
+
+def _load_milestone_manifest(path: str) -> frozenset[str]:
+    try:
+        with Path(path).open("r", encoding="utf-8") as handle:
+            value = json.load(handle)
+    except json.JSONDecodeError:
+        raise HarError("invalid JSON in milestone manifest") from None
+    except (OSError, UnicodeError):
+        raise HarError("unable to read milestone manifest") from None
+
+    urls = value.get("urls") if isinstance(value, Mapping) else None
+    if (
+        not isinstance(urls, list)
+        or not urls
+        or any(not isinstance(url, str) or not url for url in urls)
+        or len(set(urls)) != len(urls)
+    ):
+        raise HarError("milestone manifest must contain a non-empty unique URL list")
+    return frozenset(urls)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -321,6 +416,13 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="shorthand for --format json",
     )
+    parser.add_argument(
+        "--milestone-manifest",
+        help=(
+            "private JSON object with an exact 'urls' list; reports time until "
+            "every listed request completes successfully without printing URLs"
+        ),
+    )
     return parser
 
 
@@ -328,9 +430,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
+        milestone_urls = (
+            _load_milestone_manifest(args.milestone_manifest)
+            if args.milestone_manifest
+            else None
+        )
         result = compare_hars(
             _load_har(args.cold_har, "cold"),
             _load_har(args.warm_har, "warm"),
+            milestone_urls,
         )
     except HarError as exc:
         parser.error(str(exc))
