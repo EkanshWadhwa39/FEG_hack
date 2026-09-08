@@ -101,3 +101,42 @@ def test_manifest_reports_what_it_warms_against_the_whole_package(tmp_path):
         if asset["stage"] == "PRIMARY":
             # The warmer rejects a PRIMARY asset not proven critical.
             assert asset["critical"] is True
+
+
+def test_blocking_profile_is_the_measured_minimum(tmp_path):
+    from manifest_builder import is_blocking
+
+    # Derived from an observed cold-load timeline: these completed before the
+    # first canvas appeared.
+    for path in ("index.html", "assets/panel/css/common.css",
+                 "assets/vendor-pixi-abc.js", "assets/core-engine-abc.js",
+                 "assets/game-empireofgold-abc.js", "assets/index-canvas-abc.js",
+                 "assets/fonts/en/Mulish.ttf", "assets/images/loader.webp"):
+        assert is_blocking(path) is True, path
+
+    # These arrive after first render and must not be in the blocking set.
+    for path in ("assets/images/splashBG.jpg", "assets/spines/@1x/reels_frame.png",
+                 "assets/sounds/ogg/FBGM.ogg"):
+        assert is_blocking(path) is False, path
+
+
+def test_profiles_are_strictly_nested_by_size(tmp_path):
+    package = make_package(tmp_path)
+    sizes = {}
+    for profile in ("blocking", "critical", "all"):
+        manifest = build_manifest(package, "@1x", profile)
+        assert manifest["profile"] == profile
+        sizes[profile] = manifest["warmBytes"]
+    # Warming more must never warm less.
+    assert sizes["blocking"] <= sizes["critical"] <= sizes["all"]
+
+
+def test_an_unknown_profile_is_rejected(tmp_path):
+    import pytest
+    with pytest.raises(ValueError, match="profile must be one of"):
+        build_manifest(make_package(tmp_path), "@1x", "everything")
+
+
+def test_blocking_profile_never_includes_audio(tmp_path):
+    manifest = build_manifest(make_package(tmp_path), "@1x", "blocking")
+    assert all(not a["url"].endswith((".mp3", ".ogg")) for a in manifest["assets"])

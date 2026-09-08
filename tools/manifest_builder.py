@@ -25,6 +25,35 @@ from pathlib import Path
 
 PROACTIVE_STAGES = ("PRELOADER", "COMMON", "SPLASH", "PRIMARY")
 
+#: Warm profiles, smallest first.
+#:
+#:   blocking  only what must complete before the engine can render at all.
+#:             Measured on Empire of Gold as 15 requests / 2.25 MB: the entry
+#:             document, panel CSS, the four JS bundles, fonts and the loader
+#:             image. Nothing else blocks first paint.
+#:   critical  blocking plus splash art and the primary spines the first screen
+#:             needs. Larger, and most of it is not on the blocking path.
+#:   all       every proactive stage. Only defensible at a high hit rate.
+PROFILES = ("blocking", "critical", "all")
+
+
+def is_blocking(relative: str) -> bool:
+    """True if the engine cannot render its first frame without this file.
+
+    Derived from an observed cold-load timeline rather than guessed: these are
+    the requests that completed before the first canvas appeared.
+    """
+    lower = relative.lower()
+    name = lower.rsplit("/", 1)[-1]
+    if lower == "index.html":
+        return True
+    if "/panel/css/" in lower or lower.endswith((".ttf", ".woff", ".woff2")):
+        return True
+    if "loader" in name and lower.endswith((".webp", ".png", ".jpg", ".gif")):
+        return True
+    return ("index-canvas" in name or "vendor-" in name
+            or "core-engine" in name or name.startswith("game-"))
+
 # Files that never belong in a warm manifest.
 SKIPPED_NAMES = frozenset({".DS_Store", "Thumbs.db"})
 SKIPPED_SUFFIXES = frozenset({".br", ".gz", ".map"})
@@ -66,8 +95,11 @@ def is_critical_primary(relative: str, size: int) -> bool:
     return any(token in lower for token in ("reels", "frame", "bg_", "symbol", "king_character"))
 
 
-def build_manifest(bundle: Path, resolution: str = "@1x") -> dict:
+def build_manifest(bundle: Path, resolution: str = "@1x",
+                   profile: str = "critical") -> dict:
     """Walk the package and emit a staged manifest of exact relative URLs."""
+    if profile not in PROFILES:
+        raise ValueError(f"profile must be one of {PROFILES}")
     entries = []
     for path in sorted(bundle.rglob("*")):
         if not path.is_file():
@@ -85,16 +117,22 @@ def build_manifest(bundle: Path, resolution: str = "@1x") -> dict:
         size = path.stat().st_size
         stage = classify(relative)
         entry = {"url": relative, "stage": stage, "estimatedBytes": size}
+        if is_blocking(relative):
+            entry["blocking"] = True
         if stage == "PRIMARY":
             entry["critical"] = is_critical_primary(relative, size)
         entries.append(entry)
 
-    proactive = [
-        e for e in entries
-        if e["stage"] in PROACTIVE_STAGES
-        and (e["stage"] != "PRIMARY" or e.get("critical") is True)
-    ]
+    if profile == "blocking":
+        proactive = [e for e in entries if e.get("blocking") is True]
+    else:
+        proactive = [
+            e for e in entries
+            if e["stage"] in PROACTIVE_STAGES
+            and (e["stage"] != "PRIMARY" or e.get("critical") is True or profile == "all")
+        ]
     return {
+        "profile": profile,
         "resolution": resolution,
         "totalFiles": len(entries),
         "totalBytes": sum(e["estimatedBytes"] for e in entries),
@@ -110,12 +148,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bundle", required=True, type=Path)
     parser.add_argument("--resolution", default="@1x", choices=["@1x", "@0.5x"])
+    parser.add_argument("--profile", default="critical", choices=list(PROFILES))
     args = parser.parse_args()
 
     from sandbox_server import resolve_bundle
 
     manifest = build_manifest(resolve_bundle(args.bundle.expanduser().resolve()),
-                              args.resolution)
+                              args.resolution, args.profile)
     print(json.dumps(manifest, indent=1))
 
 

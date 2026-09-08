@@ -53,10 +53,19 @@ class SandboxHandler(SimpleHTTPRequestHandler):
     """Static handler with production-like caching and CORS headers."""
 
     def __init__(self, *args, directory: str, throttle_kbps: int = 0,
-                 manifest: bytes | None = None, **kwargs):
+                 manifest: bytes | None = None, latency_ms: int = 0, **kwargs):
         self._throttle_kbps = throttle_kbps
         self._manifest = manifest
+        self._latency_ms = latency_ms
         super().__init__(*args, directory=directory, **kwargs)
+
+    def handle_one_request(self):
+        # Per-request delay standing in for round-trip time. Loopback has none,
+        # which makes an unlatenced sandbox systematically understate the value
+        # of cache warming: a warm hit skips the round trip entirely.
+        if self._latency_ms > 0:
+            time.sleep(self._latency_ms / 1000)
+        super().handle_one_request()
 
     def do_GET(self):  # noqa: N802 - BaseHTTPRequestHandler naming
         if self._manifest is not None and urlparse(self.path).path == MANIFEST_PATH:
@@ -116,9 +125,11 @@ class SandboxHandler(SimpleHTTPRequestHandler):
 
 
 def serve(directory: Path, port: int, throttle_kbps: int,
-          host: str = "127.0.0.1", manifest: bytes | None = None) -> ThreadingHTTPServer:
+          host: str = "127.0.0.1", manifest: bytes | None = None,
+          latency_ms: int = 0) -> ThreadingHTTPServer:
     handler = partial(SandboxHandler, directory=str(directory),
-                      throttle_kbps=throttle_kbps, manifest=manifest)
+                      throttle_kbps=throttle_kbps, manifest=manifest,
+                      latency_ms=latency_ms)
     try:
         server = ThreadingHTTPServer((host, port), handler)
     except OSError as error:
@@ -160,6 +171,11 @@ def main() -> None:
     parser.add_argument("--game-port", type=int, default=8091)
     parser.add_argument("--throttle-kbps", type=int, default=0,
                         help="throttle game-origin responses, e.g. 12000 for ~12 Mbps")
+    parser.add_argument("--latency-ms", type=int, default=0,
+                        help="per-request delay standing in for RTT, e.g. 40")
+    parser.add_argument("--profile", default="blocking",
+                        choices=["blocking", "critical", "all"],
+                        help="how much to warm; blocking is the measured minimum")
     parser.add_argument("--resolution", default="@1x", choices=["@1x", "@0.5x"],
                         help="resolution tier to warm; the other branch is excluded")
     parser.add_argument("--host", default="127.0.0.1",
@@ -173,16 +189,17 @@ def main() -> None:
 
     # Generate the warm manifest from the package itself. A real integration
     # cannot hand-list assets per title, so the sandbox does not either.
-    manifest = build_manifest(game_dir, args.resolution)
+    manifest = build_manifest(game_dir, args.resolution, args.profile)
     manifest_bytes = json.dumps(manifest).encode("utf-8")
 
     serve(lobby_dir, args.lobby_port, 0, args.host)
-    serve(game_dir, args.game_port, args.throttle_kbps, args.host, manifest_bytes)
+    serve(game_dir, args.game_port, args.throttle_kbps, args.host, manifest_bytes,
+          args.latency_ms)
 
     shown = "127.0.0.1" if args.host in {"127.0.0.1", "localhost"} else args.host
     print(f"lobby  http://{shown}:{args.lobby_port}/sandbox.html   ({lobby_dir})", flush=True)
     print(f"game   http://{shown}:{args.game_port}/    ({game_dir})", flush=True)
-    print(f"manifest {MANIFEST_PATH}: {manifest['warmFiles']} files, "
+    print(f"manifest {MANIFEST_PATH} [{args.profile}]: {manifest['warmFiles']} files, "
           f"{manifest['warmBytes'] / 1048576:.1f} MB of "
           f"{manifest['totalBytes'] / 1048576:.1f} MB "
           f"({100 * manifest['warmBytes'] / manifest['totalBytes']:.0f}% of package)",
@@ -191,6 +208,8 @@ def main() -> None:
         print("Reachable from other devices on this network. Sandbox data only.", flush=True)
     if args.throttle_kbps:
         print(f"game origin throttled to ~{args.throttle_kbps} kbps", flush=True)
+    if args.latency_ms:
+        print(f"game origin latency ~{args.latency_ms} ms per request", flush=True)
     print("Ctrl+C to stop.", flush=True)
     try:
         threading.Event().wait()
