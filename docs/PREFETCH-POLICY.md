@@ -46,6 +46,53 @@ This matters beyond accuracy:
 - **It stays cache-only regardless.** Policy output drives prefetch and never reaches the drawer,
   which shows favourites, recents and search only.
 
+## CORRECTION — the result above is contaminated
+
+The table above counts every next-launch, including launches back to a title the player **already
+played in this session**. Those are already in the browser's HTTP cache: the provider CDN sends
+`max-age=608892916`, roughly nineteen years. Warming them again buys nothing.
+
+Splitting the same test set:
+
+| Next launch is… | Share | Already cached? |
+|---|---:|---|
+| a title already played this session | **57.5%** | **yes — free, no action needed** |
+| a title not yet played this session | **42.5%** | no — this is the addressable set |
+
+So `repeat-own-session` scored 30.4% largely by "predicting" launches that needed no prefetch. Its
+real contribution is close to zero.
+
+### Re-scored on the addressable set only
+
+1,566 predictions where the next title had **not** been played in that session:
+
+| Policy | hit@1 | hit@3 | hit@5 |
+|---|---:|---:|---:|
+| **markov-unplayed** | **13.4%** | **23.2%** | **28.0%** |
+| markov-next | 11.0% | 20.3% | 26.2% |
+| popular-unplayed | 0.6% | 1.0% | 4.7% |
+| popular-global | 0.6% | 0.9% | 4.2% |
+
+**This reverses the earlier conclusion.** On the launches that actually need warming, the
+collaborative next-title signal is the best history-based predictor available, and global
+popularity is worthless. The "boring heuristic wins" framing was an artefact of scoring
+already-cached launches as successes.
+
+What survives from the original finding: popularity-based warming is useless, and the ceiling on
+history-based prediction is low — 13.4% at k=1, 28% at k=5.
+
+### What this means for the design
+
+- **Recency stays in the policy**, but as a *cache-check*, not a predictor: if the player already
+  launched it this session, it is warm and we skip it. `alreadyWarm` in
+  `prefetch-policy.js` already does this.
+- **Dwell becomes the most valuable signal by far.** History tops out at 13.4%; a player lingering
+  on a tile is direct evidence about the launch about to happen. It cannot be scored offline
+  because the event log has no hover events, but it is the only signal with a plausible path above
+  the history ceiling.
+- Compliance is unchanged: the collaborative model still selects **bytes only** and never reaches
+  the player-visible drawer.
+
 ## The counterweight — cost of being wrong
 
 At the production-measured 11.25 MB per warmed title:
