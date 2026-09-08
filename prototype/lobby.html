@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Casino Lobby — FEG Sandbox</title>
+  <link rel="stylesheet" href="./styles/player.css">
+  <style>
+    /* ── Lobby grid ───────────────────────────────────────────────── */
+    .lobby-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .game-card {
+      position: relative;
+      padding: 14px;
+      border: 1px solid var(--border-decorative);
+      border-radius: 12px;
+      background: var(--surface-panel);
+      cursor: pointer;
+      user-select: none;
+      transition: border-color 140ms, transform 140ms;
+    }
+    .game-card:hover { transform: translateY(-3px); }
+    .game-card[data-state="prefetching"] { border-color: var(--warn); }
+    .game-card[data-state="warm"]        { border-color: var(--ok); }
+    .game-card[data-state="launching"]   { border-color: var(--accent); }
+
+    .card-thumb {
+      width: 100%;
+      aspect-ratio: 4/3;
+      border-radius: 8px;
+      background: var(--surface-raised);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.2rem;
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+    .card-title {
+      margin: 0 0 3px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .card-sub {
+      margin: 0;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    /* Badge sits top-right of each card */
+    .card-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 0.58rem;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      pointer-events: none;
+      opacity: 0;        /* hidden unless a modifier class is present */
+    }
+    .badge-top3     { opacity: 1; background: #713f12; color: #fde68a; }
+    .badge-fetching { opacity: 1; background: #1c3048; color: #7dd3fc; }
+    .badge-warm     { opacity: 1; background: #134e4a; color: #5eead4; }
+
+    /* ── Stats row ────────────────────────────────────────────────── */
+    .stat-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .stat-pill {
+      padding: 5px 13px;
+      border: 1px solid var(--border-decorative);
+      border-radius: 999px;
+      font-size: 0.8rem;
+      background: var(--surface-inset);
+      color: var(--text-secondary);
+    }
+    .stat-pill strong { color: var(--accent); }
+
+    /* ── Game panel ───────────────────────────────────────────────── */
+    #game-panel[hidden] { display: none; }
+    #frame-host iframe {
+      width: 100%;
+      height: 540px;
+      border: 1px solid var(--border-decorative);
+      border-radius: 10px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .game-card { transition: none; }
+    }
+  </style>
+</head>
+
+<body>
+<main class="shell">
+
+  <header>
+    <p class="eyebrow">FEG Sandbox</p>
+    <h1>Casino Lobby</h1>
+    <p class="lede">
+      20 game slots powered by the same Empire of Gold bundle.
+      Top&nbsp;3 prefetch on page load; remaining cards warm on hover (150&nbsp;ms dwell).
+      A shared session ledger deduplicates all fetches across cards.
+    </p>
+    <div class="banner" role="note">
+      <span class="label simulated">SANDBOX</span>
+      <span>Game origin: <code>http://127.0.0.1:8091</code>.
+        Cache reuse is real — warm card 1, cards 2–20 are instant.</span>
+    </div>
+  </header>
+
+  <!-- Session stats -->
+  <section class="panel">
+    <div class="panel-head"><h2>Session</h2></div>
+    <div class="stat-row">
+      <span class="stat-pill">Ledger: <strong id="stat-ledger">0</strong> assets</span>
+      <span class="stat-pill">Cards warm: <strong id="stat-warm">0</strong>&nbsp;/ 20</span>
+      <span class="stat-pill">Hover cancels: <strong id="stat-cancels">0</strong></span>
+    </div>
+    <p id="manifest-msg" class="empty-state" role="status" aria-live="polite">
+      Discovering game assets…
+    </p>
+  </section>
+
+  <!-- 20-card grid -->
+  <div class="lobby-grid" id="lobby-grid" role="list" aria-label="Game lobby"></div>
+
+  <!-- Launched game -->
+  <section class="panel" id="game-panel" hidden>
+    <div class="panel-head">
+      <h2 id="active-game-title">Game</h2>
+      <button id="close-game" type="button">Close</button>
+    </div>
+    <div id="frame-host"></div>
+  </section>
+
+</main>
+
+<script type="module">
+import { warmAssets } from './src/warmer.js';
+import { createWarmLedger } from './src/warm-ledger.js';
+
+// ── Config ────────────────────────────────────────────────────────────────────
+const GAME_ORIGIN   = new URLSearchParams(location.search).get('game') ?? 'http://127.0.0.1:8091';
+const HOVER_DWELL   = 150;   // ms before a hover triggers a fetch
+const TOP_N         = 3;     // cards prefetched immediately on page load
+
+// ── 20 game slots (same bundle, distinct lobby identities) ───────────────────
+const GAMES = [
+  { id:  1, name: 'Empire of Gold',            emoji: '🏛️' },
+  { id:  2, name: 'Golden Empire Deluxe',      emoji: '✨' },
+  { id:  3, name: 'Empire of Gold: Platinum',  emoji: '⚡' },
+  { id:  4, name: 'Crown & Fortune',            emoji: '👑' },
+  { id:  5, name: 'Aztec Riches',               emoji: '🌞' },
+  { id:  6, name: 'Golden Pharaoh',             emoji: '🔱' },
+  { id:  7, name: 'Dynasty of Wealth',          emoji: '🐉' },
+  { id:  8, name: 'El Dorado Quest',            emoji: '🗺️' },
+  { id:  9, name: 'Treasure Kingdom',           emoji: '💎' },
+  { id: 10, name: 'Gold Rush Fever',            emoji: '⛏️' },
+  { id: 11, name: 'King Midas Touch',           emoji: '🤴' },
+  { id: 12, name: 'Royal Vault',                emoji: '🏦' },
+  { id: 13, name: "Fortune's Empire",           emoji: '🎰' },
+  { id: 14, name: 'Golden Dragon Rise',         emoji: '🐲' },
+  { id: 15, name: 'Colosseum of Gold',          emoji: '🏟️' },
+  { id: 16, name: 'Ancient Treasures',          emoji: '🏺' },
+  { id: 17, name: 'Jewels of the Nile',         emoji: '💍' },
+  { id: 18, name: 'Pyramid of Riches',          emoji: '🔺' },
+  { id: 19, name: 'Sultans of Slots',           emoji: '🕌' },
+  { id: 20, name: 'Empire Strike Gold',         emoji: '⭐' },
+];
+
+// ── Session state ─────────────────────────────────────────────────────────────
+const ledger    = createWarmLedger();  // shared dedup registry
+let manifest    = [];                  // [{url, stage, estimatedBytes}]
+let warmCount   = 0;
+let cancelCount = 0;
+
+// ── Stats ──────────────────────────────────────────────────────────────────────
+function updateStats() {
+  document.getElementById('stat-ledger').textContent  = ledger.size;
+  document.getElementById('stat-warm').textContent    = warmCount;
+  document.getElementById('stat-cancels').textContent = cancelCount;
+}
+
+// ── Manifest: discover from game HTML, fallback to known-good list ────────────
+async function discoverManifest() {
+  try {
+    const res  = await fetch(`${GAME_ORIGIN}/`, { mode: 'cors', credentials: 'omit' });
+    const html = await res.text();
+    const doc  = new DOMParser().parseFromString(html, 'text/html');
+
+    const rawUrls = new Set();
+    for (const el of doc.querySelectorAll('link[href]')) {
+      const v = el.getAttribute('href');
+      if (v && !v.startsWith('data:')) rawUrls.add(v);
+    }
+    for (const el of doc.querySelectorAll('script[src]')) {
+      const v = el.getAttribute('src');
+      if (v && !v.startsWith('data:')) rawUrls.add(v);
+    }
+    for (const el of doc.querySelectorAll('img[src]')) {
+      const v = el.getAttribute('src');
+      if (v && !v.startsWith('data:')) rawUrls.add(v);
+    }
+
+    const entries = [];
+    for (const raw of rawUrls) {
+      const url = new URL(raw, `${GAME_ORIGIN}/`).href;
+      const path = url.split('?')[0];
+      const ext  = path.split('.').pop().toLowerCase();
+      const stage = (ext === 'webp' || ext === 'png' || ext === 'jpg') ? 'SPLASH' : 'COMMON';
+      // rough sizes for dispatch ordering (largest-first within band)
+      const estimatedBytes =
+        ext === 'js'  ? path.includes('vendor') ? 1_258_291
+                       : path.includes('core')  ?   389_120
+                       : path.includes('game')  ?    46_080
+                       :                              7_270
+        : ext === 'css' ? 10_000
+        : ext === 'webp' || ext === 'png' ? 109_568
+        : 5_000;
+      entries.push({ url, stage, estimatedBytes });
+    }
+    return entries;
+  } catch {
+    // Hardcoded fallback — exact URLs from index.html inspection
+    const b = `${GAME_ORIGIN}/`;
+    return [
+      { url: `${b}assets/vendor-pixi-C8WzrnZv.js`,                         stage: 'COMMON', estimatedBytes: 1_258_291 },
+      { url: `${b}assets/core-engine-DXW-O-mj.js`,                          stage: 'COMMON', estimatedBytes:   389_120 },
+      { url: `${b}assets/game-empireofgold-CK6MbOiD.js`,                    stage: 'COMMON', estimatedBytes:    46_080 },
+      { url: `${b}assets/index-canvas-_ynnR-4e.js`,                         stage: 'COMMON', estimatedBytes:     7_270 },
+      { url: `${b}assets/panel/css/history.css?v=1788443825853`,            stage: 'COMMON', estimatedBytes:    19_000 },
+      { url: `${b}assets/panel/css/commonGameRules.css?v=1788443825853`,    stage: 'COMMON', estimatedBytes:    14_000 },
+      { url: `${b}assets/panel/css/footer.css?v=1788443825853`,             stage: 'COMMON', estimatedBytes:     2_700 },
+      { url: `${b}assets/panel/css/common.css?v=1788443825853`,             stage: 'COMMON', estimatedBytes:     2_200 },
+      { url: `${b}assets/panel/css/gameRules.css?v=1788443825853`,          stage: 'COMMON', estimatedBytes:     1_300 },
+      { url: `${b}assets/images/loader.webp`,                               stage: 'SPLASH', estimatedBytes:   109_568 },
+    ];
+  }
+}
+
+// ── Sandbox requester: HTTP-safe (bypasses HTTPS check in browser-requester) ──
+function requestAsset(url, { signal } = {}) {
+  return fetch(url, { mode: 'no-cors', credentials: 'omit', signal });
+}
+
+// ── Warm one card's game assets ───────────────────────────────────────────────
+async function warmCard(id, signal) {
+  if (!manifest.length) return;
+
+  setCardState(id, 'prefetching');
+  try {
+    await warmAssets({
+      plan:    { locale: 'hr-HR', tier: '1x', assets: manifest },
+      target:  { locale: 'hr-HR', tier: '1x' },
+      concurrency: 2,
+      signal,
+      ledger,
+      requestAsset,
+    });
+    if (!signal?.aborted) {
+      setCardState(id, 'warm');
+      warmCount++;
+      updateStats();
+    }
+  } catch {
+    if (!signal?.aborted) setCardState(id, 'cold');
+  }
+}
+
+// ── Card visual state ─────────────────────────────────────────────────────────
+function setCardState(id, state) {
+  const card  = document.querySelector(`[data-game-id="${id}"]`);
+  if (!card) return;
+  card.dataset.state = state;
+
+  const badge  = card.querySelector('.card-badge');
+  const isTop3 = id <= TOP_N;
+
+  switch (state) {
+    case 'warm':
+      badge.className = 'card-badge badge-warm';
+      badge.textContent = 'WARM';
+      break;
+    case 'prefetching':
+      badge.className = 'card-badge badge-fetching';
+      badge.textContent = isTop3 ? 'PREFETCH…' : 'LOADING…';
+      break;
+    default:
+      badge.className = isTop3 ? 'card-badge badge-top3' : 'card-badge';
+      badge.textContent = isTop3 ? 'TOP 3' : '';
+  }
+  updateStats();
+}
+
+// ── Hover-fetch engine ────────────────────────────────────────────────────────
+// Algorithm:
+//   pointerenter → start 150 ms dwell timer
+//   after dwell → create AbortController, kick off warmCard()
+//   pointerleave (before dwell) → cancel timer (no fetch started, save bandwidth)
+//   pointerleave (after dwell)  → abort in-flight fetch, reset to cold
+//   Once warm → hover events are no-ops (ledger prevents re-fetching anyway)
+const hoverTimers      = new Map();  // id → timeoutId
+const hoverControllers = new Map();  // id → AbortController
+
+function onCardEnter(id) {
+  if (hoverControllers.has(id) || hoverTimers.has(id)) return;  // already in progress
+  if (document.querySelector(`[data-game-id="${id}"]`)?.dataset.state === 'warm') return;
+
+  const timer = setTimeout(() => {
+    hoverTimers.delete(id);
+    const ctrl = new AbortController();
+    hoverControllers.set(id, ctrl);
+    warmCard(id, ctrl.signal).finally(() => hoverControllers.delete(id));
+  }, HOVER_DWELL);
+
+  hoverTimers.set(id, timer);
+}
+
+function onCardLeave(id) {
+  // Cancel the dwell timer — fetch never started, nothing to abort
+  const timer = hoverTimers.get(id);
+  if (timer != null) {
+    clearTimeout(timer);
+    hoverTimers.delete(id);
+    cancelCount++;
+    updateStats();
+    return;
+  }
+  // Abort an in-flight fetch
+  const ctrl = hoverControllers.get(id);
+  if (ctrl) {
+    ctrl.abort();
+    hoverControllers.delete(id);
+    setCardState(id, 'cold');
+    cancelCount++;
+    updateStats();
+  }
+}
+
+// ── Render cards ──────────────────────────────────────────────────────────────
+function buildGrid() {
+  const grid = document.getElementById('lobby-grid');
+  for (const game of GAMES) {
+    const isTop3 = game.id <= TOP_N;
+    const card   = document.createElement('div');
+    card.className          = 'game-card';
+    card.dataset.gameId     = game.id;
+    card.dataset.state      = 'cold';
+    card.setAttribute('role', 'listitem');
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('aria-label', `Launch ${game.name}`);
+
+    card.innerHTML = `
+      <span class="card-badge ${isTop3 ? 'badge-top3' : ''}">${isTop3 ? 'TOP 3' : ''}</span>
+      <div class="card-thumb" aria-hidden="true">${game.emoji}</div>
+      <p class="card-title" title="${game.name}">${game.name}</p>
+      <p class="card-sub">FEG · Empire of Gold</p>
+    `;
+
+    // Hover-fetch only for cards outside the auto-prefetch top-N
+    if (game.id > TOP_N) {
+      card.addEventListener('pointerenter', () => onCardEnter(game.id));
+      card.addEventListener('pointerleave', () => onCardLeave(game.id));
+    }
+
+    card.addEventListener('click', () => launchGame(game));
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); launchGame(game); }
+    });
+
+    grid.appendChild(card);
+  }
+}
+
+// ── Launch game iframe ────────────────────────────────────────────────────────
+function launchGame(game) {
+  const panel = document.getElementById('game-panel');
+  const host  = document.getElementById('frame-host');
+
+  document.getElementById('active-game-title').textContent = game.name;
+  panel.hidden = false;
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  const frame  = document.createElement('iframe');
+  frame.allow  = 'autoplay';
+  frame.src    = `${GAME_ORIGIN}/`;
+  host.replaceChildren(frame);
+
+  setCardState(game.id, 'launching');
+}
+
+document.getElementById('close-game').addEventListener('click', () => {
+  document.getElementById('game-panel').hidden = true;
+  document.getElementById('frame-host').replaceChildren();
+});
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+buildGrid();
+
+const msg = document.getElementById('manifest-msg');
+manifest  = await discoverManifest();
+
+const byMethod = manifest.length ? `${manifest.length} assets via HTML discovery`
+                                 : 'fallback hardcoded manifest';
+msg.textContent = `${byMethod}. Prefetching top ${TOP_N} games…`;
+
+// Prefetch top-N simultaneously; ledger deduplicates shared assets automatically
+await Promise.allSettled(
+  GAMES.slice(0, TOP_N).map((g) => {
+    const ctrl = new AbortController();
+    return warmCard(g.id, ctrl.signal);
+  }),
+);
+
+msg.textContent = [
+  `${manifest.length} assets · ${ledger.size} in ledger`,
+  `(${TOP_N} prefetched on load, ${20 - TOP_N} warm on hover).`,
+].join(' ');
+updateStats();
+</script>
+</body>
+</html>
