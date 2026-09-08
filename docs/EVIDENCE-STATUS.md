@@ -9,12 +9,15 @@
 | 35.5s to 6.7s | MEASURED according to prior analysis, milestone definition not encoded here | Do not mix with full-HAR span; document exact start/end extraction before demo. |
 | Full HAR entry span | MEASURED by `tools/measure_har.py` | Diagnostic only; not automatically click-to-interactive. |
 | Parent-to-iframe cache reuse, one local Empire of Gold static asset | MEASURED locally in Chromium 136.0.7103.25, 2 control + 2 treatment runs | Browser mechanism only: both treatment iframe requests were browser-cache hits with 0 server response-body bytes. Production behavior remains UNKNOWN; see `docs/LOCAL-CACHE-REUSE.md`. |
-| Exclusion-register latency | UNKNOWN | Never invent; mandatory fail-closed integration gate. |
+| Staging availability during the hackathon | FEG-PROVIDED: unavailable because of a technical issue | State as an external validation constraint; do not imply staging testing occurred. |
+| Exclusion-register latency | UNKNOWN | Cannot be measured without an approved authenticated environment; never invent and retain the mandatory fail-closed integration gate. |
 | Cross-provider generalization | UNKNOWN beyond tested captures/static inspection | Report provider/title separately. |
 | Native/WebView transfer | UNVERIFIED and out of scope | Future test only. |
 | Empire of Gold archive structure/load stages | STATICALLY-INFERRED from supplied provider bundle | Use only as title/build-scoped development input; see `docs/BUNDLE-DEVELOPMENT-INPUTS.md`. Do not publish the archive or extracted assets. |
 
 ## Required causal-proof artifacts
+
+These remain required for a production-relevant causal claim, but cannot be collected from staging during the hackathon. They are deferred—not waived—and must not be checked off using the local simulation.
 
 - [ ] Browser/version/device and exact target title/provider recorded.
 - [ ] Exact start and end milestone defined.
@@ -30,3 +33,7 @@
 ## Timing-definition warning
 
 The HAR tool initially measures the span from the earliest request start to the latest request completion. This is not necessarily the same metric as the previously documented 35.5s/6.7s launch milestone. Before presentation, identify and codify the exact request/mark or browser event that produced the prior timing. Never relabel full-capture duration as click-to-interactive.
+
+## Hackathon evidence boundary
+
+Because staging is unavailable throughout the event, the submission may demonstrate the tested local mechanism, governor, resolver, and failure behavior, but must not claim a staging-validated or production-ready integration. Historical HARs may establish warm-state opportunity only; they do not become causal prototype evidence. The correct next step remains an organiser-approved control/treatment validation after environment access is restored.

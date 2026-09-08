@@ -20,7 +20,7 @@ npm run experiment:cache-reuse
 
 It runs two controls and two treatments in fresh Chromium processes against a synthetic 1 MiB object. It must report a full control iframe response, one completed treatment prefetch, zero treatment iframe-phase origin responses, zero iframe `transferSize`, and an explicit Chromium cache marker. See `docs/LOCAL-CACHE-REUSE.md` for the measured title-scoped private-fixture repetition and limitations.
 
-This local pass does not close the production gate. Using fresh profiles serially, repeat from the actual lobby/top-level context with the game's exact credential-free URL, mode, credentials, headers, and normal iframe launch. Record browser version, parent/iframe/asset origins, request semantics, and save a redacted HAR. Repeat from another clean profile.
+This local pass does not close the staging or production gate. Staging is unavailable during the hackathon, so build the sandbox-compatible path now but defer the real environment run. When staging is introduced later, use fresh profiles serially and repeat from the actual lobby/top-level context with the game's exact credential-free URL, mode, credentials, headers, and normal iframe launch. Record browser version, parent/iframe/asset origins, request semantics, and save a redacted HAR. Repeat from another clean profile.
 
 **Stop:** if exact parent-to-iframe reuse fails in the target environment, do not build a governor around it. Pivot to measurement/preconnect/404 evidence and report the failed assumption honestly.
 
@@ -30,7 +30,9 @@ Run the HAR tool against existing captures, verify definitions manually, and cre
 
 ### Gate 3 — one-title warming
 
-Treatment starts from a clean isolated profile and is warmed only by prototype code. Use one exact locale/tier manifest and maximum concurrency 2. Capture control and treatment to the same observable milestone.
+During the outage, implement and locally test the sandbox contract with a synthetic exact locale/tier manifest and maximum concurrency 2. Keep environment-specific URLs/configuration separate from the generic core.
+
+When staging is introduced later, treatment starts from a clean isolated profile and is warmed only by prototype code. Use one exact observed staging locale/tier manifest and capture control and treatment to the same observable milestone. Until then, this gate remains open and the UI remains `SIMULATED`.
 
 ### Gate 4 — safety/product shell
 
@@ -49,11 +51,11 @@ Only now add favourite vs unplayed policy and a small operator-only comparison. 
 5. **Evidence (40s):** redacted traces and same-milestone table. Scope to exact title/provider/browser/runs.
 6. **Restraint (30s):** show governor decline on Save-Data/budget and explain why doing nothing can be correct.
 7. **Failure (30s):** simulated fetch failure clearly marked SIMULATED; no false-ready state and clean rollback.
-8. **Close (30s):** PSK opportunity metrics; next gates are authenticated exclusion timing and more providers.
+8. **Close (30s):** PSK opportunity metrics; explain that the build is ready for later staging sandbox validation, while authenticated exclusion timing, causal control/treatment evidence, and more providers remain open gates.
 
 ## Questions for FEG in hour one
 
-1. Is exclusion-register authorization per session or per launch, and what is its measured staging latency?
+1. When staging is introduced, is exclusion-register authorization per session or per launch, and what event may be safely measured without exposing its payload?
 2. What authoritative event means input is accepted for cross-origin games?
 3. Which exact browser/device and milestone define the judging target?
 4. Can lobby integration access versioned per-game asset manifests and launch locale/tier?

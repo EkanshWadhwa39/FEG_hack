@@ -8,6 +8,8 @@ This is the starting context for this project. Read this fully before writing an
 
 Cut PSK's game-switch time by warming the browser's own HTTP cache before the player clicks, instead of after — proven today to already produce a 5.3x improvement with zero code, using nothing but standard browser caching.
 
+**Environment update:** the staging URL is unavailable because of a technical issue and will not be accessible during the hackathon. Build the generic integration for later sandbox testing on staging; do not substitute production traffic or claim staging validation during the outage.
+
 ---
 
 ## Platform — do not deviate from this
@@ -155,17 +157,21 @@ Game iframe loads — requests hit warm cache
 
 ---
 
-## Tonight, before staging opens — do these in this order
+## During the staging outage — do these in this order
 
-1. Verify cache-partitioning (Module 2, step 1) — this is the whole architecture's foundation, confirm it first.
-2. Capture 2–3 more cold/warm HAR pairs from different providers (Amusnet, Pragmatic, Playtech) via the public demo button — free, no permission needed, turns "one provider" into a real sample.
-3. Build Module 1 (measurement harness) — you'll need it constantly starting tomorrow.
-4. Start Module 2's actual prefetch trigger against the public production site.
+1. Maintain the reproducible local cache-partitioning diagnostic, scoped as browser-mechanism evidence only.
+2. Build and test the generic sandbox integration using synthetic, credential-free fixtures: exact manifest resolution, conservative governor, maximum concurrency two, cancellation, and fail-closed authorization boundary.
+3. Keep staging URLs and environment-specific configuration outside the generic core. Never guess URLs from the private archive or substitute production traffic for staging.
+4. Build the measurement and redaction path needed for identical disabled-control and enabled-treatment captures.
+5. Present the current UI as `SIMULATED`; the historical HAR pair demonstrates warm-state opportunity, not the prototype's causal effect.
 
-## Tomorrow, first thing on staging
+## When staging is introduced later
 
-1. Cold/warm HAR pair through a real login — capture the exclusion-register check for the first time.
-2. Ask FEG the four open questions above, in person, before assuming answers.
+1. Obtain approved access and record exact browser, title/build, locale, tier, top-level context, URLs, and request semantics.
+2. Capture isolated control/treatment runs through the real authorization path without logging exclusion payloads or credentials.
+3. Measure exclusion-register timing only through an approved, non-sensitive event; authorization remains blocking and fail-closed.
+4. Validate exact parent-to-iframe cache reuse, CORS/cache policy, and the authoritative input-accepted milestone before any player-facing enablement.
+5. Ask FEG the open questions above before assuming answers.
 
 ---
 

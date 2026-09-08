@@ -54,6 +54,10 @@ Every data claim in the final submission is verified:
 | offline-data-DTb4NQY9.js missing | `empireofgold/` | ✅ Confirmed absent |
 | Zero anti-tamper, zero automation detection | All JS files grepped | ✅ Confirmed |
 
+## Staging availability and sandbox target
+
+The staging URL is unavailable because of a technical issue and will not be accessible during the hackathon. Build the environment-neutral prototype now for sandbox testing when staging is introduced later. During the outage, use synthetic credential-free fixtures and keep the UI labelled `SIMULATED`; do not substitute production traffic or represent local tests as staging validation. Environment-specific manifests, authenticated exclusion timing, and causal staging control/treatment evidence remain later gates.
+
 ## What to Build for Day 1 (Hackathon)
 
 1. **Resource Governor module** (JavaScript, ~200 LOC):
@@ -86,7 +90,7 @@ Every data claim in the final submission is verified:
 
 1. Exclusion-register check: per-session or per-launch? Real latency?
 2. Top 3 providers by stake (Amusnet, Pragmatic, Playtech) — do their bundles use similar cache conventions?
-3. Staging environment access for HAR capture
+3. Later staging sandbox introduction and approved access for isolated HAR control/treatment capture
 4. Confirmation that `pskh`r is the correct top-level site for cache partitioning
 
 ## The Judging-Criteria Alignment Summary

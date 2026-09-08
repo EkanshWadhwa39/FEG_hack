@@ -9,7 +9,8 @@ A web-only, browser-native prototype and evidence toolkit for testing whether th
 3. Read [`docs/AGENT-TEAM.md`](docs/AGENT-TEAM.md) — model routing and delegation prompts.
 4. Read [`docs/HACKATHON-RUNBOOK.md`](docs/HACKATHON-RUNBOOK.md) — build/demo sequence.
 5. Read [`docs/SUBMISSION-GUIDELINES.md`](docs/SUBMISSION-GUIDELINES.md) — organiser requirements.
-6. Before submission, complete [`docs/PRE-SUBMISSION-AUDIT.md`](docs/PRE-SUBMISSION-AUDIT.md) — blocking security, documentation, access, and freeze checks.
+6. Read [`docs/STAGING-SANDBOX.md`](docs/STAGING-SANDBOX.md) — later staging integration contract and evidence gates.
+7. Before submission, complete [`docs/PRE-SUBMISSION-AUDIT.md`](docs/PRE-SUBMISSION-AUDIT.md) — blocking security, documentation, access, and freeze checks.
 
 ## Setup
 
@@ -21,7 +22,7 @@ A web-only, browser-native prototype and evidence toolkit for testing whether th
 
 Then open `http://127.0.0.1:8080` through your browser/port forwarding.
 
-The current browser page is deliberately a **SIMULATED scaffold**. It makes no provider requests and proves no production cache behavior yet.
+The current browser page is deliberately a **SIMULATED scaffold**. It makes no provider requests and proves no production cache behavior yet. The staging URL is unavailable during the hackathon; this build remains environment-neutral so it can undergo controlled sandbox validation when staging is introduced later.
 
 ## HAR comparison
 
@@ -54,3 +55,4 @@ Never output pseudonymized player IDs. Keep only aggregate, non-identifying resu
 - No native app, service worker, or custom cache.
 - Mandatory authorization remains fail-closed and blocking.
 - Results must be scoped and labeled by evidence type.
+- Staging validation is a later gate, not a hackathon claim; do not substitute production traffic during the staging outage.

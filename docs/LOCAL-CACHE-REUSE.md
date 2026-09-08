@@ -55,4 +55,4 @@ npm run experiment:cache-reuse
 
 The default command uses a synthetic 1 MiB fixture and two fresh browser processes per condition. To test a private fixture, pass `--zip` and `--zip-member` directly to `tools/run_cache_reuse.mjs`; keep paths, output, and raw material in ignored private storage.
 
-The next valid step is a serial staging control/treatment capture using the actual top-level lobby, exact credential-free production URL, real response policy, normal iframe launch, and redacted HAR evidence. Do not enable real warming in the player flow before that gate passes.
+Staging is unavailable during the hackathon, so the next valid environment run is deferred while the generic sandbox-compatible integration is built and tested locally with synthetic fixtures. When staging is introduced later, run a serial control/treatment capture using the actual top-level lobby, exact credential-free staging URL, real response policy, normal iframe launch, and redacted HAR evidence. Do not enable real warming in the player flow before that gate passes.
