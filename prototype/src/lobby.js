@@ -44,6 +44,7 @@ import {
   createByteLedger,
   planSpeculation,
 } from "./speculation.js";
+import { applyPosterFallback } from "./poster-fallback.js";
 import { createTrajectoryTracker } from "./trajectory.js";
 import { createWarmMemory, selectLobbyLoadWarmSet } from "./warm-memory.js";
 import { warmAssets } from "./warmer.js";
@@ -55,6 +56,9 @@ export const ENGINE_RETENTION_MS = 45_000;
 
 /** Ladder re-evaluation period. Dwell decays, so this cannot be event-driven. */
 const TICK_MS = 200;
+
+/** How long to wait for any manifest before saying the provider is not there. */
+const PROVIDER_TIMEOUT_MS = 4_000;
 
 export function startLobby({
   gameOrigin,
@@ -117,7 +121,7 @@ export function startLobby({
 
   /* ------------------------------ rendering ----------------------------- */
 
-  function renderTile(item, { eager }) {
+  function renderTile(item, { eager, index }) {
     const button = documentImpl.createElement("button");
     button.type = "button";
     button.className = "tile";
@@ -135,6 +139,10 @@ export function startLobby({
     poster.decoding = "async";
     poster.loading = eager ? "eager" : "lazy";
     poster.fetchPriority = eager ? "high" : "low";
+    // The generated posters only exist when tools/sandbox_server.py is serving
+    // the lobby. Everywhere else they 404, and without this the lobby renders
+    // as a grid of empty rectangles.
+    applyPosterFallback(poster, index);
 
     const overlay = documentImpl.createElement("span");
     overlay.className = "tile-overlay";
@@ -215,7 +223,10 @@ export function startLobby({
       for (const item of rail.items) {
         const li = documentImpl.createElement("div");
         li.setAttribute("role", "listitem");
-        li.append(renderTile(item, { eager: railIndex === 0 }));
+        // Poster palette follows catalogue position, so a title looks the same
+        // wherever it appears.
+        const index = catalogue.findIndex((entry) => entry.id === item.id);
+        li.append(renderTile(item, { eager: railIndex === 0, index: Math.max(0, index) }));
         track.append(li);
       }
 
@@ -236,15 +247,34 @@ export function startLobby({
         })
         .catch(() => { /* a title without a manifest is simply never warmed */ });
     }
+    // An unreachable provider is a normal state for this page — the lobby is
+    // designed to keep working without one — but it must not present as
+    // "loading…" indefinitely, because the reader cannot tell that apart from a
+    // slow network and will assume the demo is broken.
+    globalThis.setTimeout(() => {
+      if (manifests.size === 0) reportProviderUnreachable();
+    }, PROVIDER_TIMEOUT_MS);
+  }
+
+  function reportProviderUnreachable() {
+    $("m-manifest").textContent = "no provider reachable";
+    $("m-manifest").dataset.flag = "ELEVATED";
+    const notice = $("provider-warning");
+    if (notice == null) return;
+    notice.hidden = false;
+    notice.querySelector("[data-origin]").textContent = gameOrigin || "(none configured)";
   }
 
   function refreshManifestLabel() {
     const any = manifests.values().next().value;
-    $("m-manifest").textContent = any
-      ? `${manifests.size}/${gameCount} · warm ${any.warmFiles} files `
-        + `${(any.warmBytes / 1048576).toFixed(1)} MB · package `
-        + `${(any.totalBytes / 1048576).toFixed(0)} MB`
-      : "loading…";
+    if (any == null) return;
+    const notice = $("provider-warning");
+    if (notice != null) notice.hidden = true;
+    $("m-manifest").dataset.flag = "NORMAL";
+    $("m-manifest").textContent =
+      `${manifests.size}/${gameCount} · warm ${any.warmFiles} files `
+      + `${(any.warmBytes / 1048576).toFixed(1)} MB · package `
+      + `${(any.totalBytes / 1048576).toFixed(0)} MB`;
   }
 
   /* ------------------------------- governor ----------------------------- */

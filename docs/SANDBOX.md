@@ -50,6 +50,16 @@ ls ~/evidence/private/bundles/empireofgold      # assets  index.html  index.html
 du -sh ~/evidence/private/bundles/empireofgold  # ~98M
 ```
 
+### If the lobby looks wrong
+
+The lobby tells you which of the two things went wrong, on the page itself:
+
+| What you see | What it means |
+|---|---|
+| A red **"The lobby did not start"** box | JavaScript never ran. Almost always a `file://` URL — ES modules are blocked there. Serve it over HTTP |
+| A yellow **"No game package is being served"** box | The lobby is fine; nothing is answering on the game origin. Start `sandbox_server.py`, or check the `?game=` parameter |
+| Tiles show flat coloured emblems rather than game art | You are serving `prototype/` some other way (`scripts/serve.sh`, `python -m http.server`), so `/posters/*.webp` 404 and the built-in fallback posters are drawn instead. Everything still works — the artwork just comes from the package only when `sandbox_server.py` serves it |
+
 ### Every time — start the sandbox
 
 ```bash

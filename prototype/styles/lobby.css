@@ -146,6 +146,21 @@ main { padding: 8px 0 64px; }
   background: var(--surface-panel); border-radius: 3px;
 }
 
+/* A rail holds more tiles than fit. Without an edge treatment the row simply
+   stops mid-tile and reads as a rendering fault rather than as "scroll me",
+   which is exactly how the production lobby handles it. */
+.rail { position: relative; }
+
+.rail::after {
+  content: "";
+  position: absolute;
+  top: 0; right: 0; bottom: 6px;
+  width: 56px;
+  pointer-events: none;
+  background: linear-gradient(270deg,
+    var(--background-base) 10%, rgb(14 14 17 / 0%) 100%);
+}
+
 /* -------------------------------- tile ------------------------------ */
 
 .tile {
@@ -373,3 +388,41 @@ details.operator p { margin: 8px 0; }
   .rail-head .rail-en,
   .rail-head .rail-note { display: none; }
 }
+
+/* ------------------------- boot / provider notices ------------------------ */
+
+.boot-error {
+  margin: 16px;
+  padding: 14px 16px;
+  border: 1px solid #7a2a1c;
+  border-left-width: 4px;
+  border-radius: 10px;
+  background: #221415;
+  color: var(--content-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.boot-error strong { display: block; color: #ffb4a2; font-size: 14px; }
+.boot-error p { margin: 8px 0 0; max-width: 80ch; }
+
+.boot-error pre {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #0e0e11;
+  color: var(--content-primary);
+  font-size: 12px;
+  overflow-x: auto;
+}
+
+.boot-error code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: #0e0e11;
+  font-size: 12px;
+}
+
+/* Not an error: the lobby is fine, there is simply no package behind it. */
+.boot-warning { border-color: #7a5c14; background: #1e1a10; }
+.boot-warning strong { color: #ffd479; }

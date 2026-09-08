@@ -24,6 +24,27 @@
     </header>
 
     <main>
+      <!--
+        Shown until the lobby module boots and removes it. If JavaScript never
+        runs at all — most commonly because the page was opened as a file://
+        URL, where ES modules are blocked — nothing in the module can report
+        that, so the warning has to be in the static markup and be taken away
+        on success rather than added on failure.
+      -->
+      <div id="boot-error" class="boot-error" role="alert">
+        <strong>The lobby did not start.</strong>
+        <p>
+          Nothing below this is live. The usual cause is opening this file
+          directly: <code>file://</code> blocks ES modules, so the page renders
+          as an empty shell.
+        </p>
+        <p>Serve it over HTTP instead, from the repository root:</p>
+        <pre>.venv/bin/python tools/sandbox_server.py \
+  --bundle ~/evidence/private/bundles/empireofgold \
+  --latency-ms 40</pre>
+        <p>Then open <code>http://127.0.0.1:8090/sandbox.html</code>.</p>
+      </div>
+
       <details id="lobby-note" class="operator">
         <summary><strong>What is real here, and what is not</strong></summary>
         <p style="margin-top:10px">
@@ -46,6 +67,26 @@
           claimed.
         </p>
       </details>
+
+      <div id="provider-warning" class="boot-error boot-warning" role="status" hidden>
+        <strong>No game package is being served.</strong>
+        <p>
+          Nothing answered at <code data-origin>—</code>. The lobby itself works
+          — posters, rails, intent and the governor are all live — but there is
+          nothing to warm and nothing to launch, so the ladder stops at the free
+          rung.
+        </p>
+        <p>Start the sandbox server from the repository root:</p>
+        <pre>.venv/bin/python tools/sandbox_server.py \
+  --bundle ~/evidence/private/bundles/empireofgold \
+  --latency-ms 40</pre>
+        <p>
+          It serves the lobby on <code>:8090</code> and the package on
+          <code>:8091</code>. Open the <code>:8090</code> URL it prints —
+          serving <code>prototype/</code> any other way has no package behind it
+          and no generated posters.
+        </p>
+      </div>
 
       <div id="rails"></div>
 
@@ -139,11 +180,22 @@
       import { startLobby } from "./src/lobby.js";
 
       const params = new URLSearchParams(location.search);
-      startLobby({
-        gameOrigin: params.get("game") ?? "http://127.0.0.1:8091",
-        gameCount: Number(params.get("games") ?? 24),
-        maxRung: (params.get("maxrung") ?? "").toUpperCase() || null,
-      });
+      const boot = document.getElementById("boot-error");
+      try {
+        startLobby({
+          gameOrigin: params.get("game") ?? "http://127.0.0.1:8091",
+          gameCount: Number(params.get("games") ?? 24),
+          maxRung: (params.get("maxrung") ?? "").toUpperCase() || null,
+        });
+        boot.remove();
+      } catch (error) {
+        // A thrown startLobby leaves the same empty shell as a module that
+        // never ran, so say which one it was rather than leaving the reader to
+        // guess from a blank page.
+        boot.querySelector("strong").textContent = "The lobby failed to start.";
+        boot.querySelector("p").textContent = String(error && error.message || error);
+        throw error;
+      }
     </script>
   </body>
 </html>

@@ -205,3 +205,52 @@ test("a lobby whose provider never answers still works", options, async () => {
     assert.match(await page.locator("#m-manifest").textContent(), /loading/);
   });
 });
+
+test("a lobby with no posters served still shows real tiles, not empty boxes", options, async () => {
+  await withLobby(async (page) => {
+    // This test's static server has no /posters route, exactly like every way
+    // of serving prototype/ that is not tools/sandbox_server.py.
+    await page.waitForFunction(
+      () => [...document.querySelectorAll(".tile img")]
+        .every((image) => image.src.startsWith("data:image/svg+xml")),
+      null,
+      { timeout: 5_000 },
+    );
+    const painted = await page.locator(".tile img").evaluateAll((images) => images.map((image) => ({
+      isFallback: image.src.startsWith("data:image/svg+xml"),
+      background: getComputedStyle(image).backgroundImage,
+      width: image.naturalWidth,
+    })));
+    assert.ok(painted.length > 0);
+    assert.ok(painted.every((p) => p.isFallback));
+    assert.ok(painted.every((p) => p.background.includes("gradient")));
+
+    // Only the first rail is eager; the rest are lazy and may not have decoded
+    // yet, which is the point of them being lazy. Wait for one to prove the
+    // fallback is a real image and not just a string in an attribute.
+    await page.waitForFunction(
+      () => [...document.querySelectorAll(".tile img")].some((image) => image.naturalWidth > 0),
+      null,
+      { timeout: 5_000 },
+    );
+  });
+});
+
+test("an unreachable provider says so instead of loading forever", options, async () => {
+  await withLobby(async (page) => {
+    await page.waitForSelector("#provider-warning:not([hidden])", { timeout: 10_000 });
+    assert.match(await page.locator("#m-manifest").textContent(), /no provider reachable/);
+    // It must name the origin it tried and the command that fixes it.
+    assert.match(await page.locator("#provider-warning").textContent(), /127\.0\.0\.1:9/);
+    assert.match(await page.locator("#provider-warning").textContent(), /sandbox_server\.py/);
+    // And the lobby must still be a working lobby.
+    assert.ok(await page.locator(".tile").count() >= 8);
+  });
+});
+
+test("the boot guard is removed on success and survives a module that never runs", options, async () => {
+  await withLobby(async (page) => {
+    assert.equal(await page.locator("#boot-error").count(), 0,
+      "a booted lobby removes its own warning");
+  });
+});
