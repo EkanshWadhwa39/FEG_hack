@@ -6,7 +6,13 @@ from contextlib import contextmanager
 
 import pytest
 
-from tools.cache_reuse_server import ASSET_PATH, load_asset, start_servers
+from tools.cache_reuse_server import (
+    ASSET_PATH,
+    MISMATCH_ASSET_PATH,
+    NO_STORE_ASSET_PATH,
+    load_asset,
+    start_servers,
+)
 
 
 @contextmanager
@@ -70,6 +76,14 @@ def test_asset_is_cacheable_cors_enabled_and_counted_by_phase():
         "response_body_bytes": {"launch": len(payload), "prefetch": 0, "setup": 0},
         "source": "SYNTHETIC",
     }
+
+
+def test_negative_control_assets_have_expected_cache_policy():
+    with running_servers() as (_, asset_origin):
+        with request(f"{asset_origin}{MISMATCH_ASSET_PATH}") as response:
+            assert response.headers["Cache-Control"] == "public, max-age=3600, immutable"
+        with request(f"{asset_origin}{NO_STORE_ASSET_PATH}") as response:
+            assert response.headers["Cache-Control"] == "no-store"
 
 
 def test_reset_removes_previous_counts():

@@ -31,6 +31,17 @@ For this one asset, browser build, local header policy, topology, and two treatm
 
 This closes the local browser-mechanism diagnostic. It does **not** close the production Gate 1 claim.
 
+## Hardened synthetic controls
+
+A second run used the default synthetic 1 MiB fixture, Chromium 136.0.7103.25, and two fresh browser processes per condition. CDP frame attribution identified exactly one fixture request from the child iframe in every arm.
+
+- **Exact URL treatment:** both iframe loads reused the parent-fetched response; launch response-body bytes were 0 in 2/2 runs.
+- **Version-query mismatch:** both iframe loads made a full 1,048,576-byte origin response in 2/2 runs.
+- **`Cache-Control: no-store`:** both iframe loads made a full 1,048,576-byte origin response in 2/2 runs.
+- **Top-level partition diagnostic:** after warming below `lobby-a.test` and launching below `lobby-b.test` against the same `asset.test` origin, Chromium reused the cached response in 2/2 runs.
+
+The first three outcomes strengthen exact-key and cache-policy attribution. The partition result is reported as observed: this local Chromium build did **not** isolate the cache entry across the mapped top-level sites. It must not be generalized to staging or used to predict another browser's partition behavior. The compact aggregate is `evidence/derived/local-cache-reuse-controls.json`.
+
 ## What remains unknown
 
 - Production PSK/provider CORS, CSP, CORP, COEP, cache, `Vary`, redirect, credentials, and partition behavior: **UNKNOWN**.

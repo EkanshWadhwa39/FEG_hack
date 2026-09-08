@@ -16,6 +16,8 @@ from urllib.parse import urlsplit
 
 DEFAULT_ASSET_BYTES = 1024 * 1024
 ASSET_PATH = "/fixture.bin?v=local-proof-1"
+MISMATCH_ASSET_PATH = "/fixture.bin?v=local-proof-mismatch"
+NO_STORE_ASSET_PATH = "/fixture-no-store.bin?v=local-proof-1"
 
 
 class ExperimentState:
@@ -146,13 +148,18 @@ class AssetHandler(QuietHandler):
                 "application/json",
             )
             return
-        if self.path == ASSET_PATH:
+        if self.path in {ASSET_PATH, MISMATCH_ASSET_PATH, NO_STORE_ASSET_PATH}:
             self.state.record_asset_response()
             payload = self.state.asset
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", "application/octet-stream")
             self.send_header("Content-Length", str(len(payload)))
-            self.send_header("Cache-Control", "public, max-age=3600, immutable")
+            cache_control = (
+                "no-store"
+                if self.path == NO_STORE_ASSET_PATH
+                else "public, max-age=3600, immutable"
+            )
+            self.send_header("Cache-Control", cache_control)
             self.send_header("Access-Control-Allow-Origin", "*")
             self.send_header("Timing-Allow-Origin", "*")
             self.send_header("ETag", '"local-proof-1"')
@@ -168,8 +175,13 @@ def parent_page(asset_origin: str) -> str:
 <body><main><h1>Local cache reuse experiment</h1><p id="status">Running</p></main>
 <script>
 const assetOrigin = {json.dumps(asset_origin)};
-const assetUrl = assetOrigin + {json.dumps(ASSET_PATH)};
-const mode = new URL(location.href).searchParams.get("mode");
+const parameters = new URL(location.href).searchParams;
+const mode = parameters.get("mode");
+const experimentCase = parameters.get("case") || "exact";
+const prefetchPath = experimentCase === "no-store"
+  ? {json.dumps(NO_STORE_ASSET_PATH)}
+  : {json.dumps(ASSET_PATH)};
+const assetUrl = assetOrigin + prefetchPath;
 window.__experimentResult = null;
 
 async function mark(phase) {{
@@ -177,12 +189,18 @@ async function mark(phase) {{
 }}
 
 async function run() {{
-  if (!new Set(["control", "treatment"]).has(mode)) throw new Error("invalid mode");
-  if (mode === "treatment") {{
+  if (!new Set(["control", "treatment", "prefetch-only", "launch-only"]).has(mode)) throw new Error("invalid mode");
+  if (!new Set(["exact", "mismatch", "no-store"]).has(experimentCase)) throw new Error("invalid case");
+  if (mode === "treatment" || mode === "prefetch-only") {{
     await mark("prefetch");
     const warmed = await fetch(assetUrl, {{mode: "cors", credentials: "omit", cache: "default"}});
     if (!warmed.ok) throw new Error("prefetch failed");
     await warmed.arrayBuffer();
+  }}
+  if (mode === "prefetch-only") {{
+    window.__experimentResult = {{mode, experimentCase, prefetchComplete: true}};
+    document.querySelector("#status").textContent = "Complete";
+    return;
   }}
   await mark("launch");
   window.addEventListener("message", (event) => {{
@@ -191,7 +209,7 @@ async function run() {{
     document.querySelector("#status").textContent = "Complete";
   }}, {{once: true}});
   const frame = document.createElement("iframe");
-  frame.src = `${{assetOrigin}}/frame.html`;
+  frame.src = `${{assetOrigin}}/frame.html?case=${{encodeURIComponent(experimentCase)}}`;
   frame.title = "Synthetic game frame";
   document.body.append(frame);
 }}
@@ -207,11 +225,17 @@ def frame_page() -> str:
 <html lang="en"><head><meta charset="utf-8"><title>Synthetic game frame</title></head>
 <body><p>Loading synthetic fixture</p><script>
 async function launch() {{
-  const response = await fetch({json.dumps(ASSET_PATH)}, {{mode: "cors", credentials: "omit", cache: "default"}});
+  const experimentCase = new URL(location.href).searchParams.get("case") || "exact";
+  const assetPath = experimentCase === "mismatch"
+    ? {json.dumps(MISMATCH_ASSET_PATH)}
+    : experimentCase === "no-store"
+      ? {json.dumps(NO_STORE_ASSET_PATH)}
+      : {json.dumps(ASSET_PATH)};
+  const response = await fetch(assetPath, {{mode: "cors", credentials: "omit", cache: "default"}});
   if (!response.ok) throw new Error("launch request failed");
   const body = await response.arrayBuffer();
   await new Promise((resolve) => setTimeout(resolve, 0));
-  const resourceUrl = new URL({json.dumps(ASSET_PATH)}, location.href).href;
+  const resourceUrl = new URL(assetPath, location.href).href;
   const entry = performance.getEntriesByName(resourceUrl).at(-1);
   parent.postMessage({{
     type: "experiment-result",
@@ -274,6 +298,8 @@ def main() -> int:
         raise SystemExit("--asset-bytes must be positive")
     asset, source = load_asset(args.zip, args.zip_member, args.asset_bytes)
     lobby, asset_server = start_servers(asset, source, args.bind)
+    browser_asset_origin = f"http://asset.test:{asset_server.server_port}"
+    lobby.RequestHandlerClass.asset_origin = browser_asset_origin
     threads = [
         threading.Thread(target=server.serve_forever, daemon=True)
         for server in (lobby, asset_server)
@@ -287,6 +313,9 @@ def main() -> int:
                 "event": "ready",
                 "lobby_origin": f"http://{args.bind}:{lobby.server_port}",
                 "asset_origin": f"http://{args.bind}:{asset_server.server_port}",
+                "browser_lobby_origin": f"http://lobby-a.test:{lobby.server_port}",
+                "partition_lobby_origin": f"http://lobby-b.test:{lobby.server_port}",
+                "browser_asset_origin": browser_asset_origin,
                 "source": source,
                 "asset_bytes": len(asset),
             },
