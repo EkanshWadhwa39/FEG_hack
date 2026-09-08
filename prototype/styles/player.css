@@ -1,0 +1,342 @@
+/*
+ * Player-surface styles for the drawer and transition screen.
+ *
+ * Colour tokens below are verified against WCAG 2.1 AA by
+ * prototype/tests/player-contrast.test.mjs, which parses this file. Surfaces
+ * are deliberately opaque so the tested ratios are the ratios that render;
+ * a translucent surface would composite to something the test never checked.
+ */
+
+:root {
+  --surface-page: #080b12;
+  --surface-panel: #10151f;
+  --surface-inset: #0b101b;
+  --surface-raised: #1b2434;
+
+  --text-primary: #edf2ff;
+  --text-secondary: #aeb8cf;
+  --text-muted: #94a3b8;
+
+  --accent: #67e8f9;
+  --ok: #5eead4;
+  --warn: #fcd34d;
+  --danger: #fca5a5;
+
+  --border-control: #64748b;
+  --border-decorative: #263247;
+  --focus-ring: #fbbf24;
+
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--surface-page);
+  color: var(--text-primary);
+  line-height: 1.55;
+}
+
+button, input, select { font: inherit; }
+
+/* A single visible focus indicator, well clear of 3:1 on every surface. */
+:where(a, button, input, select, [tabindex]):focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.shell {
+  width: min(960px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 40px 0 48px;
+}
+
+h1, h2, h3 { margin: 0; line-height: 1.2; }
+h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); letter-spacing: -0.03em; }
+h2 { font-size: 1.25rem; }
+h3 { font-size: 1rem; }
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.lede { max-width: 62ch; color: var(--text-secondary); }
+
+.label {
+  display: inline-flex;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+.label.simulated { color: #a5f3fc; background: #164e63; }
+.label.unknown { color: #fde68a; background: #713f12; }
+
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: 20px 0 26px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-decorative);
+  border-left: 4px solid var(--warn);
+  border-radius: 10px;
+  background: var(--surface-panel);
+  color: var(--text-secondary);
+}
+
+.panel {
+  margin-top: 20px;
+  padding: 22px;
+  border: 1px solid var(--border-decorative);
+  border-radius: 14px;
+  background: var(--surface-panel);
+}
+
+.panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+button {
+  padding: 10px 16px;
+  border: 1px solid var(--border-control);
+  border-radius: 9px;
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 140ms ease;
+}
+button:hover:not(:disabled) { background: #26334a; }
+button:disabled { cursor: not-allowed; opacity: 0.5; }
+
+button.primary { border-color: var(--accent); background: #155e75; color: #ecfeff; }
+button.primary:hover:not(:disabled) { background: #0e7490; }
+
+/* ---------- Drawer ---------- */
+
+.drawer[hidden] { display: none; }
+
+.drawer {
+  margin-top: 16px;
+  padding: 18px;
+  border: 1px solid var(--border-decorative);
+  border-radius: 12px;
+  background: var(--surface-inset);
+}
+
+.search-field { display: grid; gap: 6px; margin-bottom: 16px; }
+.search-field label { color: var(--text-muted); font-size: 0.8rem; font-weight: 700; }
+.search-field input {
+  padding: 10px 12px;
+  border: 1px solid var(--border-control);
+  border-radius: 8px;
+  background: var(--surface-page);
+  color: var(--text-primary);
+}
+
+[role="tablist"] { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+[role="tab"] {
+  padding: 8px 14px;
+  border: 1px solid var(--border-control);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+[role="tab"][aria-selected="true"] {
+  border-color: var(--accent);
+  background: #164e63;
+  color: #ecfeff;
+}
+
+.results { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.results button {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  width: 100%;
+  text-align: left;
+  background: var(--surface-page);
+}
+.results .game-title { font-weight: 700; }
+.results .game-provider { color: var(--text-muted); font-size: 0.82rem; font-weight: 500; }
+
+.empty-state { margin: 0; padding: 14px 2px; color: var(--text-secondary); }
+
+/* ---------- Operator view ---------- */
+
+.operator { border-left: 4px solid var(--border-control); }
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+.metrics div { padding: 14px; border: 1px solid var(--border-decorative); border-radius: 10px; background: var(--surface-inset); }
+.metrics dt { color: var(--text-muted); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; }
+.metrics dd { margin: 6px 0 0; font-size: 1.1rem; font-weight: 800; }
+.metrics dd[data-flag="ELEVATED"] { color: var(--warn); }
+.metrics dd[data-flag="NORMAL"] { color: var(--ok); }
+.metrics dd[data-flag="UNKNOWN"] { color: var(--text-muted); }
+
+.demo-controls { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+
+/* ---------- Transition screen ---------- */
+
+.transition[hidden] { display: none; }
+
+.transition {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 24px;
+  /* The overlay must scroll. Without this, a card taller than the viewport
+     puts its lower controls permanently out of reach on small screens. */
+  overflow-y: auto;
+  background: var(--surface-page);
+}
+
+.transition-card {
+  width: min(520px, 100%);
+  /* Auto margins centre the card when there is room and degrade to normal
+     flow when there is not, so nothing is ever clipped off the top. */
+  margin: auto;
+  padding: 28px;
+  border: 1px solid var(--border-decorative);
+  border-radius: 16px;
+  background: var(--surface-panel);
+}
+
+.transition-status {
+  margin: 14px 0 20px;
+  color: var(--text-secondary);
+  font-size: 1.02rem;
+}
+
+.rg-state { display: grid; gap: 10px; margin: 0 0 22px; }
+.rg-state div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border: 1px solid var(--border-decorative);
+  border-radius: 10px;
+  background: var(--surface-inset);
+}
+.rg-state dt { color: var(--text-muted); font-size: 0.85rem; }
+.rg-state dd { margin: 0; font-weight: 800; font-variant-numeric: tabular-nums; }
+.rg-state dd[data-limit="NEAR_LIMIT"] { color: var(--warn); }
+.rg-state dd[data-limit="REACHED"] { color: var(--danger); }
+
+/* Progress is indeterminate on purpose: we do not know when the game will
+   accept input, and a fake progress bar would be a dark pattern. */
+.pulse {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-raised);
+  overflow: hidden;
+}
+.pulse span {
+  display: block;
+  width: 40%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  animation: slide 1.6s ease-in-out infinite;
+}
+@keyframes slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+
+.transition-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+
+.pref-row {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border: 1px solid var(--border-control);
+  border-radius: 10px;
+  background: var(--surface-inset);
+}
+.pref-row span { display: grid; gap: 3px; }
+.pref-row small { color: var(--text-muted); }
+.pref-row input { width: 22px; height: 22px; accent-color: var(--accent); }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+footer { margin-top: 30px; color: var(--text-muted); font-size: 0.82rem; }
+
+@media (max-width: 640px) {
+  .shell { padding-top: 26px; }
+  .panel-head { flex-direction: column; align-items: flex-start; }
+}
+
+/* Reduced motion: remove the indeterminate animation and all transitions.
+   The pulse becomes a static bar so the state is still visible. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .pulse span { width: 100%; animation: none; }
+}
+
+/* Demo-only signal controls, shown inside the transition so they remain
+   reachable by pointer and by the dialog's focus trap while the overlay is up. */
+.demo-controls {
+  margin: 22px 0 0;
+  padding: 14px 16px 16px;
+  border: 1px dashed var(--border-control);
+  border-radius: 10px;
+}
+.demo-controls legend {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 0 6px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.demo-controls .empty-state { padding: 0 0 12px; font-size: 0.85rem; }
+.demo-controls button { margin: 0 8px 8px 0; font-size: 0.85rem; }

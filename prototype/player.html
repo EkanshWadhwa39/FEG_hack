@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>PSK player surface — drawer and transition (SIMULATED)</title>
+    <link rel="stylesheet" href="./styles/player.css">
+  </head>
+  <body>
+    <a class="visually-hidden" href="#drawer-trigger">Skip to game drawer</a>
+
+    <p id="page-status" class="visually-hidden" role="status"
+       aria-live="polite" aria-atomic="true"></p>
+
+    <main class="shell">
+      <header>
+        <p class="eyebrow">Player surface prototype</p>
+        <h1>Game drawer and launch transition</h1>
+        <p class="lede">
+          The drawer offers favourites, recents, and search only. No ranked or
+          personalised ordering exists in this surface. The transition screen
+          clears only when the game reports that it accepted input.
+        </p>
+        <div class="banner" role="note">
+          <span class="label simulated">SIMULATED</span>
+          <span>
+            Every game, session figure, and signal on this page is synthetic. No
+            provider request is made and no real player data is used.
+          </span>
+        </div>
+      </header>
+
+      <section class="panel" aria-labelledby="lobby-title">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Lobby</p>
+            <h2 id="lobby-title">Choose a game</h2>
+          </div>
+          <span class="label simulated">SIMULATED</span>
+        </div>
+
+        <button id="drawer-trigger" type="button" class="primary"
+                aria-expanded="false" aria-controls="drawer">
+          Open game drawer
+        </button>
+
+        <div id="drawer" class="drawer" hidden aria-labelledby="lobby-title">
+          <div class="search-field">
+            <label for="drawer-search">Search games</label>
+            <input id="drawer-search" type="search" autocomplete="off"
+                   placeholder="Search by title" aria-describedby="drawer-count">
+          </div>
+
+          <div role="tablist" aria-label="Game list view">
+            <button type="button" role="tab" id="tab-FAVOURITES"
+                    aria-controls="drawer-results" aria-selected="true" tabindex="0">
+              Favourites
+            </button>
+            <button type="button" role="tab" id="tab-RECENTS"
+                    aria-controls="drawer-results" aria-selected="false" tabindex="-1">
+              Recents
+            </button>
+            <button type="button" role="tab" id="tab-SEARCH"
+                    aria-controls="drawer-results" aria-selected="false" tabindex="-1">
+              Search
+            </button>
+          </div>
+
+          <ul id="drawer-results" class="results" role="list"
+              aria-labelledby="tab-FAVOURITES"></ul>
+          <p id="drawer-empty" class="empty-state" hidden></p>
+          <p id="drawer-count" class="visually-hidden" role="status"
+             aria-live="polite" aria-atomic="true"></p>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="prefs-title">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Accessibility</p>
+            <h2 id="prefs-title">Display preferences</h2>
+          </div>
+        </div>
+        <div class="pref-row">
+          <span>
+            <strong><label for="extended-duration">Extended announcement time</label></strong>
+            <small>
+              Holds the transition screen longer so a screen reader can finish
+              announcing it. It never dismisses the screen on its own.
+            </small>
+          </span>
+          <input id="extended-duration" type="checkbox">
+        </div>
+        <p class="empty-state" id="motion-state"></p>
+      </section>
+
+      <section class="panel operator" aria-labelledby="operator-title">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Operator view — not shown to players</p>
+            <h2 id="operator-title">Counter-metrics</h2>
+          </div>
+          <span class="label simulated">SIMULATED</span>
+        </div>
+        <p class="lede">
+          Harm-detection signals for compliance review. They answer whether
+          faster launches make play more intense. They are deliberately absent
+          from the player-facing transition screen.
+        </p>
+        <dl class="metrics">
+          <div>
+            <dt>Time on device</dt>
+            <dd id="metric-time">—</dd>
+          </div>
+          <div>
+            <dt>Stake velocity (per minute)</dt>
+            <dd id="metric-velocity">—</dd>
+          </div>
+          <div>
+            <dt>Review flag</dt>
+            <dd id="metric-flag" data-flag="UNKNOWN">UNKNOWN</dd>
+          </div>
+        </dl>
+      </section>
+
+      <footer>
+        Session clock, net position, limit headroom, stake velocity, and the
+        interactivity signal are all <span class="label simulated">SIMULATED</span>.
+        Production provider behaviour and exclusion-register latency remain
+        <span class="label unknown">UNKNOWN</span>.
+      </footer>
+    </main>
+
+    <div id="transition" class="transition" hidden role="dialog" aria-modal="true"
+         aria-labelledby="transition-title" aria-describedby="transition-status">
+      <div class="transition-card">
+        <p class="eyebrow">Launching</p>
+        <h2 id="transition-title">Opening game</h2>
+        <p id="transition-status" class="transition-status" role="status"
+           aria-live="polite" aria-atomic="true">Preparing your game.</p>
+
+        <div class="pulse" role="presentation"><span></span></div>
+
+        <dl class="rg-state">
+          <div>
+            <dt>Session length</dt>
+            <dd id="rg-duration">0:00:00</dd>
+          </div>
+          <div>
+            <dt>Net position this session</dt>
+            <dd id="rg-net">—</dd>
+          </div>
+          <div>
+            <dt>Deposit limit remaining</dt>
+            <dd id="rg-limit" data-limit="OK">—</dd>
+          </div>
+        </dl>
+
+        <p class="empty-state">
+          <span class="label simulated">SIMULATED</span>
+          Responsible-gambling figures above are synthetic sample values.
+        </p>
+
+        <div class="transition-actions">
+          <button id="transition-cancel" type="button">Cancel and return to lobby</button>
+        </div>
+
+        <fieldset class="demo-controls">
+          <legend>Demo controls <span class="label simulated">SIMULATED</span></legend>
+          <p class="empty-state">
+            These stand in for signals a real game would send. They exist so the
+            waiting behaviour can be demonstrated, and would not ship to players.
+          </p>
+          <button id="signal-interactive" type="button" disabled>
+            Send INPUT_ACCEPTED
+          </button>
+          <button id="signal-paint" type="button" disabled>
+            Send first paint (must not clear)
+          </button>
+          <button id="signal-fail" type="button" disabled>
+            Simulate network failure
+          </button>
+        </fieldset>
+      </div>
+    </div>
+
+    <script type="module" src="./src/player.js"></script>
+  </body>
+</html>
