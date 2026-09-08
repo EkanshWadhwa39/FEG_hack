@@ -13,6 +13,6 @@
     "verify:demo": "node tools/verify_content_demo.mjs"
   },
   "devDependencies": {
-    "playwright": "1.52.0"
+    "playwright": "1.55.1"
   }
 }

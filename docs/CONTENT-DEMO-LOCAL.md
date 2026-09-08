@@ -149,7 +149,8 @@ npm run verify:demo -- --channel chrome
 
 The verifier does not use your personal Chrome profile. Linux CI may additionally
 need Playwright's documented browser system dependencies. Default automated tests
-use pinned Playwright Chromium; the server/playable app does not require Playwright.
+use pinned Playwright 1.55.1 Chromium; this patch fixes the inherited browser-download
+certificate-validation advisory. The server/playable app does not require Playwright.
 `--runs 1` is a quicker smoke check. Do not run multiple browser verifiers together.
 
 Output: ignored `evidence/derived/content-demo-verification.json`. It contains only

@@ -39,7 +39,9 @@ still require review before integration with the teammate's UI.
 - `prototype/tests/content-demo-scheduler.test.mjs`, `content-demo-server.test.mjs`,
   `content-game-model.test.mjs`, changes to `content-loader.test.mjs`.
 - `scripts/javascript_checks.mjs`, `package.json`: shell-glob-free Node test/syntax
-  runner, `demo` and `verify:demo` commands; no dependency/version changes.
+  runner, `demo` and `verify:demo` commands. Follow-up pins Playwright 1.55.1
+  in `package.json` / `package-lock.json` to fix GHSA-7mvr-c777-76hp (browser-download
+  certificate validation); no runtime dependencies are added.
 - `README.md`, `docs/CONTENT-CORE-HANDOFF.md`, this handoff and laptop runbook.
 
 Lead owns integration. Two specialists owned disjoint server/fixture/test and game/
@@ -52,7 +54,7 @@ model; there is no stale granted-looking control. This is material AI assistance
 
 ## Commands and results
 
-**MEASURED on Linux x86_64, Node 18.19.1, Playwright 1.52.0 / Chromium 136.0.7103.25.**
+**MEASURED on Linux x86_64, Node 18.19.1, Playwright 1.55.1 / Chromium 140.0.7339.186.**
 Node 22+ is recommended for laptops; actual macOS/Windows and installed Google
 Chrome were **not** tested on this host. The committed verifier supports `--channel
 chrome` so the user can repeat the same checks with local Chrome.
@@ -64,7 +66,13 @@ chrome` so the user can repeat the same checks with local Chrome.
 | `./scripts/serve.sh` on an isolated loopback port + HTTP GET | **PASS**; old surface preserved, not the new demo entry point |
 | `npm run verify:demo` | **PASS: three serial isolated pairs + eight diagnostics** |
 | All twenty thumbnails, desktop and emulated mobile | **PASS** in every browser scenario; no unexpected console/page/CSP errors |
+| `npm audit` after the security pin | **PASS: zero reported vulnerabilities** |
+| Clean local clone of application commit `95c7e3e` | **PASS: npm ci, 254 JS tests, syntax, one isolated pair + eight diagnostics**; final three-pair run repeated after security pin |
 | Source review fixes | Scheduler regressions pass; thumbnail/history/persisted event regressions pass in browser checks |
+
+The same three pairs and eight diagnostics also passed on the earlier Playwright
+1.52.0 / Chromium 136.0.7103.25 installation before the security pin. Do not install
+that older test version; the final documented default is 1.55.1.
 
 Main pairs each start a new browser/context and use the same Node server, top-level
 origin, title-01, en, 1x and exact versioned URLs. No route interception, cache
@@ -127,6 +135,7 @@ results concern another host/seam and must not be reused as proof of this game.
 - All real exclusion-register integration, production manifests/CORS/cache rules,
   provider gameplay readiness and macOS/Windows/device measurements remain UNKNOWN.
 - `docs/PRE-SUBMISSION-AUDIT.md` was read. This is a development-branch delivery,
-  **not a freeze/submission**. Its wider documentation, access, disclosure/history
+  **not a freeze/submission**. A targeted introduced-history credential scan
+  found only known dummy URL rejection fixtures, no high-confidence real credentials. Its wider documentation, access, disclosure/history
   scan, organiser declarations and final reproducibility items remain a separate
   blocking submission gate; do not equate passing these tests with readiness to submit.
