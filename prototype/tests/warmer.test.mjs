@@ -188,3 +188,108 @@ test("rejects unsafe stages, non-critical PRIMARY, and excess concurrency", asyn
     /concurrency must be an integer from 1 to 2/,
   );
 });
+
+test("dispatches largest first within a stage band and never across bands", async () => {
+  const banded = [
+    { url: "/common-small.js?v=17", stage: "COMMON", estimatedBytes: 10 },
+    { url: "/preloader.js?v=17", stage: "PRELOADER", estimatedBytes: 5 },
+    { url: "/common-large.js?v=17", stage: "COMMON", estimatedBytes: 900 },
+    { url: "/splash.webp?v=17", stage: "SPLASH", estimatedBytes: 4000 },
+    { url: "/common-mid.js?v=17", stage: "COMMON", estimatedBytes: 300 },
+  ];
+  const dispatched = [];
+
+  await warmAssets({
+    plan: { ...target, assets: banded },
+    target,
+    concurrency: 1,
+    requestAsset: async (url) => { dispatched.push(url); },
+  });
+
+  assert.deepEqual(dispatched, [
+    "/preloader.js?v=17",
+    "/common-large.js?v=17",
+    "/common-mid.js?v=17",
+    "/common-small.js?v=17",
+    "/splash.webp?v=17",
+  ]);
+});
+
+test("results stay addressable by the caller's own asset order", async () => {
+  const banded = [
+    { url: "/splash.webp?v=17", stage: "SPLASH", estimatedBytes: 4000 },
+    { url: "/preloader.js?v=17", stage: "PRELOADER", estimatedBytes: 5 },
+  ];
+
+  const summary = await warmAssets({
+    plan: { ...target, assets: banded },
+    target,
+    concurrency: 1,
+    requestAsset: async () => {},
+  });
+
+  assert.deepEqual(
+    summary.results.map(({ index, stage }) => [index, stage]),
+    [[0, "SPLASH"], [1, "PRELOADER"]],
+  );
+});
+
+test("a ledger suppresses a repeat request for an exact URL already warmed", async () => {
+  const { createWarmLedger } = await import("../src/warm-ledger.js");
+  const ledger = createWarmLedger();
+  const firstRun = [];
+  const secondRun = [];
+
+  const first = await warmAssets({
+    plan, target, ledger, requestAsset: async (url) => { firstRun.push(url); },
+  });
+  const second = await warmAssets({
+    plan, target, ledger, requestAsset: async (url) => { secondRun.push(url); },
+  });
+
+  assert.equal(first.requested, 4);
+  assert.equal(first.skipped, 0);
+  assert.equal(secondRun.length, 0);
+  assert.equal(second.skipped, 4);
+  assert.equal(second.requested, 0);
+  assert.equal(second.results.every((r) => r.status === WarmStatus.SKIPPED), true);
+});
+
+test("a failed request is not recorded as warmed and is retried next time", async () => {
+  const { createWarmLedger } = await import("../src/warm-ledger.js");
+  const ledger = createWarmLedger();
+  const single = { ...target, assets: [{ url: "/preloader.js?v=17", stage: "PRELOADER", estimatedBytes: 5 }] };
+
+  const first = await warmAssets({
+    plan: single, target, ledger, requestAsset: async () => { throw new Error("network"); },
+  });
+  let retried = 0;
+  const second = await warmAssets({
+    plan: single, target, ledger, requestAsset: async () => { retried += 1; },
+  });
+
+  assert.equal(first.failed, 1);
+  assert.equal(retried, 1);
+  assert.equal(second.requested, 1);
+});
+
+test("a ledger key is the exact URL and is never normalized", async () => {
+  const { createWarmLedger } = await import("../src/warm-ledger.js");
+  const ledger = createWarmLedger();
+  const variants = {
+    ...target,
+    assets: [
+      { url: "/asset.bin?v=17&a=1", stage: "COMMON", estimatedBytes: 10 },
+      { url: "/asset.bin?a=1&v=17", stage: "COMMON", estimatedBytes: 10 },
+    ],
+  };
+  const dispatched = [];
+
+  const summary = await warmAssets({
+    plan: variants, target, ledger, requestAsset: async (url) => { dispatched.push(url); },
+  });
+
+  assert.equal(summary.requested, 2);
+  assert.equal(summary.skipped, 0);
+  assert.equal(dispatched.length, 2);
+});
