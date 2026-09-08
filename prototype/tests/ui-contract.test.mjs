@@ -10,7 +10,10 @@ test("simulated warming UI exposes an explicit accessible lifecycle", async () =
 
   assert.match(html, /<button id="run-warming" type="button">Run simulated warming<\/button>/);
   assert.match(html, /id="warming-card" role="status" aria-live="polite" aria-atomic="true"/);
+  assert.match(html, /<time id="ist-clock" aria-label="Current India Standard Time">/);
+  assert.match(html, /India Standard Time · <span class="label measured">MEASURED<\/span>/);
   assert.match(html, /NOT RUN · SIMULATED/);
+  assert.match(main, /startIstClock\(clockElement\)/);
   assert.match(main, /RUNNING · SIMULATED/);
   assert.match(main, /COMPLETE · SIMULATED/);
   assert.match(main, /GOVERNOR BLOCKED · SIMULATED/);

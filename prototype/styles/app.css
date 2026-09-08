@@ -25,7 +25,29 @@ button, input, select { font: inherit; }
   padding: 64px 0 36px;
 }
 
-.hero { max-width: 760px; margin-bottom: 30px; }
+.hero { max-width: 900px; margin-bottom: 30px; }
+
+.hero-meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 8px;
+}
+
+.ist-clock {
+  display: grid;
+  gap: 5px;
+  min-width: max-content;
+  padding: 10px 12px;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.78);
+  text-align: right;
+}
+.ist-clock > span { color: #94a3b8; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.ist-clock time { color: #ecfeff; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.92rem; font-weight: 800; }
+.ist-clock small { color: #7f8ca4; font-size: 0.68rem; }
 
 .eyebrow {
   margin: 0 0 8px;
@@ -85,6 +107,7 @@ h2 { font-size: 1.35rem; }
   vertical-align: middle;
 }
 .label.simulated { color: #a5f3fc; background: #164e63; }
+.label.measured { color: #a7f3d0; background: #065f46; }
 .label.unknown { color: #fde68a; background: #713f12; }
 
 .controls {
@@ -174,6 +197,8 @@ footer { padding: 26px 2px 0; color: #7f8ca4; font-size: 0.82rem; line-height: 1
 
 @media (max-width: 720px) {
   .shell { padding-top: 38px; }
+  .hero-meta { align-items: stretch; flex-direction: column; }
+  .ist-clock { min-width: 0; text-align: left; }
   .controls, .status-grid { grid-template-columns: 1fr; }
   .action-row { align-items: stretch; flex-direction: column; }
   .asset-list li { grid-template-columns: 82px 1fr; }

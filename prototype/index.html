@@ -10,7 +10,14 @@
   <body>
     <main class="shell">
       <header class="hero">
-        <p class="eyebrow">Browser prototype · no build step</p>
+        <div class="hero-meta">
+          <p class="eyebrow">Browser prototype · no build step</p>
+          <div class="ist-clock">
+            <span>India Standard Time · <span class="label measured">MEASURED</span></span>
+            <time id="ist-clock" aria-label="Current India Standard Time">Loading IST…</time>
+            <small>Browser device clock · Asia/Kolkata</small>
+          </div>
+        </div>
         <h1>Instrumented cache-warming demo</h1>
         <p class="lede">
           Scaffold only. It evaluates an illustrative local manifest and never sends provider requests.

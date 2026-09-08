@@ -1,3 +1,4 @@
+import { startIstClock } from "./clock.js";
 import { assessPrefetch } from "./governor.js";
 import { resolveManifest } from "./manifest.js";
 import { createSimulatedRequester } from "./simulation.js";
@@ -36,6 +37,7 @@ const SIMULATED_ENVIRONMENT = Object.freeze({
   bytesUsed: 0,
 });
 
+const clockElement = document.querySelector("#ist-clock");
 const enabledControl = document.querySelector("#prefetch-enabled");
 const budgetControl = document.querySelector("#byte-budget");
 const decisionElement = document.querySelector("#governor-decision");
@@ -140,6 +142,8 @@ function resetSimulation() {
   hasResult = false;
   render();
 }
+
+startIstClock(clockElement);
 
 enabledControl.addEventListener("change", resetSimulation);
 budgetControl.addEventListener("change", resetSimulation);
