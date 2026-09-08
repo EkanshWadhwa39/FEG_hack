@@ -54,9 +54,15 @@ du -sh ~/evidence/private/bundles/empireofgold  # ~98M
 
 The lobby tells you which of the two things went wrong, on the page itself:
 
+The page diagnoses itself. The banner shows the URL it is actually open at and
+picks its explanation from that, so it can never send you chasing the wrong
+problem.
+
 | What you see | What it means |
 |---|---|
-| A red **"The lobby did not start"** box | JavaScript never ran. Almost always a `file://` URL — ES modules are blocked there. Serve it over HTTP |
+| A red **"The lobby did not start"** box naming a `file://` URL | JavaScript never ran: ES modules are blocked on `file://`. Verified in stock Firefox and Chromium. Serve it over HTTP and **type** the `http://127.0.0.1:8090/…` URL — opening the file from the editor or file manager lands you straight back here |
+| A red box naming an `http://` URL | Served correctly, but the module failed to load or threw. The browser console has the real error |
+| A red **"The lobby failed to start"** box | The module loaded and threw; the message shown is the actual exception |
 | A yellow **"No game package is being served"** box | The lobby is fine; nothing is answering on the game origin. Start `sandbox_server.py`, or check the `?game=` parameter |
 | Tiles show flat coloured emblems rather than game art | You are serving `prototype/` some other way (`scripts/serve.sh`, `python -m http.server`), so `/posters/*.webp` 404 and the built-in fallback posters are drawn instead. Everything still works — the artwork just comes from the package only when `sandbox_server.py` serves it |
 

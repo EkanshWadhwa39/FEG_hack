@@ -60,6 +60,31 @@ const TICK_MS = 200;
 /** How long to wait for any manifest before saying the provider is not there. */
 const PROVIDER_TIMEOUT_MS = 4_000;
 
+/**
+ * Governor refusals that must stop work already in flight, not merely decline
+ * to start more. Save-Data and a hidden page are instructions about what the
+ * browser should be doing *right now*; a disabled switch is the operator saying
+ * stop. A budget ceiling is none of those.
+ */
+const HARD_STOPS = new Set(["SAVE_DATA", "PAGE_HIDDEN", "DISABLED", "VISIBILITY_UNKNOWN"]);
+
+/**
+ * Should a refusal stop a transfer that is already running?
+ *
+ * The distinction is not cosmetic. Treating every refusal as a stop meant a
+ * full byte budget aborted warming that was already part paid for — throwing
+ * away the bytes on the wire and gaining nothing, because the budget is spent
+ * either way. Worse, the budget was then refunded, so the ladder had no record
+ * of the waste and could do it again on the next tick.
+ *
+ * @param refusedBecause `planSpeculation`'s refusal reason
+ * @param governorReason `assessPrefetch`'s reason, when the refusal was the governor's
+ */
+export function shouldAbortInFlight(refusedBecause, governorReason) {
+  if (refusedBecause === "AUTHORIZATION") return true;
+  return refusedBecause === "GOVERNOR" && HARD_STOPS.has(governorReason);
+}
+
 export function startLobby({
   gameOrigin,
   gameCount = 24,
@@ -404,7 +429,11 @@ export function startLobby({
   function tick() {
     const candidates = dwell.snapshot();
     const anyManifest = manifests.values().next().value;
-    const governor = governorNow(anyManifest?.warmBytes ?? 0);
+    // Ask about zero bytes. This decision is the ladder's *gate* — may we
+    // speculate at all — and folding an affordability question into it made a
+    // full budget look like a hard stop, which silenced even the free rung.
+    // What is affordable is the ladder's own arithmetic, below.
+    const governor = governorNow(0);
 
     // Weak signals are appended below real dwell, never ranked among it, and
     // both carry `currentMs: 0` so neither can ever reach the engine rung.
@@ -437,11 +466,21 @@ export function startLobby({
         warmBytes: anyManifest?.warmBytes ?? 0,
         engineBytes: anyManifest?.totalBytes ?? 0,
       },
-      budget: { byteBudget: ledger.byteBudget, bytesUsed: ledger.bytesUsed() },
+      // The governor's effective budget, not the ledger's nominal one: a
+      // degraded tier caps it well below what the ledger was created with, and
+      // planning against the larger figure means planning spending that will
+      // then be refused.
+      budget: {
+        byteBudget: governor.effectiveByteBudget ?? ledger.byteBudget,
+        bytesUsed: ledger.bytesUsed(),
+      },
     });
     lastPlan = plan;
 
-    if (plan.refusedBecause === "AUTHORIZATION" || plan.refusedBecause === "GOVERNOR") {
+    // Abort only for reasons that make *continuing* wrong. A budget refusal
+    // means "start nothing more" — killing a transfer that is already part paid
+    // for wastes the bytes already on the wire and achieves nothing.
+    if (shouldAbortInFlight(plan.refusedBecause, governor.reason)) {
       abortAllWarming(plan.refusedBecause === "AUTHORIZATION"
         ? "authorization was withdrawn"
         : `the governor declined (${governor.reason})`);

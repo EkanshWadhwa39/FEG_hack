@@ -33,17 +33,54 @@
       -->
       <div id="boot-error" class="boot-error" role="alert">
         <strong>The lobby did not start.</strong>
-        <p>
-          Nothing below this is live. The usual cause is opening this file
-          directly: <code>file://</code> blocks ES modules, so the page renders
-          as an empty shell.
-        </p>
-        <p>Serve it over HTTP instead, from the repository root:</p>
-        <pre>.venv/bin/python tools/sandbox_server.py \
+        <p id="boot-diagnosis">Nothing below this is live.</p>
+        <p>This page is open at <code id="boot-url">—</code></p>
+        <div id="boot-file-fix" hidden>
+          <p>
+            <code>file://</code> blocks ES modules, so none of the lobby's code
+            ran. Serve it over HTTP instead, from the repository root:
+          </p>
+          <pre>.venv/bin/python tools/sandbox_server.py \
   --bundle ~/evidence/private/bundles/empireofgold \
   --latency-ms 40</pre>
-        <p>Then open <code>http://127.0.0.1:8090/sandbox.html</code>.</p>
+          <p>
+            Then <strong>type</strong>
+            <code>http://127.0.0.1:8090/sandbox.html</code> into the address
+            bar. Opening the file from the editor or file manager will land you
+            back here.
+          </p>
+        </div>
+        <div id="boot-script-fix" hidden>
+          <p>
+            The page is being served over HTTP, so this is not the usual cause.
+            The lobby's JavaScript failed to load or threw while starting.
+            Open the browser console (F12 → Console) — the error there is the
+            real one. Common causes: a stale cached module (hard-reload with
+            Ctrl+Shift+R), or a server that is not serving <code>prototype/</code>
+            as its document root.
+          </p>
+        </div>
       </div>
+
+      <!--
+        Classic script, not a module: it has to run in exactly the case where
+        modules do not. It replaces the guess in the static markup with what is
+        actually true of this page, so the banner can never send someone
+        chasing a file:// problem they do not have.
+      -->
+      <script>
+        (function () {
+          var banner = document.getElementById("boot-error");
+          if (!banner) return;
+          var isFile = location.protocol === "file:";
+          document.getElementById("boot-url").textContent = location.href;
+          document.getElementById("boot-diagnosis").textContent = isFile
+            ? "Nothing below this is live: the page was opened as a local file."
+            : "Nothing below this is live.";
+          document.getElementById(isFile ? "boot-file-fix" : "boot-script-fix")
+            .hidden = false;
+        })();
+      </script>
 
       <details id="lobby-note" class="operator">
         <summary><strong>What is real here, and what is not</strong></summary>
@@ -192,8 +229,15 @@
         // A thrown startLobby leaves the same empty shell as a module that
         // never ran, so say which one it was rather than leaving the reader to
         // guess from a blank page.
+        // The module loaded but threw. That is a different fault from "no
+        // module ran at all", and the banner must not keep claiming the latter.
         boot.querySelector("strong").textContent = "The lobby failed to start.";
-        boot.querySelector("p").textContent = String(error && error.message || error);
+        document.getElementById("boot-diagnosis").textContent =
+          String((error && error.message) || error);
+        const fileFix = document.getElementById("boot-file-fix");
+        const scriptFix = document.getElementById("boot-script-fix");
+        if (fileFix) fileFix.hidden = true;
+        if (scriptFix) scriptFix.hidden = false;
         throw error;
       }
     </script>

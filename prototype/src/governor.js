@@ -68,8 +68,19 @@ const FULL_TIER_EFFECTIVE_TYPES = new Set(["4g"]);
 /** Effective types worth warming bytes on, but not an engine. */
 const REDUCED_TIER_EFFECTIVE_TYPES = new Set(["3g"]);
 
-/** Ceiling applied when the browser cannot describe its own connection. */
-export const DEGRADED_BYTE_BUDGET = 8 * 1_048_576;
+/**
+ * Ceiling applied when the browser cannot describe its own connection.
+ *
+ * It has to be big enough for what the ladder actually does at this tier, or
+ * the tier is decorative: the lobby-load warm plus the ladder's hedge is up to
+ * three blocking profiles, which for the measured package is 3 x 2.8 MB =
+ * 8.4 MB. An 8 MiB ceiling sat just underneath that, so the very first hedge
+ * tripped BUDGET_EXCEEDED and every non-Chromium browser warmed nothing at all.
+ *
+ * 12 MiB clears three profiles with headroom and still forbids the thing this
+ * tier exists to forbid, which is a ~52 MB speculative engine.
+ */
+export const DEGRADED_BYTE_BUDGET = 12 * 1_048_576;
 
 function result(allowed, reason, tier, byteBudget, bytesUsed, nextAssetBytes) {
   const validBudget = Number.isFinite(byteBudget) && byteBudget >= 0;
@@ -82,6 +93,10 @@ function result(allowed, reason, tier, byteBudget, bytesUsed, nextAssetBytes) {
     allowed,
     reason,
     tier,
+    // The budget actually in force, which on a degraded tier is lower than the
+    // one the caller asked about. Callers need this: a caller that keeps using
+    // its own larger figure will plan spending the governor will then refuse.
+    effectiveByteBudget: validBudget ? byteBudget : null,
     remainingBytes,
     projectedBytes: validUsed && Number.isFinite(nextAssetBytes) && nextAssetBytes >= 0
       ? bytesUsed + nextAssetBytes

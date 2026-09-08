@@ -27,6 +27,7 @@ test("allows an explicitly safe request within budget at the full tier", () => {
     allowed: true,
     reason: GovernorReason.ALLOWED,
     tier: SpeculationTier.FULL,
+    effectiveByteBudget: 1_000,
     remainingBytes: 800,
     projectedBytes: 500,
   });
@@ -64,18 +65,37 @@ test("a browser with no Network Information API degrades instead of refusing", (
   assert.equal(decision.tier, SpeculationTier.REDUCED);
 });
 
-test("the degraded tier is capped at the reduced budget", () => {
-  const decision = assessPrefetch({
+test("the degraded tier is capped at the reduced budget, and says so", () => {
+  const degraded = {
     ...safeInput,
     connectionApiAvailable: false,
     saveData: undefined,
     effectiveType: undefined,
     byteBudget: 512 * 1_048_576,
-    bytesUsed: DEGRADED_BYTE_BUDGET,
-    nextAssetBytes: 1,
+  };
+
+  // The caller asked about 512 MiB; the tier in force is far smaller, and the
+  // caller has to be told which, or it will plan spending that gets refused.
+  const allowed = assessPrefetch({ ...degraded, bytesUsed: 0, nextAssetBytes: 1 });
+  assert.equal(allowed.allowed, true);
+  assert.equal(allowed.effectiveByteBudget, DEGRADED_BYTE_BUDGET);
+
+  const overrun = assessPrefetch({
+    ...degraded, bytesUsed: DEGRADED_BYTE_BUDGET, nextAssetBytes: 1,
   });
-  assert.equal(decision.allowed, false);
-  assert.equal(decision.reason, GovernorReason.BUDGET_EXCEEDED);
+  assert.equal(overrun.allowed, false);
+  assert.equal(overrun.reason, GovernorReason.BUDGET_EXCEEDED);
+});
+
+test("the degraded budget fits what the ladder actually spends at that tier", () => {
+  // Regression: an 8 MiB ceiling sat just under three 2.8 MB blocking profiles
+  // (lobby-load warms two, the ladder hedges to three), so the first hedge
+  // tripped BUDGET_EXCEEDED and every non-Chromium browser warmed nothing.
+  const THREE_PROFILES = 3 * 2_901_042;
+  assert.ok(DEGRADED_BYTE_BUDGET > THREE_PROFILES,
+    "three blocking profiles must fit inside the degraded budget");
+  // And it must still be nowhere near a speculative engine.
+  assert.ok(DEGRADED_BYTE_BUDGET < 52 * 1_000_000);
 });
 
 test("an API that is present but will not answer still fails closed", () => {

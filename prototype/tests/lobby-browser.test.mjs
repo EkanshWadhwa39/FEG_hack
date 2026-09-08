@@ -30,7 +30,7 @@ const options = chromium ? {} : { skip: "playwright is not installed" };
 
 const PORT = Number(process.env.LOBBY_TEST_PORT ?? 8123);
 
-async function withLobby(run, contextOptions = {}) {
+async function withLobby(run, contextOptions = {}, { initScript = null } = {}) {
   const server = spawn("python3",
     ["-m", "http.server", String(PORT), "--directory", prototypeDir, "--bind", "127.0.0.1"],
     { stdio: "ignore" });
@@ -46,6 +46,7 @@ async function withLobby(run, contextOptions = {}) {
     }
 
     const context = await browser.newContext(contextOptions);
+    if (initScript) await context.addInitScript(initScript);
     const page = await context.newPage();
     // No game origin exists in this test, so point it at an unroutable one and
     // let every provider request fail. The lobby must still work.
@@ -254,3 +255,33 @@ test("the boot guard is removed on success and survives a module that never runs
       "a booted lobby removes its own warning");
   });
 });
+
+test("a browser with no Network Information API still warms", options, async () => {
+  // Firefox and every browser on iOS. This ran green in Chromium for a week
+  // while warming nothing at all anywhere else, so it is asserted here against
+  // a Chromium with the API removed rather than left to a manual check.
+  await withLobby(async (page) => {
+    assert.equal(await page.evaluate(() => typeof navigator.connection), "undefined");
+
+    await page.waitForFunction(
+      () => document.getElementById("m-tier").textContent === "REDUCED",
+      null,
+      { timeout: 5_000 },
+    );
+    // The ladder must still climb its cheap rungs. A budget ceiling is not a
+    // hard stop, and must not silence the free rung either.
+    await page.locator(".tile").first().hover();
+    await page.waitForFunction(
+      () => globalThis.__SPECULATION__().connected.length > 0,
+      null,
+      { timeout: 5_000 },
+    );
+    const plan = (await speculation(page)).plan;
+    assert.notEqual(plan.rung, "NONE");
+  }, {}, {
+    initScript: () => {
+      Object.defineProperty(navigator, "connection", { get: () => undefined });
+    },
+  });
+});
+
