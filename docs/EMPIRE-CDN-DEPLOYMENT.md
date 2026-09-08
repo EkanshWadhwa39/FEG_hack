@@ -19,7 +19,7 @@ The reviewed archive SHA-256 is pinned in code. Packaging fails closed for anoth
 - The private reviewed `empireofgold.zip` available outside the repository.
 - A fresh, dedicated Chromium profile for every CONTROL or TREATMENT run.
 - CDN transforms, HTML rewriting, automatic minification and image optimization disabled.
-- No cookies, authentication headers, signed query strings, redirects, or credential-bearing launch URLs.
+- No cookies, authentication headers, signed query strings, redirects, or credential-bearing launch URLs. The iframe navigation uses normal browser credential semantics, so use a fresh profile and confirm the browser trace contains no cookies; the credential-free preparation fetch alone cannot prove this.
 
 Cloudflare Pages `_headers` files are emitted. On another host, translate those policies exactly and verify them before opening a browser.
 
@@ -37,6 +37,7 @@ python3 tools/prepare_empire_cdn.py \
 
 python3 tools/prepare_empire_lobby.py \
   --cdn-origin https://YOUR-PROVIDER-CDN.example \
+  --lobby-origin https://YOUR-LOBBY.example \
   --output-dir /tmp/empire-lobby-public
 ```
 
@@ -56,6 +57,7 @@ Required provider behavior:
 - `/__vault/*`: `no-store`.
 - `/__vault/config.json`: exact lobby-origin CORS.
 - No redirects on config, wrapper, launch document, or warmed assets.
+- No `Set-Cookie`, `Access-Control-Allow-Credentials`, or credential-varying responses on either origin.
 
 Required lobby behavior:
 
@@ -71,10 +73,11 @@ After both deploys complete:
 python3 tools/verify_empire_cdn_deployment.py \
   --cdn-origin https://YOUR-PROVIDER-CDN.example \
   --lobby-origin https://YOUR-LOBBY.example \
-  --manifest /tmp/empire-provider-public/deployment-manifest.json
+  --manifest /tmp/empire-provider-public/deployment-manifest.json \
+  --lobby-manifest /tmp/empire-lobby-public/deployment-manifest.json
 ```
 
-This checks every deployed provider file and wrapper/config artifact against the trusted local packaging manifest, plus the reviewed release identity, exact URLs, CORS/timing headers, immutable asset caching, no-store documents, and absence of credential-dependent response headers. It follows no redirects and sends no credentials. Keep the trusted manifest local; never substitute the deployed copy.
+This checks every deployed provider file and wrapper/config artifact against the trusted local provider manifest. It also checks every declared lobby file against the trusted local lobby manifest, including the exact config meta URL, no-store shell and pinned CSP. The gate validates the reviewed release identity, runtime-required configuration fields, exact URLs, exact CORS/timing/cache directives, and absence of cookie-setting or credential-varying response headers. It follows no redirects and sends no credentials. Keep both trusted manifests local; never substitute deployed copies.
 
 Its output is **MEASURED HTTP deployment smoke only**. It is not proof that Chromium reused cache entries and is not a latency benchmark.
 
@@ -102,7 +105,7 @@ Stop and report UNKNOWN/failed if any of these occurs:
 - config CORS fails, redirects, times out, or disagrees with the exact origins;
 - archive/build identity is not the reviewed digest;
 - a launch/warm URL is reconstructed or differs by path, query, host, or version;
-- any request carries cookies or authorization;
+- any browser request carries cookies or authorization, or either origin can set cookies;
 - the provider or CDN transforms bytes;
 - a warmed object is SECONDARY or outside the audited eight-object subset;
 - control and treatment share a browser profile/cache;

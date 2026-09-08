@@ -22,8 +22,11 @@ META = b'<meta name="empire-config-url" content="/__vault/config.json">'
 MAX_SOURCE_BYTES = 1024 * 1024
 
 
-def prepare(*, cdn_origin: str, output_dir: str | Path) -> dict[str, object]:
+def prepare(*, cdn_origin: str, lobby_origin: str, output_dir: str | Path) -> dict[str, object]:
     cdn_origin = _exact_origin(cdn_origin, https_only=True)
+    lobby_origin = _exact_origin(lobby_origin, https_only=True)
+    if cdn_origin == lobby_origin:
+        raise PreparationError("CDN and lobby origins must be distinct")
     output = _output_path(output_dir)
     output.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=".prepare-empire-lobby-", dir=output.parent))
@@ -56,7 +59,8 @@ def prepare(*, cdn_origin: str, output_dir: str | Path) -> dict[str, object]:
         ).encode()
         (staging / "_headers").write_bytes(headers)
         manifest: dict[str, object] = {"schemaVersion": 1, "label": "STATICALLY-INFERRED", "delivery": "CDN",
-            "cdnOrigin": cdn_origin, "providerFilesIncluded": False, "files": records}
+            "cdnOrigin": cdn_origin, "lobbyOrigin": lobby_origin,
+            "providerFilesIncluded": False, "files": records}
         (staging / "deployment-manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
         if output.exists():
             if output.is_symlink() or not output.is_dir() or any(output.iterdir()):
@@ -76,10 +80,11 @@ def prepare(*, cdn_origin: str, output_dir: str | Path) -> dict[str, object]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cdn-origin", required=True)
+    parser.add_argument("--lobby-origin", required=True)
     parser.add_argument("--output-dir", required=True)
     args = parser.parse_args(argv)
     try:
-        prepare(cdn_origin=args.cdn_origin, output_dir=args.output_dir)
+        prepare(cdn_origin=args.cdn_origin, lobby_origin=args.lobby_origin, output_dir=args.output_dir)
     except PreparationError as error:
         parser.error(str(error))
     print(json.dumps({"status": "prepared", "providerFilesIncluded": False}))

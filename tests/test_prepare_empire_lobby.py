@@ -14,7 +14,11 @@ SPEC.loader.exec_module(module)
 
 def test_prepares_explicit_source_only_lobby_with_pinned_cdn_policy(tmp_path):
     output = tmp_path / "lobby"
-    result = module.prepare(cdn_origin="https://cdn.example.test", output_dir=output)
+    result = module.prepare(
+        cdn_origin="https://cdn.example.test",
+        lobby_origin="https://lobby.example.test",
+        output_dir=output,
+    )
     html = (output / "empire-demo.html").read_text()
     assert (output / "index.html").read_text() == html
     assert '<meta name="empire-config-url" content="https://cdn.example.test/__vault/config.json">' in html
@@ -28,6 +32,7 @@ def test_prepares_explicit_source_only_lobby_with_pinned_cdn_policy(tmp_path):
     persisted = json.loads((output / "deployment-manifest.json").read_text())
     assert persisted == result
     assert persisted["providerFilesIncluded"] is False
+    assert persisted["lobbyOrigin"] == "https://lobby.example.test"
     for record in persisted["files"]:
         payload = (output / record["path"]).read_bytes()
         assert record["bytes"] == len(payload)
@@ -37,4 +42,30 @@ def test_prepares_explicit_source_only_lobby_with_pinned_cdn_policy(tmp_path):
 @pytest.mark.parametrize("origin", ["http://cdn.example.test", "https://user@cdn.example.test", "https://cdn.example.test/path"])
 def test_rejects_non_https_or_non_origin_cdn_values(origin, tmp_path):
     with pytest.raises(module.PreparationError):
-        module.prepare(cdn_origin=origin, output_dir=tmp_path / "lobby")
+        module.prepare(
+            cdn_origin=origin,
+            lobby_origin="https://lobby.example.test",
+            output_dir=tmp_path / "lobby",
+        )
+
+
+@pytest.mark.parametrize(
+    "origin",
+    ["http://lobby.example.test", "https://LOBBY.example.test", "https://lobby.example.test/"],
+)
+def test_rejects_non_https_or_noncanonical_lobby_values(origin, tmp_path):
+    with pytest.raises(module.PreparationError):
+        module.prepare(
+            cdn_origin="https://cdn.example.test",
+            lobby_origin=origin,
+            output_dir=tmp_path / "lobby",
+        )
+
+
+def test_rejects_shared_lobby_and_provider_origin(tmp_path):
+    with pytest.raises(module.PreparationError, match="distinct"):
+        module.prepare(
+            cdn_origin="https://same.example.test",
+            lobby_origin="https://same.example.test",
+            output_dir=tmp_path / "lobby",
+        )
