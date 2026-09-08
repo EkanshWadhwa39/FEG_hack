@@ -114,10 +114,10 @@ describe("DemoSequencer.runCold", () => {
     assert.equal(result.cacheHitsLabel, "MEASURED");
   });
 
-  it("cold result has 35500ms reference (from HAR evidence)", async () => {
+  it("cold result has 76358ms reference (HAR entry span from casino.psk.hr_cold.har)", async () => {
     const seq = makeSequencer();
     const result = await seq.runCold();
-    assert.equal(result.referenceElapsedMs, 35_500);
+    assert.equal(result.referenceElapsedMs, 76_358);
   });
 
   it("throws if called from WARM_COMPLETE", async () => {
@@ -162,11 +162,11 @@ describe("DemoSequencer.runWarm", () => {
     assert.equal(result.cacheHitsLabel, "MEASURED");
   });
 
-  it("warm result has 6700ms reference (from HAR evidence)", async () => {
+  it("warm result has 16253ms reference (HAR entry span from casino.psk.hr_warm.har)", async () => {
     const seq = makeSequencer();
     await seq.runCold();
     const result = await seq.runWarm();
-    assert.equal(result.referenceElapsedMs, 6_700);
+    assert.equal(result.referenceElapsedMs, 16_253);
   });
 
   it("elapsedMs is SIMULATED", async () => {

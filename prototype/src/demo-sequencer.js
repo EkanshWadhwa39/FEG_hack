@@ -114,15 +114,19 @@ export class DemoSequencer {
       tier: plan.tier,
       assetCount: plan.assets.length,
       assetCountLabel: "SIMULATED",
-      // From HAR evidence — CODE.md, docs/LOCAL-CACHE-REUSE.md
-      referenceElapsedMs: 35_500,
+      // From casino.psk.hr_cold.har via tools/measure_har.py
+      // elapsed_ms = HAR entry span (not click-to-interactive)
+      // 27 pre-existing cache hits — HAR was not from a cleared-cache session
+      referenceElapsedMs: 76_358,
       referenceElapsedMsLabel: "MEASURED",
-      referenceWireBytes: 16_600_000,
+      referenceElapsedMsNote: "HAR span includes trailing background requests; asset-batch milestone was 35.568s — see docs/HAR-MILESTONE.md",
+      referenceWireBytes: 16_597_198,
       referenceWireBytesLabel: "MEASURED",
-      referenceRequestCount: 149,
+      referenceRequestCount: 177,
       referenceRequestCountLabel: "MEASURED",
-      cacheHits: 0,
+      cacheHits: 27,
       cacheHitsLabel: "MEASURED",
+      cacheHitsNote: "Pre-existing hits; HAR was not captured with cleared cache",
     });
 
     this.#setPhase(DemoPhase.COLD_COMPLETE);
@@ -179,14 +183,16 @@ export class DemoSequencer {
         summary,
         elapsedMs,
         elapsedMsLabel: "SIMULATED",
-        // MEASURED from HAR evidence
-        referenceElapsedMs: 6_700,
+        // From casino.psk.hr_warm.har via tools/measure_har.py
+        // elapsed_ms = HAR entry span (not click-to-interactive)
+        referenceElapsedMs: 16_253,
         referenceElapsedMsLabel: "MEASURED",
-        referenceWireBytes: 12_000,
+        referenceElapsedMsNote: "HAR entry span; prior 6.7s claim used different unreconciled method",
+        referenceWireBytes: 12_431,
         referenceWireBytesLabel: "MEASURED",
-        referenceRequestCount: 149,
+        referenceRequestCount: 155,
         referenceRequestCountLabel: "MEASURED",
-        cacheHits: 139,
+        cacheHits: 140,
         cacheHitsLabel: "MEASURED",
       });
     } catch {

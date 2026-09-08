@@ -12,39 +12,57 @@
 import { resolveManifest } from "./manifest.js";
 
 /**
- * Cold-cache baseline from HAR evidence.
- * Source: casino.psk.hr cold run captured before any warming.
- * Label: MEASURED — these are real numbers from real HAR files.
+ * Cold-cache baseline from HAR evidence (casino.psk.hr_cold.har).
+ * Source: tools/measure_har.py → evidence/derived/har-comparison-cold-warm.json
+ *
+ * WARNING: This HAR had 27 pre-existing cache hits — not a truly cold cache.
+ * elapsed_ms is HAR entry span (first request start → last end), NOT
+ * click-to-interactive. The 35.5s/6.7s figures in prior docs used a different
+ * unreconciled measurement method and are labeled UNKNOWN here until reconciled.
  */
 export const COLD_BASELINE = Object.freeze({
-  elapsedMs: 35_500,
+  elapsedMs: 76_358,
   elapsedMsLabel: "MEASURED",
-  wireBytes: 16_600_000,
+  elapsedMsNote: "HAR entry span; not click-to-interactive",
+  wireBytes: 16_597_198,
   wireBytesLabel: "MEASURED",
-  requestCount: 149,
+  requestCount: 177,
   requestCountLabel: "MEASURED",
-  cacheHits: 0,
+  cacheHits: 27,
   cacheHitsLabel: "MEASURED",
-  source: "HAR: cold run (no prior warming)",
+  cacheHitsNote: "Pre-existing hits — HAR was not captured with a fully cleared cache",
+  source: "casino.psk.hr_cold.har (private, not committed)",
   sourceLabel: "MEASURED",
+  // Asset-batch milestone (MEASURED): capture-start to last successful response
+  // in the exact 16-request batch — see docs/HAR-MILESTONE.md
+  assetBatchElapsedMs: 35_568,
+  assetBatchElapsedMsLabel: "MEASURED",
+  assetBatchElapsedMsNote: "Asset-batch completion, NOT click-to-interactive",
 });
 
 /**
- * Warm-cache reference from HAR evidence.
- * Source: casino.psk.hr warm run after one full cold load.
- * Label: MEASURED — these are real numbers from real HAR files.
+ * Warm-cache reference from HAR evidence (casino.psk.hr_warm.har).
+ * Source: tools/measure_har.py → evidence/derived/har-comparison-cold-warm.json
+ *
+ * elapsed_ms is HAR entry span — same caveat as COLD_BASELINE.
  */
 export const WARM_REFERENCE = Object.freeze({
-  elapsedMs: 6_700,
+  elapsedMs: 16_253,
   elapsedMsLabel: "MEASURED",
-  wireBytes: 12_000,
+  elapsedMsNote: "HAR entry span; not click-to-interactive",
+  wireBytes: 12_431,
   wireBytesLabel: "MEASURED",
-  requestCount: 149,
+  requestCount: 155,
   requestCountLabel: "MEASURED",
-  cacheHits: 139,
+  cacheHits: 140,
   cacheHitsLabel: "MEASURED",
-  source: "HAR: warm run (after cache was populated)",
+  source: "casino.psk.hr_warm.har (private, not committed)",
   sourceLabel: "MEASURED",
+  // Asset-batch milestone (MEASURED): capture-start to last successful response
+  // in the same exact 16-request batch — see docs/HAR-MILESTONE.md
+  assetBatchElapsedMs: 6_714,
+  assetBatchElapsedMsLabel: "MEASURED",
+  assetBatchElapsedMsNote: "Asset-batch completion, NOT click-to-interactive",
 });
 
 /**

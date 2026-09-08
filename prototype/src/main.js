@@ -127,14 +127,14 @@ function renderComparison() {
 
   const { cold, warm } = baseline;
   const controlCard = armCard("Control — no warming", "control-arm", [
-    { label: "Elapsed", value: fmtMs(cold.elapsedMs), labelTag: cold.elapsedMsLabel },
+    { label: "Elapsed (HAR span)", value: fmtMs(cold.elapsedMs), labelTag: cold.elapsedMsLabel },
     { label: "Wire bytes", value: fmtMB(cold.wireBytes), labelTag: cold.wireBytesLabel },
     { label: "Requests", value: String(cold.requestCount), labelTag: cold.requestCountLabel },
-    { label: "Cache hits", value: String(cold.cacheHits), labelTag: cold.cacheHitsLabel },
+    { label: "Cache hits", value: `${cold.cacheHits} (pre-existing)`, labelTag: cold.cacheHitsLabel },
   ]);
 
   const treatmentCard = armCard("Treatment — cache warmed", "treatment-arm", [
-    { label: "Elapsed", value: fmtMs(warm.elapsedMs), labelTag: warm.elapsedMsLabel },
+    { label: "Elapsed (HAR span)", value: fmtMs(warm.elapsedMs), labelTag: warm.elapsedMsLabel },
     { label: "Wire bytes", value: fmtMB(warm.wireBytes), labelTag: warm.wireBytesLabel },
     { label: "Requests", value: String(warm.requestCount), labelTag: warm.requestCountLabel },
     { label: "Cache hits", value: String(warm.cacheHits), labelTag: warm.cacheHitsLabel },

@@ -9,14 +9,17 @@
 ## Step 0 — Orient the audience (30 seconds)
 
 > "This is a browser-native cache-warming prototype. The goal: reduce
-> game-switch time from 35.5 seconds cold to 6.7 seconds warm — that's a
-> 5.3x improvement — using only standard HTTP caching. No game code changes,
+> game-switch latency using standard HTTP caching — no game code changes,
 > no service worker, no backend."
 
 Point to the **comparison panel** (below the status cards).
 
-> "Both numbers you see — 35.5s cold, 6.7s warm — are labeled MEASURED.
-> They come from real HAR captures, not this simulation."
+> "The numbers you see come from real HAR captures of casino.psk.hr,
+> analyzed by the committed tools/measure_har.py script. They are labeled
+> MEASURED. The elapsed figures are HAR entry spans — first request start
+> to last request end — not click-to-interactive. A prior analysis cited
+> 35.5s/6.7s; that figure's measurement method is not yet reconciled
+> with these HARs, so we are not using it."
 
 ---
 
@@ -26,12 +29,13 @@ Point to the **comparison panel** (below the status cards).
 
 1. Confirm the **"Prefetch enabled"** checkbox is **checked** (leave it checked for now).
 2. Point to the comparison panel's left card: **Control — no warming**.
-   - Elapsed: 35.5s [MEASURED]
+   - Elapsed (HAR span): 76.4s [MEASURED]
    - Wire bytes: 16.6 MB [MEASURED]
-   - Cache hits: 0 [MEASURED]
+   - Cache hits: 27 (pre-existing — HAR was not from a cleared-cache profile) [MEASURED]
 3. Say:
-   > "Without warming, the player waits 35.5 seconds. Every asset — 16.6 MB —
-   > crosses the wire on every cold load. That's the honest baseline."
+   > "Without warming, 16.6 MB crosses the wire. The 27 existing cache hits
+   > mean this was not a truly cold capture — the browser profile already had
+   > some assets. That's what the data says; we're not adjusting it."
 
 ---
 
@@ -46,13 +50,14 @@ Point to the **comparison panel** (below the status cards).
      all labeled SIMULATED.
 2. Wait for COMPLETE.
 3. Point to the comparison panel's right card: **Treatment — cache warmed**.
-   - Elapsed: 6.7s [MEASURED]
+   - Elapsed (HAR span): 16.3s [MEASURED]
    - Wire bytes: 12 KB [MEASURED]
-   - Cache hits: 139/149 [MEASURED]
+   - Cache hits: 140/155 [MEASURED]
 4. Say:
-   > "After warming, 139 of 149 requests are served from cache. 12 KB over
-   > the wire instead of 16.6 MB. The measured improvement is 5.3x.
-   > These are real HAR numbers — not invented for this demo."
+   > "After the cache is warmed, 140 of 155 requests are served from cache.
+   > 12 KB over the wire instead of 16.6 MB — a >99% reduction in transfer.
+   > The HAR span drops from 76 seconds to 16 seconds — 4.7x. These are
+   > real numbers from real HAR captures, not invented for the demo."
 
 ---
 
@@ -144,8 +149,9 @@ ROLLED_BACK   { phase: "ROLLED_BACK", cold: null, warm: null, toggle: null, fail
 
 | Question | Answer |
 |---|---|
-| "Is the 35.5s number real?" | Yes — MEASURED from a HAR capture of casino.psk.hr cold load. |
-| "Is the 6.7s number real?" | Yes — MEASURED from the same game after one cold load populated the cache. |
+| "Is the 76.4s / 16.3s real?" | Yes — MEASURED from casino.psk.hr HAR captures via tools/measure_har.py. These are HAR entry spans (first request → last request), not click-to-interactive. |
+| "What about the 35.5s / 6.7s figures?" | Those came from a prior analysis using an unreconciled measurement method. We cannot confirm or deny them without knowing the exact start/end milestone used. We are not presenting them. |
+| "Why does the cold run show 27 cache hits?" | The HAR was not captured with a cleared browser profile. Some assets were already cached. That's what the data shows and we're reporting it honestly. |
 | "What about staging integration?" | `prototype/src/sandbox.js` defines the integration boundary. Staging URL was unavailable during the hackathon. The architecture is ready. |
 | "What about the exclusion register?" | It's blocking and fail-closed by design (ADR-005). Warming never starts without GRANTED authorization. |
 | "Why no service worker?" | ADR-001: browser-native, no framework. Standard HTTP cache is sufficient and doesn't require install. |

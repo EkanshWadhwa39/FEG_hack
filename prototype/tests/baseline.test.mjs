@@ -36,8 +36,9 @@ describe("COLD_BASELINE", () => {
     assert.ok(COLD_BASELINE.wireBytes > 0, "cold wireBytes must be positive");
   });
 
-  it("has zero cache hits (cold run has no cache)", () => {
-    assert.equal(COLD_BASELINE.cacheHits, 0);
+  it("has 27 cache hits (HAR was not from a cleared-cache session)", () => {
+    // The cold HAR had 27 pre-existing cache hits — not a truly cold profile.
+    assert.equal(COLD_BASELINE.cacheHits, 27);
   });
 
   it("is frozen", () => {
