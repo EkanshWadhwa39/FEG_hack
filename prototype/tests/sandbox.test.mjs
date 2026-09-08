@@ -24,6 +24,7 @@ const manifest = Object.freeze({
   },
 });
 const safeEnvironment = Object.freeze({
+  enabled: true,
   saveData: false,
   effectiveType: "4g",
   visibilityState: "visible",
@@ -107,4 +108,17 @@ test("unknown connection and over-budget treatment states make no requests", asy
     assert.equal(result.status, SandboxStatus.GOVERNOR_BLOCKED);
   }
   assert.equal(requests, 0);
+});
+
+
+test("explicit disablement is never overridden by the sandbox", async () => {
+  let calls = 0;
+  for (const enabled of [false, undefined]) {
+    const result = await runSandboxWarmPhase({ arm: SandboxArm.TREATMENT,
+      authorizationState: AuthorizationState.GRANTED, manifest, target,
+      environment: { ...safeEnvironment, enabled }, requestAsset: async () => { calls += 1; } });
+    assert.equal(result.status, SandboxStatus.GOVERNOR_BLOCKED);
+    assert.equal(result.governorReason, "DISABLED");
+  }
+  assert.equal(calls, 0);
 });

@@ -76,7 +76,6 @@ export async function runSandboxWarmPhase({
 
   const decision = assessPrefetch({
     ...environment,
-    enabled: true,
     nextAssetBytes: planSummary.plannedBytes,
   });
   if (!decision.allowed) {

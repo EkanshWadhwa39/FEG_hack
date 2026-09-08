@@ -76,3 +76,32 @@ test("rejects malformed asset metadata", () => {
     /exact URL/,
   );
 });
+
+import { resolvePreparationIdentity } from "../src/manifest.js";
+const strictTarget = { id: "title-01", build: "synthetic-v1", locale: "hr-HR", tier: "1x" };
+const strictManifest = { id: strictTarget.id, build: strictTarget.build, locales: {
+  "hr-HR": { tiers: { "1x": { assets: [
+    { url: "https://cdn.example.test/title-01/synthetic-v1/hr-HR/1x/a.bin?v=1", version: "1", stage: "COMMON", estimatedBytes: 10 },
+  ] } } },
+} };
+const validateUrl = url => { assert.match(url, /^https:/); };
+
+test("strict content identity resolves title, build, exact variant and version before preparation", () => {
+  const plan = resolvePreparationIdentity(strictManifest, strictTarget, { validateUrl });
+  assert.equal(plan.id, strictTarget.id); assert.equal(plan.build, strictTarget.build);
+  assert.equal(plan.assets[0].url, strictManifest.locales["hr-HR"].tiers["1x"].assets[0].url);
+  for (const key of ["id", "build", "locale", "tier"]) {
+    assert.throws(() => resolvePreparationIdentity(strictManifest, { ...strictTarget, [key]: undefined }, { validateUrl }));
+  }
+  assert.throws(() => resolvePreparationIdentity(strictManifest, { ...strictTarget, build: "other" }, { validateUrl }));
+  assert.throws(() => resolvePreparationIdentity(strictManifest, strictTarget), /boundary/);
+});
+
+test("strict identity rejects missing/mismatched versions, duplicate keys and unbounded bodies atomically", () => {
+  for (const patch of [{ version: undefined }, { version: "2" }, { url: "https://cdn.example.test/a" },
+    { url: "https://cdn.example.test/a?v=1&v=2" }, { url: "https://cdn.example.test/{build}/a?v=1" }, { estimatedBytes: 0 }]) {
+    const manifest = structuredClone(strictManifest);
+    Object.assign(manifest.locales["hr-HR"].tiers["1x"].assets[0], patch);
+    assert.throws(() => resolvePreparationIdentity(manifest, strictTarget, { validateUrl }));
+  }
+});

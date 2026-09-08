@@ -64,3 +64,39 @@ export function resolveManifest(manifest, { locale, tier } = {}) {
     assets: Object.freeze(assets),
   });
 }
+
+/** Strict content-loading interface layered on the original locale/tier resolver.
+ * A source adapter provides exact immutable version metadata; never infer a build,
+ * locale, tier, version or URL from a display name or the browser defaults.
+ */
+export function resolvePreparationIdentity(manifest, target, { validateUrl } = {}) {
+  requireRecord(target, "target");
+  for (const key of ["id", "build", "locale", "tier"]) {
+    if (typeof target[key] !== "string" || !target[key] || /[{}\s]/.test(target[key])) {
+      throw new TypeError(`unresolved target ${key}`);
+    }
+  }
+  if (manifest?.id !== target.id || manifest?.build !== target.build) {
+    throw new RangeError("title/build identity mismatch");
+  }
+  const plan = resolveManifest(manifest, target);
+  if (!plan.assets.length) throw new RangeError("no eligible startup assets");
+  const seen = new Set();
+  for (const asset of plan.assets) {
+    if (/[{}]/.test(asset.url) || !Number.isSafeInteger(asset.estimatedBytes) || asset.estimatedBytes <= 0) {
+      throw new TypeError("unresolved asset identity or body bound");
+    }
+    const url = new URL(asset.url);
+    // Exact immutable version contract. A real adapter may supply content-hash
+    // identity instead of a query; validate it explicitly, not by guessing.
+    if (typeof asset.version !== "string" || !asset.version
+        || !(url.searchParams.getAll("v").length === 1 && url.searchParams.get("v") === asset.version)) {
+      throw new TypeError("unresolved versioned URL");
+    }
+    if (seen.has(asset.url)) throw new RangeError("duplicate exact asset URL");
+    seen.add(asset.url);
+    if (typeof validateUrl !== "function") throw new TypeError("URL validation boundary required");
+    validateUrl(asset.url);
+  }
+  return Object.freeze({ ...plan, id: target.id, build: target.build });
+}
