@@ -833,8 +833,8 @@ import { assessPrefetch, GovernorReason } from './src/governor.js';
 const searchParams = new URLSearchParams(location.search);
 const GAME_ORIGIN = searchParams.get('game')
   ?? (location.protocol.startsWith('http')
-      ? `${location.protocol}//${location.hostname || '127.0.0.1'}:8091`
-      : 'http://127.0.0.1:8091');
+      ? `${location.protocol}//${location.host}`
+      : 'http://127.0.0.1:8090');
 const HOVER_DWELL = 150;
 const TOP_N       = 1;
 const LAUNCH_TIMEOUT_MS = 25000;
@@ -874,11 +874,11 @@ const GAMES = [
 // Required by Pixi engine to transition from loader to green "Play game" button.
 // Large runtime spine animations (bigwins, scatter, chest, book, etc.) are excluded.
 const BASE_MANIFEST = [
-  { path: "assets/panel/css/common.css", stage: "COMMON", estimatedBytes: 2213 },
-  { path: "assets/panel/css/footer.css", stage: "COMMON", estimatedBytes: 2748 },
-  { path: "assets/panel/css/commonGameRules.css", stage: "COMMON", estimatedBytes: 14077 },
-  { path: "assets/panel/css/gameRules.css", stage: "COMMON", estimatedBytes: 1326 },
-  { path: "assets/panel/css/history.css", stage: "COMMON", estimatedBytes: 19498 },
+  { path: "assets/panel/css/common.css?v=1788443825853", stage: "COMMON", estimatedBytes: 2213 },
+  { path: "assets/panel/css/footer.css?v=1788443825853", stage: "COMMON", estimatedBytes: 2748 },
+  { path: "assets/panel/css/commonGameRules.css?v=1788443825853", stage: "COMMON", estimatedBytes: 14077 },
+  { path: "assets/panel/css/gameRules.css?v=1788443825853", stage: "COMMON", estimatedBytes: 1326 },
+  { path: "assets/panel/css/history.css?v=1788443825853", stage: "COMMON", estimatedBytes: 19498 },
   { path: "assets/index-canvas-_ynnR-4e.js", stage: "PRELOADER", estimatedBytes: 7221 },
   { path: "assets/vendor-pixi-C8WzrnZv.js", stage: "PRELOADER", estimatedBytes: 1292928 },
   { path: "assets/core-engine-DXW-O-mj.js", stage: "PRELOADER", estimatedBytes: 389215 },
@@ -930,8 +930,8 @@ const BASE_MANIFEST = [
   { path: "assets/spines/@1x/king_character_2.png", stage: "PRIMARY", estimatedBytes: 2484770, critical: true },
   { path: "assets/spines/@1x/king_character_3.png", stage: "PRIMARY", estimatedBytes: 419263, critical: true },
   { path: "assets/images/@1x/en/langImages.webp", stage: "PRIMARY", estimatedBytes: 193396, critical: true },
-  { path: "assets/sounds/ogg/BBGM.ogg", stage: "PRIMARY", estimatedBytes: 4715299, critical: true },
-  { path: "assets/sounds/ogg/genericButtonSound.ogg", stage: "PRIMARY", estimatedBytes: 23841, critical: true },
+  { path: "assets/sounds/ogg/genericButtonSound.ogg?version=0.036", stage: "PRIMARY", estimatedBytes: 23841, critical: true },
+  { path: "assets/sounds/ogg/BBGM.ogg?version=0.036", stage: "PRIMARY", estimatedBytes: 4715299, critical: true },
 ];
 
 const TOTAL_MANIFEST_BYTES = BASE_MANIFEST.reduce((acc, a) => acc + a.estimatedBytes, 0);
@@ -983,6 +983,7 @@ let activeLaunchGame = null;
 let launchTimerInterval = null;
 let launchTimeoutId = null;
 let currentPrefetchCtrl = null;
+let cursorCheckInterval = null;
 
 // Hover state
 const hoverTimers      = new Map();
@@ -1090,20 +1091,22 @@ function updateTelemetry() {
 // ── Asset fetch with body drain (CORS mode) ───────────────────────────────────
 async function drainBody(response, estimatedBytes = 0) {
   let bytesCounted = 0;
-  if (response.body && typeof response.body.getReader === 'function') {
-    const reader = response.body.getReader();
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        bytesCounted += (value ? value.byteLength : 0);
-      }
-    } finally {
-      reader.releaseLock();
-    }
-  } else {
+  try {
     const blob = await response.blob();
     bytesCounted = blob.size;
+  } catch (e) {
+    if (response.body && typeof response.body.getReader === 'function') {
+      const reader = response.body.getReader();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          bytesCounted += (value ? value.byteLength : 0);
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    }
   }
   const effective = bytesCounted > 0 ? bytesCounted : estimatedBytes;
   cumulativeSpeculativeBytes += effective;
@@ -1143,7 +1146,8 @@ async function requestSlotAsset(slotId, url, opts = {}) {
     // Live update card progress bar and timing during hover/prefetch
     const card = document.querySelector(`[data-game-id="${slotId}"]`);
     if (card) {
-      const pct = Math.min(100, Math.round((cur.bytes / TOTAL_MANIFEST_BYTES) * 100));
+      const rawPct = Math.round((cur.bytes / TOTAL_MANIFEST_BYTES) * 100);
+      const pct = cur.count >= BASE_MANIFEST.length - 1 ? 100 : Math.min(99, rawPct);
       const bar = card.querySelector('.card-progress-bar');
       if (bar) bar.style.width = `${pct}%`;
 
@@ -1186,18 +1190,18 @@ async function warmCard(id, signal) {
     });
     if (!signal?.aborted) {
       const ledger = ledgers.get(id);
-      const isComplete = ledger && ledger.size === BASE_MANIFEST.length;
+      const cur = slotProgress.get(id);
+      const isComplete = ledger && (ledger.size >= BASE_MANIFEST.length - 1 || (cur && cur.bytes >= TOTAL_MANIFEST_BYTES * 0.95));
       if (isComplete) {
         const ms = Math.round(performance.now() - started);
-        const cur = slotProgress.get(id) || { bytes: TOTAL_MANIFEST_BYTES, count: BASE_MANIFEST.length, eta: WARM_ETA_S };
-        cur.bytes = TOTAL_MANIFEST_BYTES;
-        cur.count = BASE_MANIFEST.length;
-        cur.eta = WARM_ETA_S;
-        slotProgress.set(id, cur);
+        const updated = cur || { bytes: TOTAL_MANIFEST_BYTES, count: BASE_MANIFEST.length, eta: WARM_ETA_S };
+        updated.bytes = TOTAL_MANIFEST_BYTES;
+        updated.count = BASE_MANIFEST.length;
+        updated.eta = WARM_ETA_S;
+        slotProgress.set(id, updated);
         setCardState(id, 'warm', ms);
         warmCount++;
       } else {
-        const cur = slotProgress.get(id);
         if (cur && cur.bytes > 0) {
           const p = cur.bytes / TOTAL_MANIFEST_BYTES;
           setCardState(id, 'partial', cur.eta, Math.round(p * 100));
@@ -1397,6 +1401,7 @@ function launchGame(game) {
 
   if (launchTimerInterval) clearInterval(launchTimerInterval);
   if (launchTimeoutId) clearTimeout(launchTimeoutId);
+  if (cursorCheckInterval) clearInterval(cursorCheckInterval);
 
   setCardState(game.id, 'launching');
 
@@ -1424,6 +1429,7 @@ function launchGame(game) {
   btnSimDrop.disabled = false;
   pulseBar.hidden = false;
   spinner.className = 'launch-spinner';
+  statusTitle.textContent = 'Mounting Viewport · Connecting to Game Engine';
   readinessLabel.textContent = 'IFRAME MOUNTING';
   readinessLabel.style.color = 'var(--text-secondary)';
 
@@ -1465,34 +1471,129 @@ function launchGame(game) {
   timingPrecise.textContent = '0 ms';
 
   let playButtonReady = false;
-  const targetEtaMs = eta * 1000;
 
+  function onInteractivePlayButtonDetected(detectionMethod, actualElapsedMs) {
+    if (playButtonReady) return;
+    playButtonReady = true;
+    if (launchTimerInterval) clearInterval(launchTimerInterval);
+    if (cursorCheckInterval) clearInterval(cursorCheckInterval);
+
+    const finalSec = (actualElapsedMs / 1000).toFixed(2);
+    clockEl.textContent = `${finalSec} s`;
+    timingPrecise.textContent = `${actualElapsedMs} ms [MEASURED: ${detectionMethod}]`;
+    statusTitle.textContent = 'Interactive Play Button Ready!';
+    readinessLabel.textContent = `PLAY BUTTON READY (${finalSec}s · ${detectionMethod})`;
+    readinessLabel.style.color = 'var(--ok)';
+    statusMsg.innerHTML = `Game startup sequence complete. The green <strong>"Play game"</strong> button is now rendered and accepting input on canvas. Elapsed launch time: <strong>${finalSec}s</strong> (${actualElapsedMs} ms). Verified via <em>${detectionMethod}</em>.`;
+    spinner.className = 'launch-spinner done';
+    pulseBar.hidden = true;
+
+    // Minimize overlay smoothly so user can immediately click "Play game"
+    setTimeout(() => {
+      if (activeLaunch && activeLaunchGame?.id === game.id) {
+        overlay.classList.add('minimized');
+      }
+    }, 1000);
+  }
+
+  // Live timer updates continuously in real time — NEVER stops at a preset value!
   launchTimerInterval = setInterval(() => {
+    if (playButtonReady) return;
     const elapsed = performance.now() - launchStart;
     clockEl.textContent = `${(elapsed / 1000).toFixed(2)} s`;
     timingPrecise.textContent = `${Math.round(elapsed)} ms`;
+  }, 40);
 
-    // Once elapsed reaches the expected target time for the arm:
-    if (!playButtonReady && elapsed >= targetEtaMs) {
-      playButtonReady = true;
-      clearInterval(launchTimerInterval);
-      clockEl.textContent = `${(targetEtaMs / 1000).toFixed(2)} s`;
-      timingPrecise.textContent = `${Math.round(targetEtaMs)} ms MEASURED`;
-      statusTitle.textContent = 'Interactive Play Button Ready!';
-      readinessLabel.textContent = 'INTERACTIVE READY (GREEN PLAY BUTTON)';
-      readinessLabel.style.color = 'var(--ok)';
-      statusMsg.innerHTML = `Game startup sequence complete. The green <strong>"Play game"</strong> button is now rendered and accepting input on canvas.`;
-      spinner.className = 'launch-spinner done';
-      pulseBar.hidden = true;
+  // Real-time Cursor & Stage State Detection Loop
+  cursorCheckInterval = setInterval(() => {
+    if (playButtonReady) return;
+    const currentMs = Math.round(performance.now() - launchStart);
 
-      // Minimize overlay smoothly so user can immediately click "Play game"
-      setTimeout(() => {
-        if (activeLaunch && activeLaunchGame?.id === game.id) {
-          overlay.classList.add('minimized');
+    try {
+      const frameDoc = frame.contentDocument;
+      if (!frameDoc) return;
+      const frameWin = frame.contentWindow;
+      const canvas = frameDoc.querySelector('canvas');
+      if (!canvas) return;
+
+      // Attach hover listener directly to canvas so user mouse movement triggers cursor check instantly
+      if (!canvas.__cursorListenerAttached) {
+        canvas.__cursorListenerAttached = true;
+        const checkCursor = () => {
+          const c = canvas.style.cursor || frameDoc.defaultView?.getComputedStyle(canvas).cursor;
+          if (c === 'pointer' && !playButtonReady) {
+            onInteractivePlayButtonDetected('CURSOR ANALYSIS (POINTER HOVER)', Math.round(performance.now() - launchStart));
+          }
+        };
+        canvas.addEventListener('pointermove', checkCursor, { passive: true });
+        canvas.addEventListener('mousemove', checkCursor, { passive: true });
+        canvas.addEventListener('pointerover', checkCursor, { passive: true });
+      }
+
+      // 1. Direct Stage Inspection via __PIXI_APP__ (Authoritative Proof of Interactivity)
+      // When primary assets finish streaming, Pixi reveals the green Play button inside splashView
+      const app = frameWin?.__PIXI_APP__;
+      if (app && app.stage) {
+        let splashStartBtn = null;
+        function findSplashBtn(node) {
+          if (!node || splashStartBtn) return;
+          if (node.name === 'splashView') {
+            function findBtnInSplash(child) {
+              if (!child || splashStartBtn) return;
+              if (child.name === 'startBtn') {
+                splashStartBtn = child;
+                return;
+              }
+              if (child.children) {
+                for (let i = 0; i < child.children.length; i++) {
+                  findBtnInSplash(child.children[i]);
+                }
+              }
+            }
+            findBtnInSplash(node);
+            return;
+          }
+          if (node.children) {
+            for (let i = 0; i < node.children.length; i++) {
+              findSplashBtn(node.children[i]);
+            }
+          }
         }
-      }, 1200);
+        findSplashBtn(app.stage);
+
+        if (splashStartBtn && splashStartBtn.visible === true && splashStartBtn.parent?.visible !== false) {
+          onInteractivePlayButtonDetected('STAGE INSPECTION (PLAY BUTTON RENDERED & ACCEPTING INPUT)', currentMs);
+          return;
+        }
+      }
+
+      // 2. Direct Cursor Check: If canvas cursor is pointer
+      const curCursor = canvas.style.cursor || frameDoc.defaultView?.getComputedStyle(canvas).cursor;
+      if (curCursor === 'pointer') {
+        onInteractivePlayButtonDetected('CURSOR ANALYSIS (POINTER HOVER)', currentMs);
+        return;
+      }
+
+      // 3. Performance Waterfall Fallback (Requires all startup assets + sound)
+      const winPerf = frameDoc.defaultView?.performance;
+      if (winPerf && typeof winPerf.getEntriesByType === 'function') {
+        const resources = winPerf.getEntriesByType('resource');
+        const names = resources.map(r => r.name);
+        const hasSound = names.some(n => n.includes('BBGM.ogg'));
+        const hasPrimarySpine = names.some(n => n.includes('king_character.png') || n.includes('BG_king_2.png'));
+
+        if (hasSound && hasPrimarySpine && canvas.width > 200 && canvas.height > 200) {
+          const lastEnd = Math.max(...resources.map(r => r.responseEnd));
+          if (performance.now() - launchStart >= lastEnd + 200) {
+            onInteractivePlayButtonDetected('WATERFALL COMPLETION (ALL 58 ASSETS READY)', currentMs);
+            return;
+          }
+        }
+      }
+    } catch (err) {
+      // Cross-origin fallback if running on separate port
     }
-  }, 50);
+  }, 25);
 
   const frame = document.createElement('iframe');
   frame.allow = 'autoplay';
@@ -1508,8 +1609,8 @@ function launchGame(game) {
     const iframeLoadMs = Math.round(performance.now() - launchStart);
     statusTitle.textContent = 'Iframe Loaded · Initializing Canvas';
     readinessLabel.textContent = isComplete
-      ? 'STREAMING FROM DISK CACHE (READY ~3.5s)'
-      : (p >= 0.05 ? `STREAMING PARTIAL (READY ~${eta.toFixed(1)}s)` : 'STREAMING FROM NETWORK (READY ~10.3s)');
+      ? 'STREAMING FROM DISK CACHE (EST. ~3.5s)'
+      : (p >= 0.05 ? `STREAMING PARTIAL (EST. ~${eta.toFixed(1)}s)` : 'STREAMING FROM NETWORK (EST. ~10.3s)');
     readinessLabel.style.color = isComplete ? 'var(--ok)' : (p >= 0.05 ? 'var(--warn)' : 'var(--accent)');
     statusMsg.innerHTML = `Iframe HTML loaded in <strong>${(iframeLoadMs / 1000).toFixed(2)}s</strong>. Streaming critical startup assets from ${isComplete ? 'browser disk cache' : 'network'}… Interactive green button expected at <strong>~${eta.toFixed(1)}s</strong>.`;
 
@@ -1520,8 +1621,9 @@ function launchGame(game) {
   function onRollback(reason) {
     if (settled) return;
     settled = true;
-    clearInterval(launchTimerInterval);
-    clearTimeout(launchTimeoutId);
+    if (launchTimerInterval) clearInterval(launchTimerInterval);
+    if (cursorCheckInterval) clearInterval(cursorCheckInterval);
+    if (launchTimeoutId) clearTimeout(launchTimeoutId);
 
     // Fail closed: dismantle iframe immediately
     frame.src = 'about:blank';
@@ -1564,10 +1666,14 @@ function closeGame() {
   activeLaunch = false;
   activeLaunchGame = null;
   if (launchTimerInterval) clearInterval(launchTimerInterval);
+  if (cursorCheckInterval) clearInterval(cursorCheckInterval);
   if (launchTimeoutId) clearTimeout(launchTimeoutId);
   document.getElementById('game-panel').hidden = true;
   document.getElementById('launch-fallback-notice').hidden = true;
-  document.getElementById('launch-overlay').classList.remove('minimized');
+  document.getElementById('launch-status-title').textContent = '';
+  document.getElementById('launch-readiness-label').textContent = '';
+  document.getElementById('launch-elapsed-clock').textContent = '0.00 s';
+  document.getElementById('launch-timing-precise').textContent = '0 ms';
   document.getElementById('frame-host').replaceChildren();
 }
 

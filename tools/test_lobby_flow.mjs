@@ -43,7 +43,7 @@ async function run() {
   await cdp.send('Network.enable');
 
   cdp.on('Network.requestWillBeSent', (event) => {
-    if (event.request.url.includes('8091') && event.request.url.includes('assets/')) {
+    if (event.request.url.includes('/game/') && event.request.url.includes('assets/')) {
       const req = {
         id: event.requestId,
         url: event.request.url.split('/').pop(),

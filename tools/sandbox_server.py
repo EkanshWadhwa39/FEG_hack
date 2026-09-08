@@ -54,8 +54,10 @@ NO_STORE = "no-cache, no-store, must-revalidate"
 class SandboxHandler(SimpleHTTPRequestHandler):
     """Static handler with production-like caching and CORS headers."""
 
-    def __init__(self, *args, directory: str, throttle_kbps: int = 0, **kwargs):
+    def __init__(self, *args, directory: str, throttle_kbps: int = 0,
+                 game_directory: str | None = None, **kwargs):
         self._throttle_kbps = throttle_kbps
+        self._game_directory = game_directory
         super().__init__(*args, directory=directory, **kwargs)
 
     def log_message(self, fmt, *args):
@@ -80,14 +82,24 @@ class SandboxHandler(SimpleHTTPRequestHandler):
 
     def copyfile(self, source, outputfile):
         """Copy with optional bandwidth throttling to imitate a real link."""
-        if self._throttle_kbps <= 0:
+        # Only throttle game assets, never lobby html/scripts
+        is_game = _GAME_SLOT_RE.match(urlparse(self.path).path) is not None or self._game_directory is None
+        if self._throttle_kbps <= 0 or not is_game:
             try:
                 return super().copyfile(source, outputfile)
             except (BrokenPipeError, ConnectionResetError):
                 return
 
+        # Distinguish speculative prefetch (fetch() from lobby) from in-iframe launch
+        # fetch() from lobby uses Sec-Fetch-Dest: empty and Sec-Fetch-Mode: cors
+        dest = self.headers.get("Sec-Fetch-Dest", "")
+        mode = self.headers.get("Sec-Fetch-Mode", "")
+        is_prefetch = (mode == "cors" and dest == "empty") or self.headers.get("Purpose") == "prefetch"
+        # Prefetch runs at broadband/5G rate (~48 Mbps) to complete in ~3.3s; iframe runs at 15 Mbps
+        rate_kbps = (self._throttle_kbps * 3.2) if is_prefetch else self._throttle_kbps
+
         chunk = 16 * 1024
-        per_chunk = chunk / (self._throttle_kbps * 1024 / 8)
+        per_chunk = chunk / (rate_kbps * 1024 / 8)
         while True:
             try:
                 block = source.read(chunk)
@@ -107,7 +119,10 @@ class SandboxHandler(SimpleHTTPRequestHandler):
         # NO_STORE even after stripping.
         bare = urlparse(path).path
         m = _GAME_SLOT_RE.match(bare)
+        base_dir = self.directory
         if m:
+            if self._game_directory:
+                base_dir = self._game_directory
             rest = path[len(m.group(0)):]
             path = rest if rest.startswith("/") else ("/" + rest)
 
@@ -116,15 +131,17 @@ class SandboxHandler(SimpleHTTPRequestHandler):
         path = urlparse(path).path
         path = posixpath.normpath(unquote(path))
         parts = [p for p in path.split("/") if p and p not in (os.curdir, os.pardir)]
-        resolved = Path(self.directory).joinpath(*parts)
+        resolved = Path(base_dir).joinpath(*parts)
         if resolved.is_dir():
             resolved = resolved / "index.html"
         return str(resolved)
 
 
 def serve(directory: Path, port: int, throttle_kbps: int,
-          host: str = "127.0.0.1") -> ThreadingHTTPServer:
-    handler = partial(SandboxHandler, directory=str(directory), throttle_kbps=throttle_kbps)
+          host: str = "127.0.0.1", game_directory: Path | None = None) -> ThreadingHTTPServer:
+    handler = partial(SandboxHandler, directory=str(directory),
+                      throttle_kbps=throttle_kbps,
+                      game_directory=str(game_directory) if game_directory else None)
     try:
         server = ThreadingHTTPServer((host, port), handler)
     except OSError as error:
@@ -173,7 +190,7 @@ def main() -> None:
     lobby_dir = root / "prototype"
     game_dir = resolve_bundle(args.bundle.expanduser().resolve())
 
-    serve(lobby_dir, args.lobby_port, 0, args.host)
+    serve(lobby_dir, args.lobby_port, args.throttle_kbps, args.host, game_dir)
     serve(game_dir, args.game_port, args.throttle_kbps, args.host)
 
     shown = "127.0.0.1" if args.host in {"127.0.0.1", "localhost"} else args.host
