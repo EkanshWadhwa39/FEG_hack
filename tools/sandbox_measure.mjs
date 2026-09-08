@@ -9,6 +9,12 @@
  *   bytes   — CDP Network.loadingFinished encodedDataLength, real wire bytes.
  *   millis  — lobby click to the declared milestone.
  *
+ * Two milestones are reported:
+ *   engine-canvas   first <canvas> inside #gameStage — the engine is rendering.
+ *   assets-quiet    2s with no further response from the game origin — the
+ *                   package has finished streaming. This is the one that
+ *                   matches what a human watching the spinner experiences.
+ *
  * MILESTONE, stated precisely: the first <canvas> appearing inside #gameStage,
  * i.e. the engine has started and is rendering. This is NOT "playable" and is
  * NOT "interactive". The package's backend (api.spiniq.io) and its
@@ -40,7 +46,7 @@ function parseArgs(argv) {
   return args;
 }
 
-async function runArm({ lobby, game, warmUrls }) {
+async function runArm({ lobby, game, warm }) {
   const browser = await chromium.launch();
   try {
     const context = await browser.newContext();
@@ -62,10 +68,13 @@ async function runArm({ lobby, game, warmUrls }) {
       if (!record || !record.url.startsWith(game)) return;
       if (event.response.status === 200) discovered.add(record.url);
     });
+    let lastResponseAt = null;
     cdp.on("Network.loadingFinished", (event) => {
       const record = requests.get(event.requestId);
       if (!record || !record.url.startsWith(game)) return;
-      if (record.phase !== "launch" || event.encodedDataLength <= 0) return;
+      if (record.phase !== "launch") return;
+      lastResponseAt = Date.now();
+      if (event.encodedDataLength <= 0) return;
       bytes += event.encodedDataLength;
       responses += 1;
     });
@@ -73,10 +82,13 @@ async function runArm({ lobby, game, warmUrls }) {
     await page.goto(`${lobby}/sandbox.html?game=${encodeURIComponent(game)}`,
       { waitUntil: "load", timeout: 30_000 });
 
-    if (warmUrls?.length) {
-      await page.evaluate((urls) => { window.__WARM_MANIFEST__ = urls; }, warmUrls);
+    if (warm) {
+      // Drive the page's own controls, so the measurement covers the real
+      // product path: manifest discovery, policy, governor, then warmer.
+      await page.check("#override");
+      await page.waitForSelector("#warm:not([disabled])", { timeout: 30_000 });
       await page.click("#warm");
-      await page.waitForFunction(() => window.__WARM_DONE__ > 0, null, { timeout: 120_000 });
+      await page.waitForFunction(() => window.__WARM_DONE__ > 0, null, { timeout: 300_000 });
     }
 
     phase = "launch";
@@ -96,7 +108,10 @@ async function runArm({ lobby, game, warmUrls }) {
     // must outlast a throttled link, or discovery misses the tail of the
     // manifest and the warm arm under-warms.
     await page.waitForTimeout(Number(process.env.SANDBOX_SETTLE_MS ?? 25_000));
-    return { bytes, responses, millis, discovered: [...discovered] };
+
+    // assets-quiet: when the game origin stopped responding for 2s.
+    const quietMillis = lastResponseAt ? (lastResponseAt + 2_000) - started : null;
+    return { bytes, responses, millis, quietMillis, discovered: [...discovered] };
   } finally {
     await browser.close();
   }
@@ -105,24 +120,23 @@ async function runArm({ lobby, game, warmUrls }) {
 const { runs, lobby, game } = parseArgs(process.argv.slice(2));
 const controls = [];
 const treatments = [];
-let warmUrls = null;
 
 for (let run = 1; run <= runs; run += 1) {
-  const control = await runArm({ lobby, game, warmUrls: null });
+  const control = await runArm({ lobby, game, warm: false });
   controls.push(control);
   console.log(
     `control run ${run}    bytes=${control.bytes.toLocaleString().padStart(11)} `
     + `responses=${String(control.responses).padStart(3)} `
-    + `milestone=${control.millis ?? "MISSED"}ms`,
+    + `canvas=${control.millis ?? "MISSED"}ms `
+    + `assets-quiet=${control.quietMillis ?? "n/a"}ms`,
   );
-  if (!warmUrls) warmUrls = control.discovered;
-
-  const treatment = await runArm({ lobby, game, warmUrls });
+  const treatment = await runArm({ lobby, game, warm: true });
   treatments.push(treatment);
   console.log(
     `treatment run ${run}  bytes=${treatment.bytes.toLocaleString().padStart(11)} `
     + `responses=${String(treatment.responses).padStart(3)} `
-    + `milestone=${treatment.millis ?? "MISSED"}ms`,
+    + `canvas=${treatment.millis ?? "MISSED"}ms `
+    + `assets-quiet=${treatment.quietMillis ?? "n/a"}ms`,
   );
 }
 
@@ -137,9 +151,13 @@ const cm = median(controls.map((r) => r.millis));
 const tm = median(treatments.map((r) => r.millis));
 
 console.log(`\n--- median of ${runs} run(s) ---`);
-console.log(`warmed manifest:   ${warmUrls?.length ?? 0} assets`);
 console.log(`bytes   control ${cb?.toLocaleString()} -> treatment ${tb?.toLocaleString()}`
   + (cb ? `  (${((1 - tb / cb) * 100).toFixed(1)}% less)` : ""));
 console.log(`to engine-canvas   control ${cm}ms -> treatment ${tm}ms`
   + (cm && tm ? `  (${((1 - tm / cm) * 100).toFixed(1)}% faster)` : ""));
+
+const cq = median(controls.map((r) => r.quietMillis));
+const tq = median(treatments.map((r) => r.quietMillis));
+console.log(`to assets-quiet    control ${cq}ms -> treatment ${tq}ms`
+  + (cq && tq ? `  (${((1 - tq / cq) * 100).toFixed(1)}% faster)` : ""));
 console.log("\nMilestone is engine-canvas-present, not playable and not interactive.");

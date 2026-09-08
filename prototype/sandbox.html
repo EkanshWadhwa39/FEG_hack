@@ -13,21 +13,57 @@
         <h1>Cold vs warm launch</h1>
         <p class="lede">
           Launches the FEG-provided game package, served unmodified from a
-          separate origin. Warming is performed by the prototype's own warmer
-          before the iframe is created.
+          separate origin. Hovering or keyboard-focusing a tile expresses intent;
+          the governor decides whether to spend bytes; warming is done by the
+          prototype's own warmer before the iframe is created.
         </p>
         <div class="banner" role="note">
           <span class="label simulated">SANDBOX</span>
-          <span>Local hosts, no provider backend. The game reaches engine start, not playable.</span>
+          <span>
+            No provider backend. The game reaches engine start, not playable —
+            its preloader never clears because <code>api.spiniq.io</code> is unreachable.
+          </span>
         </div>
       </header>
 
-      <section class="panel">
-        <div class="panel-head"><h2>Controls</h2></div>
+      <section class="panel" aria-labelledby="lobby-title">
+        <div class="panel-head">
+          <div><p class="eyebrow">Lobby</p><h2 id="lobby-title">Games</h2></div>
+          <span class="label simulated">SIMULATED TILES</span>
+        </div>
+        <p class="empty-state">
+          Tiles render immediately and fill in as content arrives. Hover or tab
+          onto one for 150&nbsp;ms to express intent.
+        </p>
+        <ul id="grid" class="results" role="list" aria-busy="true"></ul>
+        <p id="grid-status" class="visually-hidden" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="panel" aria-labelledby="cache-title">
+        <div class="panel-head">
+          <div><p class="eyebrow">Cache</p><h2 id="cache-title">Warm state</h2></div>
+        </div>
+        <dl class="metrics">
+          <div><dt>Manifest</dt><dd id="m-manifest">loading…</dd></div>
+          <div><dt>Intent (dwell)</dt><dd id="m-dwell">none</dd></div>
+          <div><dt>Governor</dt><dd id="m-gov" data-flag="UNKNOWN">—</dd></div>
+          <div><dt>Warmed</dt><dd id="m-warm">no</dd></div>
+        </dl>
         <div class="demo-controls">
-          <button id="warm" type="button">Warm cache first</button>
+          <button id="warm" type="button">Warm now</button>
           <button id="launch" type="button" class="primary">Launch game</button>
           <button id="reset" type="button">Reset</button>
+        </div>
+        <div class="pref-row" style="margin-top:14px">
+          <span>
+            <strong><label for="override">Ignore governor (demo only)</label></strong>
+            <small>
+              The governor fails closed when the browser reports no connection
+              information, which is normal on localhost. This override exists so
+              the demo can proceed, and is never shipped.
+            </small>
+          </span>
+          <input id="override" type="checkbox">
         </div>
         <p id="status" class="empty-state" role="status" aria-live="polite">Idle.</p>
       </section>
@@ -39,52 +75,146 @@
     </main>
 
     <script type="module">
+      import { createDwellTracker } from "./src/dwell.js";
+      import { selectWarmCandidates } from "./src/prefetch-policy.js";
+      import { planProgressiveRender, applyProgressiveRender } from "./src/progressive.js";
+      import { assessPrefetch } from "./src/governor.js";
       import { warmAssets } from "./src/warmer.js";
 
-      const GAME_ORIGIN = new URLSearchParams(location.search).get("game")
-        ?? "http://127.0.0.1:8091";
-      const statusEl = document.getElementById("status");
-      const host = document.getElementById("frame-host");
+      const GAME = new URLSearchParams(location.search).get("game") ?? "http://127.0.0.1:8091";
+      const $ = (id) => document.getElementById(id);
+      const grid = $("grid");
 
-      // Populated by the measurement tool; empty means "nothing to warm".
-      window.__WARM_MANIFEST__ = window.__WARM_MANIFEST__ ?? [];
+      // One real package, presented as a small catalogue. Only the first tile
+      // maps to the served bundle; the rest exist to exercise intent and
+      // progressive rendering, and are labelled as simulated in the UI.
+      const CATALOGUE = [
+        { id: "empireofgold", title: "Empire of Gold", provider: "Provider A", real: true },
+        { id: "savanna", title: "Savanna Sunrise Deluxe", provider: "Provider A" },
+        { id: "zezelj", title: "Žeželj Gold", provider: "Provider B" },
+        { id: "sunset", title: "Sunset Reels", provider: "Provider B" },
+      ];
 
-      document.getElementById("warm").addEventListener("click", async () => {
-        const urls = window.__WARM_MANIFEST__;
-        if (urls.length === 0) { statusEl.textContent = "No manifest supplied."; return; }
-        statusEl.textContent = `Warming ${urls.length} assets…`;
+      const dwell = createDwellTracker();
+      let manifest = null;
+      let warmed = [];
+      let recents = ["empireofgold"];   // synthetic session history
+
+      function renderTile(item) {
+        const li = document.createElement("li");
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.gameId = item.id;
+        const title = document.createElement("span");
+        title.className = "game-title";
+        title.textContent = item.real ? item.title : `${item.title} (SIMULATED)`;
+        const provider = document.createElement("span");
+        provider.className = "game-provider";
+        provider.textContent = item.provider;
+        button.append(title, provider);
+
+        // Pointer and keyboard are credited identically.
+        button.addEventListener("mouseenter", () => dwell.enter(item.id));
+        button.addEventListener("mouseleave", () => dwell.leave(item.id));
+        button.addEventListener("focus", () => dwell.enter(item.id));
+        button.addEventListener("blur", () => dwell.leave(item.id));
+        li.append(button);
+        return li;
+      }
+
+      // Progressive rendering: shell first, tiles fill in.
+      let loaded = [];
+      function paint(settled) {
+        const plan = planProgressiveRender({
+          expectedCount: CATALOGUE.length, items: loaded, settled,
+        });
+        applyProgressiveRender(grid, plan, renderTile);
+        if (plan.announcement) $("grid-status").textContent = plan.announcement;
+      }
+      paint(false);
+      CATALOGUE.forEach((item, index) => setTimeout(() => {
+        loaded = CATALOGUE.slice(0, index + 1);
+        paint(index === CATALOGUE.length - 1);
+      }, 250 * (index + 1)));
+
+      fetch(`${GAME}/warm-manifest.json`).then((r) => r.json()).then((data) => {
+        manifest = data;
+        $("m-manifest").textContent =
+          `${data.warmFiles} files · ${(data.warmBytes / 1048576).toFixed(1)} MB`;
+      }).catch(() => { $("m-manifest").textContent = "unavailable"; });
+
+      function currentDecision() {
+        const connection = navigator.connection ?? {};
+        const pick = selectWarmCandidates({
+          dwellCandidates: dwell.snapshot(), recents, alreadyWarm: warmed,
+        });
+        const bytes = manifest?.warmBytes ?? 0;
+        const governor = $("override").checked
+          ? { allowed: true, reason: "OVERRIDDEN_FOR_DEMO" }
+          : assessPrefetch({
+              enabled: true,
+              saveData: connection.saveData,
+              effectiveType: connection.effectiveType,
+              visibilityState: document.visibilityState,
+              byteBudget: 32 * 1048576,
+              bytesUsed: 0,
+              nextAssetBytes: bytes,
+            });
+        return { pick, governor };
+      }
+
+      setInterval(() => {
+        const { pick, governor } = currentDecision();
+        const top = dwell.strongest();
+        $("m-dwell").textContent = top ? `${top.gameId} (${top.score}ms)` : "none";
+        $("m-gov").textContent = governor.allowed ? "ALLOW" : governor.reason;
+        $("m-gov").dataset.flag = governor.allowed ? "NORMAL" : "ELEVATED";
+        $("warm").disabled = !governor.allowed || !manifest || pick.candidates.length === 0;
+      }, 300);
+
+      $("warm").addEventListener("click", async () => {
+        const { pick, governor } = currentDecision();
+        if (!governor.allowed || !manifest) return;
+        const target = pick.candidates[0];
+        $("status").textContent =
+          `Warming ${manifest.warmFiles} assets for "${target}" (${pick.reason})…`;
         const started = performance.now();
         const summary = await warmAssets({
           plan: {
             locale: "hr-HR", tier: "1x",
-            assets: urls.map((url) => ({ url, stage: "COMMON", estimatedBytes: 1 })),
+            assets: manifest.assets.map((a) => ({ ...a, url: `${GAME}/${a.url}` })),
           },
           target: { locale: "hr-HR", tier: "1x" },
           concurrency: 2,
           requestAsset: (url) => fetch(url, { mode: "no-cors", credentials: "omit" }),
         });
-        const elapsed = Math.round(performance.now() - started);
-        statusEl.textContent =
-          `Warmed ${summary.requested}/${summary.attempted} in ${elapsed}ms.`;
+        warmed = [...warmed, target];
+        // Completion signal for tools/sandbox_measure.mjs.
         window.__WARM_DONE__ = summary.requested;
+        const elapsed = Math.round(performance.now() - started);
+        $("m-warm").textContent = `${summary.requested} assets`;
+        $("status").textContent =
+          `Warmed ${summary.requested}/${summary.attempted} in ${elapsed}ms. Now launch.`;
       });
 
-      document.getElementById("launch").addEventListener("click", () => {
+      $("launch").addEventListener("click", () => {
         const frame = document.createElement("iframe");
         frame.id = "game";
+        frame.title = "Game (sandbox)";
         frame.width = "100%";
         frame.height = "540";
-        frame.style.border = "1px solid #64748b";
-        frame.style.borderRadius = "10px";
-        frame.src = `${GAME_ORIGIN}/`;
-        host.replaceChildren(frame);
-        window.__LAUNCH_AT__ = performance.now();
-        statusEl.textContent = "Launched.";
+        frame.style.cssText = "border:1px solid #64748b;border-radius:10px";
+        frame.src = `${GAME}/`;
+        $("frame-host").replaceChildren(frame);
+        $("status").textContent = "Launched.";
       });
 
-      document.getElementById("reset").addEventListener("click", () => {
-        host.replaceChildren();
-        statusEl.textContent = "Idle.";
+      $("reset").addEventListener("click", () => {
+        $("frame-host").replaceChildren();
+        dwell.reset();
+        warmed = [];
+        $("m-warm").textContent = "no";
+        $("status").textContent = "Idle. Cache still holds anything already warmed.";
       });
     </script>
   </body>
