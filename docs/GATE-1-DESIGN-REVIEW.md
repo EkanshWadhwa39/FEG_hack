@@ -20,7 +20,7 @@ design.
 | # | Claim | Label | Scope |
 |---|---|---|---|
 | 1 | Repeat load of the same title: 35.5s → 6.7s, 16.6 MB → 12 KB over the wire, 15/150 → 139/149 requests cached | **MEASURED** | One historical cold/warm HAR pair, one title (Savanna Sunrise Deluxe), one browser |
-| 2 | A parent-page `fetch()` creates cache state a same-site iframe reuses: 1,292,928 bytes served, 0 bytes on the iframe request, Chromium cache flag set | **MEASURED** | Local fixture, Chromium 136.0.7103.25, 2 control + 2 treatment runs. **Local mechanism only — not production** |
+| 2 | **In production**, `warmer.js` run in the `casino.psk.hr` lobby created cache entries the cross-origin `gamecontainer-eu.psk.hr` iframe reused: control ~92.5 KB transferred, treatment **0 bytes**, identical 241,898 decoded bytes | **MEASURED** | Live site, Chromium 136, 3 control + 3 treatment runs. Container **shell** only — see §7 |
 | 3 | `session/create` costs 1,850 ms, of which 1,046 ms is TCP connect, 494 ms DNS, 321 ms SSL, and only 303 ms is server wait | **MEASURED** | One capture. 86% is connection setup, which is what justifies `preconnect` |
 | 4 | A 404 probe (`GameView/Egaming`) burns 712 ms before falling back | **MEASURED** | One capture. Free to fix |
 | 5 | Session-to-first-game-launched runs 25–31s across 12 months | **FEG-PROVIDED** | Contradicts the brief's 6–8s. We must ask which we are judged against |
@@ -28,15 +28,28 @@ design.
 | 7 | Session-to-game conversion 42–54%; PSK lowest games/session (2.43) of 5 markets but highest session frequency (16.2) | **FEG-PROVIDED** | High loyalty, low discovery — the brief's own complaint, measured |
 | 8 | Asset URLs are content-hashed and stable; zero anti-tamper; cache-control in the tens of years | **STATICALLY-INFERRED** | One provider bundle (Spiniq / Empire of Gold). Not generalised |
 | 9 | Exclusion-register check latency | **UNKNOWN** | Never modelled, never raced. Blocking by design |
-| 10 | Production CORS/CSP/partitioning behaviour | **UNKNOWN** | The one assumption that can still sink this. See §7 |
+| 10 | Production partitioning for the **provider** bundle on `v1t.eu` (a different site) | **UNKNOWN** | Same-site reuse is proven. Cross-site to `v1t.eu` is not. See §7 |
 
 **Claim 1 is not proof of our solution.** It proves warm state is worth 28 seconds. It does not
-prove our code can create that warm state. Claim 2 is the mechanism, and only locally.
+prove our code can create that warm state. **Claim 2 now does** — in production, with our shipped
+code — but only for the 92 KB container shell, not the multi-megabyte provider bundle.
 
 ## 3. Architecture
 
 Web and mobile web only. No native layer, no service worker, no custom cache, no provider-code
 change. Everything is a single JavaScript module the platform team drops into the lobby page.
+
+**Production topology, as observed today — this corrects the assumption in `CODE.md`:**
+
+```
+casino.psk.hr                      top-level lobby (site: psk.hr)
+  └── gamelauncher-uu-pop2.psk.hr  launcher redirect
+        └── gamecontainer-eu.psk.hr  container iframe   ← reuse PROVEN here
+              └── psk-hr-games-provider.v1t.eu  provider bundle (DIFFERENT SITE, untested)
+```
+
+`CODE.md` assumed every asset was same-site under `psk.hr`. The container shell is. The heavy
+provider bundle is not.
 
 ```
 Player browsing lobby
@@ -136,7 +149,8 @@ Two honest readings:
 
 | Risk | Response |
 |---|---|
-| **Parent→iframe reuse fails against the real production origin** | This is the whole architecture. If it fails, we do **not** build a governor around it. We pivot to measurement + preconnect + the 712 ms 404 fix and report the disproved assumption with clean evidence. Decided in advance, on purpose |
+| ~~Parent→iframe reuse fails in production~~ | **RETIRED — confirmed working.** See [`PRODUCTION-CACHE-REUSE.md`](PRODUCTION-CACHE-REUSE.md) |
+| **Cross-site reuse for the provider bundle on `v1t.eu` is unproven** | This is now the live risk. We proved 92 KB of container shell; the ~15–20 MB that actually dominates load time sits on a different site we could not reach (session/create returned 302, plausibly geo). If cross-site reuse fails, the honest saving is the shell plus preconnect plus the 404 fix, and we say so |
 | Cross-provider generalisation | One bundle analysed. We report per-provider and do not claim the catalogue |
 | Exclusion-register latency unknown | Treated as an unknown-latency blocking call. Never cached, never raced, never optimised around |
 | Cold p95 < 500 ms is unreachable | We say so directly. See §8 |
@@ -181,8 +195,8 @@ Full accessibility evidence, including measured contrast ratios and stated limit
 | Player surface: drawer, transition, governor-aware UI | Built, 92 tests green, browser-verified |
 | RG state + counter-metric stubs | Built, synthetic, swappable source seam |
 | Accessibility evidence | Documented with limitations stated |
-| **Real prefetch against production URLs** | **Not built — this is the critical path** |
-| **Control/treatment capture warmed by our own code** | **Not captured — this is the proof gate** |
+| Real prefetch against production URLs | **Done** — `tools/prod_cache_probe.mjs` |
+| Control/treatment capture warmed by our own code | **Done** — 3 arms each, production |
 | Policy comparison (favourites vs unplayed) | Not built. Highest-value differentiator |
 | `docs/architecture.md`, `impact-case.md`, `compliance-note.md`, `dependencies.md` | Missing. Required for submission |
 
