@@ -56,12 +56,20 @@ Chromium 136, local sandbox, game origin throttled to ~12 Mbps to imitate a mobi
 is executed by [`warmer.js`](../prototype/src/warmer.js) at concurrency 2 before the iframe is
 created.
 
-| Arm | Time to engine-canvas | Wire bytes during launch |
-|---|---:|---:|
-| Control (cold) | 1,594 ms · 1,514 ms | 25,575,179 |
-| Treatment (warmed) | 364 ms · 343 ms | 15,669,756 |
+3 paired runs, full 141-asset manifest discovered and warmed:
 
-**Time to engine-canvas: 1,594 ms → 364 ms, a 77% reduction.** Unthrottled on loopback the same
+| Arm | Time to engine-canvas | Wire bytes during launch | Responses |
+|---|---:|---:|---:|
+| Control (cold) | 1,514 · 1,471 · 1,498 ms | 52,220,526 (all three) | 143 |
+| Treatment (warmed) | 839 · 392 · 481 ms | 4,984,599 (all three) | 29 |
+
+**Median: 1,498 ms → 481 ms to engine-canvas (67.9% faster), and 52,220,526 → 4,984,599 wire
+bytes (90.5% less).** Control byte totals are identical to the byte across all three runs, which
+is what a deterministic local origin should produce and a useful sanity check on the harness.
+
+Treatment timing varies more than control (392–839 ms) because warming competes with the launch
+for the same throttled link. The slowest treatment run is still 1.8× faster than the fastest
+control run. Unthrottled on loopback the same
 comparison is 485 ms → 339 ms, because there is no network cost to remove — which is itself the
 point: the saving *is* the network.
 

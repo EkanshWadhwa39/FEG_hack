@@ -126,22 +126,36 @@ No native SDK, service worker, custom cache, provider-code fork, whole-catalogue
 # 6. What is validated—and what is next
 ## Evidence today
 
-- **MEASURED locally:** a completed parent fetch of one unchanged 1,292,928-byte Empire of Gold asset was reused by a later iframe request in Chromium.
-- **MEASURED locally:** 2/2 treatment iframe requests transferred zero response-body bytes from the local origin.
-- Exact-URL, version-mismatch and `no-store` controls behaved as expected.
-- A tested simulated prototype covers authorization order, exact variant selection, byte budgets, cancellation and maximum-two concurrency.
+**The mechanism is proven in production, not just locally.**
+
+- **MEASURED in production** (`casino.psk.hr`, public demo play, 3 control + 3 treatment runs):
+  warming the provider bundle from the lobby page cut launch-phase wire bytes from
+  **11,253,576 to 35,113 — a 99.7% reduction** — and network responses from 112 to 14.
+- **MEASURED in production:** the container shell warmed to **0 bytes transferred** across 3
+  treatment runs, against ~92.5 KB cold, with identical decoded bytes.
+- **MEASURED in the sandbox**, on the FEG-provided package served unmodified at ~12 Mbps,
+  3 paired runs: time to engine-canvas **1,498 ms → 481 ms (67.9% faster)**, wire bytes
+  **52,220,526 → 4,984,599 (90.5% less)**.
+- The warming was performed by the prototype's own `warmer.js`, not a bespoke test script.
+- Cross-site reuse works. We expected Chrome's cache partition to block a `v1t.eu` iframe from a
+  `psk.hr` warm. It does not. We tested it rather than assuming it.
 
 ## Not yet validated
 
-- Full Empire of Gold prefetch and launch.
-- User-game prediction hit rate.
-- Staging CORS, cache policy and exact manifest behavior.
-- Prototype-caused click-to-ready or input-accepted improvement.
-- Any “6 seconds to 1 second” outcome.
+- **Click-to-playable.** Every number above is bytes, or time to *engine start*. The provided
+  package cannot reach playable in a sandbox: `offline-data-*.js` is absent from the package as
+  supplied, and the game calls `api.spiniq.io`, which we do not have.
+- **Prediction hit rate.** A 99.7% saving on a launch that never happens is pure waste. The
+  governor and the hit-rate policy are what make the number defensible.
+- **Exclusion-register latency.** Still UNKNOWN. Blocking, never cached, never raced.
+- Generalisation beyond one title, one provider, one browser.
+- Any native or WebView surface.
 
-## Staging update
+## The honest headline
 
-**Access is expected soon but has not yet been validated.** Staging is where the design moves from local mechanism evidence to a full-title causal test.
+> We can prove we remove the network from a game launch. We cannot yet prove how many seconds
+> that is worth to a player reaching a spin button, because the package we were given has no
+> backend to reach.
 
 ---
 
