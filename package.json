@@ -12,6 +12,7 @@
     "demo": "node tools/content_demo_server.mjs",
     "verify:demo": "node tools/verify_content_demo.mjs",
     "demo:empire": "node tools/verify_empire.mjs --interactive",
+    "test:empire:visual": "node tools/run_direct_zip_visual.mjs",
     "verify:empire": "node tools/verify_empire.mjs"
   },
   "devDependencies": {

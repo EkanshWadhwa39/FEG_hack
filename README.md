@@ -27,6 +27,7 @@ Judges evaluate **our sandbox only**. Staging is not a judging dependency. Neith
 |---|---|---|
 | `npm run demo:empire -- --zip /private/path/empireofgold.zip` | Graphical Vault + unchanged Empire launcher | macOS or Linux; approved private archive and local graphical display required |
 | `npm run verify:empire -- --zip /private/path/empireofgold.zip` | Headless, serial CONTROL/TREATMENT verification | macOS or Linux; no graphical display required |
+| `npm run test:empire:visual -- --zip /private/path/empireofgold.zip --runs 5` | Direct unchanged-ZIP Play-button visibility timing | Human-marked fresh graphical runs; no Vault/prefetch; not an input-ready result |
 | `npm run demo` | Separate original **Vault Match** reference scene | No provider archive; normal localhost browser; **not an Empire substitute, provider-readiness result or Empire benchmark** |
 
 The supported launchers now use ordinary host networking and bind the local server to `127.0.0.1`. They do not create a network namespace, change firewall rules, require `sudo`, restrict provider egress or attest process namespaces. This follows the team's confirmation that those controls are not required. The private archive is still not bundled or published.
@@ -73,6 +74,8 @@ npm run demo:empire -- --zip '/private/path/empireofgold.zip'
 ```
 
 The launcher opens its own graphical browser and starts the localhost server. Close that browser to stop its server; Ctrl+C is also handled.
+
+For a separate human-marked baseline with the unchanged ZIP opened directly—without Vault, its iframe wrapper or prefetch—run `npm run test:empire:visual -- --zip '/private/path/empireofgold.zip' --runs 5`. Press F8 when the provider Play button first becomes visible. Results are `HUMAN-ANNOTATED` visibility only. See [Direct unchanged-ZIP visual timing test](docs/DIRECT-ZIP-VISUAL-TEST.md).
 
 1. Observe the fixed catalogue and **UNKNOWN** authorization with preparation off.
 2. Choose **Denied** or **Error** and select a title: no provider iframe should mount.
