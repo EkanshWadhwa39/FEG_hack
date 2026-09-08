@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sandbox — cold vs warm game launch</title>
+    <link rel="stylesheet" href="./styles/player.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header>
+        <p class="eyebrow">Sandbox harness</p>
+        <h1>Cold vs warm launch</h1>
+        <p class="lede">
+          Launches the FEG-provided game package, served unmodified from a
+          separate origin. Warming is performed by the prototype's own warmer
+          before the iframe is created.
+        </p>
+        <div class="banner" role="note">
+          <span class="label simulated">SANDBOX</span>
+          <span>Local hosts, no provider backend. The game reaches engine start, not playable.</span>
+        </div>
+      </header>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Controls</h2></div>
+        <div class="demo-controls">
+          <button id="warm" type="button">Warm cache first</button>
+          <button id="launch" type="button" class="primary">Launch game</button>
+          <button id="reset" type="button">Reset</button>
+        </div>
+        <p id="status" class="empty-state" role="status" aria-live="polite">Idle.</p>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Game origin</h2></div>
+        <div id="frame-host"></div>
+      </section>
+    </main>
+
+    <script type="module">
+      import { warmAssets } from "./src/warmer.js";
+
+      const GAME_ORIGIN = new URLSearchParams(location.search).get("game")
+        ?? "http://127.0.0.1:8091";
+      const statusEl = document.getElementById("status");
+      const host = document.getElementById("frame-host");
+
+      // Populated by the measurement tool; empty means "nothing to warm".
+      window.__WARM_MANIFEST__ = window.__WARM_MANIFEST__ ?? [];
+
+      document.getElementById("warm").addEventListener("click", async () => {
+        const urls = window.__WARM_MANIFEST__;
+        if (urls.length === 0) { statusEl.textContent = "No manifest supplied."; return; }
+        statusEl.textContent = `Warming ${urls.length} assets…`;
+        const started = performance.now();
+        const summary = await warmAssets({
+          plan: {
+            locale: "hr-HR", tier: "1x",
+            assets: urls.map((url) => ({ url, stage: "COMMON", estimatedBytes: 1 })),
+          },
+          target: { locale: "hr-HR", tier: "1x" },
+          concurrency: 2,
+          requestAsset: (url) => fetch(url, { mode: "no-cors", credentials: "omit" }),
+        });
+        const elapsed = Math.round(performance.now() - started);
+        statusEl.textContent =
+          `Warmed ${summary.requested}/${summary.attempted} in ${elapsed}ms.`;
+        window.__WARM_DONE__ = summary.requested;
+      });
+
+      document.getElementById("launch").addEventListener("click", () => {
+        const frame = document.createElement("iframe");
+        frame.id = "game";
+        frame.width = "100%";
+        frame.height = "540";
+        frame.style.border = "1px solid #64748b";
+        frame.style.borderRadius = "10px";
+        frame.src = `${GAME_ORIGIN}/`;
+        host.replaceChildren(frame);
+        window.__LAUNCH_AT__ = performance.now();
+        statusEl.textContent = "Launched.";
+      });
+
+      document.getElementById("reset").addEventListener("click", () => {
+        host.replaceChildren();
+        statusEl.textContent = "Idle.";
+      });
+    </script>
+  </body>
+</html>
