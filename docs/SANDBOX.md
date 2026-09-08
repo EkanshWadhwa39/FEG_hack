@@ -221,11 +221,17 @@ bundle to anyone who can reach the port.
 
 ### If a port is in use
 
-The server tells you exactly how to clear it. A previous run left behind is the usual cause:
+Almost always a sandbox from a previous run that is still going. Stop it:
 
 ```bash
-kill $(ss -lptn 'sport = :8090' | grep -oP 'pid=\K[0-9]+' | head -1)
+pkill -f tools/sandbox_server.py
 ```
+
+If something else is holding the port, find it with `ss -lptn 'sport = :8090'`
+(or `lsof -i :8090`), or move the sandbox out of the way with
+`--lobby-port 9090 --game-port 9091` and open the `:9090` URL it prints.
+
+The server prints all of this when it hits the error.
 
 ## What the sandbox does and does not do
 

@@ -172,14 +172,21 @@ def serve(directory: Path, port: int, throttle_kbps: int,
     except OSError as error:
         if error.errno != errno.EADDRINUSE:
             raise
-        # A stale sandbox from a previous run is the usual cause, and finding
-        # that out mid-demo is expensive. Say exactly how to clear it.
+        # A stale sandbox from a previous run is the usual cause by a wide
+        # margin, so lead with the command that fixes that, not with diagnosis.
+        # Finding this out mid-demo is expensive.
         raise SystemExit(
             f"Port {port} is already in use.\n"
-            f"  Find it:  ss -lptn 'sport = :{port}'\n"
-            f"  Free it:  kill $(ss -lptn 'sport = :{port}' "
-            f"| grep -oP 'pid=\\K[0-9]+' | head -1)\n"
-            f"  Or pick another port: --lobby-port / --game-port"
+            f"\n"
+            f"  Most likely a previous sandbox is still running. Stop it:\n"
+            f"      pkill -f tools/sandbox_server.py\n"
+            f"\n"
+            f"  If that is not it, find whatever is holding the port:\n"
+            f"      ss -lptn 'sport = :{port}'      # or: lsof -i :{port}\n"
+            f"\n"
+            f"  Or run somewhere else:\n"
+            f"      --lobby-port 9090 --game-port 9091\n"
+            f"      (then open the :9090 URL this prints)"
         ) from error
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return server
