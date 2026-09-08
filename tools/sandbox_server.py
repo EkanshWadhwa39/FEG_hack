@@ -27,12 +27,19 @@ import argparse
 import errno
 import os
 import posixpath
+import re
 import threading
 import time
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlparse
+
+# Matches /game/{N} at the start of a URL path.  Each lobby slot gets a
+# distinct URL prefix so the browser keeps a separate cache partition per
+# game — /game/1/assets/foo.js and /game/2/assets/foo.js are different
+# cache keys even though they come from the same bundle file on disk.
+_GAME_SLOT_RE = re.compile(r"^/game/\d+")
 
 # Extensions treated as immutable versioned static assets.
 STATIC_SUFFIXES = frozenset({
@@ -87,6 +94,18 @@ class SandboxHandler(SimpleHTTPRequestHandler):
             time.sleep(per_chunk)
 
     def translate_path(self, path):
+        # Strip /game/{N} prefix so every slot ID maps to the bundle root.
+        # /game/5/assets/foo.js  →  /assets/foo.js  (different cache key,
+        # same bytes on disk).  The suffix used for Cache-Control in
+        # end_headers() is derived from self.path (the original URL), so
+        # JS/CSS files still get IMMUTABLE and the slot index.html gets
+        # NO_STORE even after stripping.
+        bare = urlparse(path).path
+        m = _GAME_SLOT_RE.match(bare)
+        if m:
+            rest = path[len(m.group(0)):]
+            path = rest if rest.startswith("/") else ("/" + rest)
+
         # Strip query strings (the bundle versions CSS with ?v=...) before
         # resolving, so those requests hit the real file.
         path = urlparse(path).path
