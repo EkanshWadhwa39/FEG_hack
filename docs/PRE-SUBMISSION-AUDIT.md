@@ -44,11 +44,11 @@ Review, correct, clearly mark obsolete, or remove internal documents that confli
 
 - [ ] Do not submit native interception, service-worker, custom-cache, or cache-key-normalisation proposals as the implemented architecture.
 - [ ] Never recommend stripping, reordering, or normalising version query strings.
-- [ ] State that staging was unavailable during the hackathon and that sandbox validation is planned when it is introduced later; do not imply staging testing occurred.
+- [ ] State the updated sandbox-only judging target. Do not imply staging testing occurred; future real-site validation is a deployment gate, not a judging dependency.
 - [ ] Do not claim the local parent-to-iframe cache diagnostic proves staging or production behavior.
 - [ ] Do not describe the historical cold/repeat HAR comparison as causal proof of proactive warming.
 - [ ] Scope claims to the tested browser, title, provider, and run count.
-- [ ] Keep the prototype labeled `SIMULATED` until real controlled evidence exists.
+- [ ] Label synthetic fixtures/authorization/journeys `SIMULATED`. Mark actual controlled sandbox measurements `MEASURED` only within their tested scope; never imply production or full-provider-game validation.
 - [ ] Do not say `interactive` without an authoritative input-accepted signal.
 - [ ] Label every number and state as `MEASURED`, `FEG-PROVIDED`, `STATICALLY-INFERRED`, `SIMULATED`, or `UNKNOWN`.
 

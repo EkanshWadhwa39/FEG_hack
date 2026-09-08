@@ -8,7 +8,7 @@ This is the starting context for this project. Read this fully before writing an
 
 Test whether PSK can reduce same-title launch transfer/time by warming eligible static assets in the browser's own HTTP cache after authorization and before the player clicks. Historical repeat-state HARs show a 5.3× asset-batch opportunity; they do not prove prototype causality.
 
-**Environment update:** the staging URL is unavailable because of a technical issue and will not be accessible during the hackathon. Build the generic integration for later sandbox testing on staging; do not substitute production traffic or claim staging validation during the outage.
+**Evaluation update (latest team brief): judges will test our sandbox, not staging.** Build a complete local sandbox experience and collect causal control/treatment evidence there; staging is not a hackathon acceptance dependency. See `docs/SANDBOX-FINAL-PRODUCT-PLAN.md` for the current delivery plan and `docs/SANDBOX-GAME-AUDIT.md` for the unchanged-bundle feasibility audit. The current page remains a simulated scaffold until integrated. Real-site deployment still requires its own approved validation; never substitute production traffic or claim staging validation.
 
 ---
 
@@ -26,13 +26,13 @@ There is real telemetry showing a native-labeled "Casino Android" platform accou
 Same game (SavannaSunriseDeluxe), historical cold vs repeat HAR captures, cache enabled:
 - Cold: exact final 16-request asset batch completed at 35.568s from capture start; 16,597,198 wire bytes over 177 requests; parser classification: 27 confirmed cache hits, 148 misses, 2 unknown
 - Warm: **the same exact batch completed at 6.714s; 12,431 wire bytes over 155 requests; parser classification: 140 confirmed cache hits, 14 misses, 1 unknown**
-- The HAR pair measures repeat-state opportunity, not click-to-interactive or prototype causality. A separate controlled local experiment proves parent-to-iframe cache reuse for one exact object; staging proof remains required.
+- The HAR pair measures repeat-state opportunity, not click-to-interactive or prototype causality. A separate controlled local experiment proves parent-to-iframe cache reuse for one exact object. Integrated sandbox proof is the next hackathon gate; real-site proof is required only before real-site enablement.
 
-### Real baseline is worse than the brief states
-- Brief says 6–8s. FEG's own web-platform telemetry shows **25–31s consistently across 12 months** (session-to-first-game-launched).
+### Historical baselines have different milestones
+- Brief says 6–8s. FEG's web-platform telemetry shows **25–31s across 12 months** for session-to-first-game-launched; that broader interval includes browsing and is not a click-to-ready baseline.
 - The historical cold HAR's exact final asset batch completes at 35.568s from capture start; it does not contain an authoritative input-accepted event.
-- Static bundle analysis independently corroborates the same order of magnitude.
-- Three independent sources agree. State both numbers; ask FEG which one we're judged against.
+- Static bundle analysis identifies potential transfer/CPU costs but does not measure readiness.
+- Do not equate these milestones. The sandbox comparison must preregister its own start and end events. The claimed six-second local playable baseline is UNKNOWN after the fresh boot audit.
 
 ### The session/handshake call is a connection problem, not a server problem
 One historical `session/create` request measured 1,849.593ms total: DNS 494.022ms, connect 1,046.412ms (including an SSL subset of 321.076ms), and server wait 302.772ms. DNS plus connect is **83.3%** of total; SSL must not be double-counted. This measures a connection-setup opportunity for `preconnect`/`dns-prefetch` on drawer-open, but the causal milliseconds saved by hints remain **UNKNOWN** until an isolated approved-environment comparison is run.
@@ -42,18 +42,19 @@ A 404 probe (`GameView/Egaming`) costs 712ms before falling back to a generic co
 
 ### Bundle structure (static analysis, one provider: Spiniq / Empire of Gold SDK)
 - **STATICALLY-INFERRED for this supplied build:** no anti-tamper, automation/headless detection, service worker, or SRI hashes were found. This narrows implementation risk but does not prove production cacheability or permission to warm.
-- The archive contains content-hashed JavaScript and ordinary asset paths. Exact deployable URLs, response policy, credentials, and cache eligibility must come from a later approved staging capture; never infer them from archive paths.
+- The archive contains content-hashed JavaScript and ordinary asset paths. Sandbox deployment URLs and policies must be explicitly configured and validated against actual requests. Real-site deployable URLs, response policy, credentials and eligibility require a later approved capture; never infer real production URLs from archive paths.
 - Staged load order: **PRELOADER → COMMON → SPLASH → PRIMARY → SECONDARY**. Proactive warming is limited to PRELOADER, COMMON, SPLASH, and a proven critical PRIMARY subset; SECONDARY is never proactively warmed.
 - **Two real failure modes to design around, found in the actual code:**
   1. **Resolution branching** — game picks `@1x` or `@0.5x` texture sets *after* JS executes, based on device info. Resolve device tier BEFORE issuing prefetch, or you waste ~30MB warming both tiers, or cold-miss on the wrong one.
   2. **Locale branching** — asset path is `assets/locale/${language}/...`, where `language` is injected at runtime by the operator frame, not present in the URL ahead of time. Read the launch config for target locale before warming.
 - No `KHR_parallel_shader_compile` or async shader-compile hint — shader compilation is a real, unfixable-by-us cold-start cost. This is a "known ceiling" item, not a bug to chase.
 - Production/staging cache-control, CORS, `Vary`, credential, redirect, and partition behavior remain **UNKNOWN**. The supplied archive cannot establish response headers, and this project does not use the Cache API.
+- **New feasibility audit:** 20 relative atlas-page references are unresolved; `book.png` returned 404 in three fresh local boots. No authoritative input-accepted milestone was established. Preserve unchanged provider mode and offer a separately labelled reference scene rather than patching missing dependencies.
 
 ### Parent-to-iframe cache-reuse gate
 The load-bearing behavior is exact parent-to-iframe browser HTTP-cache reuse under the target environment's real top-level context, URL, request semantics, and response policy. A controlled local Chromium diagnostic passed for one exact object, including exact-key and `no-store` negative controls. Its mapped top-level-site result must not be generalized. Staging/production partition and reuse behavior remain **UNKNOWN** until the later approved serial control/treatment gate.
 
-### Real popularity distribution — use this, not a synthetic one
+### Historical popularity distribution — do not misrepresent synthetic journeys as real demand
 Two independent real sources agree on a hard power law:
 - 12mo aggregated stake data (4.2M rows, Croatia, no player-level info): top 10 games = 17.8% of stake, top 100 (3% of catalogue) = 58%, 29% of catalogue = near-dead long tail.
 - Real event log (`casino_game_launch` events, 887 distinct titles, 13,682 launches, pseudonymized player IDs): top 10 by real launch count = 34.7% of all launches.
@@ -104,7 +105,7 @@ Screen clears only on an authoritative input-accepted signal
 **Module 1 — Measurement harness.** Reusable script: takes a HAR pair (cold/warm), outputs load time, bytes-over-wire, cache-hit %. You'll run this constantly — build it once, properly, first.
 
 **Module 2 — Cache-warming core (build this first, it's the highest-risk assumption).**
-1. Preserve the local parent-to-iframe diagnostic and later verify exact reuse in the approved target environment before enablement.
+1. Preserve the local parent-to-iframe diagnostic; now verify exact reuse from the integrated sandbox lobby in isolated browser processes. Real-site validation remains a later deployment gate.
 2. Build the prefetch trigger (hover/dwell, drawer-open).
 3. Resolve device tier + locale BEFORE prefetching (the two real failure modes above).
 4. After authorization, warm PRELOADER + COMMON + SPLASH and only a proven critical PRIMARY subset. Never proactively warm SECONDARY.
@@ -112,9 +113,9 @@ Screen clears only on an authoritative input-accepted signal
 6. Exit criteria: a cold/warm HAR pair where "warm" was achieved by our own prefetch trigger, not a manual replay.
 
 **Module 3 — Prefetch policy (the best differentiator — protect the time for this).**
-1. Build the real popularity model from the CSV/event-log data (see VERIFIED), not synthetic.
+1. Use intent/recent/favourite policies with labelled synthetic local journeys first. An optional real-popularity prior must use only approved aggregate CSV/event-log results; never represent synthetic demand as real player behavior.
 2. Implement **both** policies—favourite-prefetch and unplayed-prefetch—behind an operator/demo toggle that affects speculative cache requests only, never player-visible ordering.
-3. During the outage, label policy outcomes `SIMULATED`. Real hit-rate and time-saved exit criteria require a later approved, isolated staging experiment.
+3. Policy benchmarks over synthetic journeys are MEASURED on a SIMULATED workload, not real-player accuracy. Sandbox time/transfer gains require isolated local comparisons; real-player effects remain UNKNOWN pending a later approved deployment experiment.
 
 **Module 4 — Transition pipeline & UI.**
 1. Transition screen: session clock, net position, limit headroom (synthetic data for demo).
@@ -129,8 +130,8 @@ Screen clears only on an authoritative input-accepted signal
 
 **Module 6 — Regulatory/compliance layer.**
 1. Neutral RG-state transition screen (never a fake reality check — see reasoning in VERIFIED/proposal).
-2. Exclusion-register check integration point: blocking, mocked until staging gives a real number, swap-in-ready.
-3. Counter-metric stubs: stake-velocity, time-on-device — even synthetic pre-staging.
+2. Exclusion-register integration point: blocking and explicitly SIMULATED for the evaluated sandbox; real service timing remains UNKNOWN. Never present the fixture as real authorization.
+3. Counter-metrics: foreground delay, wasted bytes, failures and accessibility; real stake-velocity/time-on-device effects remain UNKNOWN in the sandbox.
 
 **Module 7 — Instrumentation & demo assembly.**
 1. On-screen overlay: live network waterfall, cache-hit indicator, running clock.
@@ -159,15 +160,15 @@ Screen clears only on an authoritative input-accepted signal
 
 ---
 
-## During the staging outage — do these in this order
+## Sandbox-only evaluation — do these in this order
 
-1. Maintain the reproducible local cache-partitioning diagnostic, scoped as browser-mechanism evidence only.
-2. Build and test the generic sandbox integration using synthetic, credential-free fixtures: exact manifest resolution, conservative governor, maximum concurrency two, cancellation, and fail-closed authorization boundary.
-3. Keep staging URLs and environment-specific configuration outside the generic core. Never guess URLs from the private archive or substitute production traffic for staging.
-4. Build the measurement and redaction path needed for identical disabled-control and enabled-treatment captures.
-5. Present the current UI as `SIMULATED`; the historical HAR pair demonstrates warm-state opportunity, not the prototype's causal effect.
+1. Resolve package completeness and a truthful input/asset milestone; keep provider code unchanged and use a labelled reference-scene fallback if required.
+2. Connect the existing modules to a real-request sandbox lobby and iframe, retaining exact manifests, maximum concurrency two, bounded cost and fail-closed simulated authorization.
+3. Capture isolated serial control/treatment pairs under identical conditions; only prototype preparation differs. Unthrottled local results must be reported even when gains are small or absent.
+4. Expand to twenty explicitly synthetic catalogue entries with stable distinct cache identities, realistic policy misses and total-session cost accounting.
+5. Ship a reproducible reviewer package, impact model and honest evidence labels. The historical HAR pair remains context, not this prototype's causal effect. Keep real-environment configuration outside the core and never use production traffic as a shortcut.
 
-## When staging is introduced later
+## Before any future real-site deployment (not a sandbox judging prerequisite)
 
 1. Obtain approved access and record exact browser, title/build, locale, tier, top-level context, URLs, and request semantics.
 2. Capture isolated control/treatment runs through the real authorization path without logging exclusion payloads or credentials.

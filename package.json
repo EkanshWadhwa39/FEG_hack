@@ -3,12 +3,18 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test prototype/tests/*.test.mjs",
-    "check:js": "find prototype -type f \\( -name '*.js' -o -name '*.mjs' \\) -print0 | xargs -0 -r -n1 node --check && node --check tools/run_cache_reuse.mjs",
+    "test": "node scripts/javascript_checks.mjs test",
+    "check:js": "node scripts/javascript_checks.mjs syntax",
+    "verify:content": "node tools/verify_content_core.mjs --runs 3",
+    "serve:content": "python3 tools/content_server.py --port 8090",
     "experiment:cache-reuse": "node tools/run_cache_reuse.mjs --runs 2",
-    "serve": "python3 -m http.server 8080 --directory prototype --bind 0.0.0.0"
+    "serve": "python3 -m http.server 8080 --directory prototype --bind 0.0.0.0",
+    "demo": "node tools/content_demo_server.mjs",
+    "verify:demo": "node tools/verify_content_demo.mjs",
+    "demo:empire": "node tools/verify_empire.mjs --interactive",
+    "verify:empire": "node tools/verify_empire.mjs"
   },
   "devDependencies": {
-    "playwright": "1.52.0"
+    "playwright": "1.55.1"
   }
 }
