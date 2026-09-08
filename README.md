@@ -2,6 +2,24 @@
 
 A web-only, browser-native prototype and evidence toolkit for testing whether the PSK lobby can warm exact static game assets before launch.
 
+## Standalone laptop demo — this branch
+
+For the complete original playable **Vault Match** lobby with **top-three + hover
+prefetch**, use `agent/content-loading-core` and:
+
+```bash
+npm ci
+npm run demo
+```
+
+Open **http://127.0.0.1:8095/** in Chrome. Grant the **simulated** sandbox authorization,
+then opt into preparation in the operator panel. No provider archive, Python, build
+step or `.env` is required. See [the laptop runbook](docs/CONTENT-DEMO-LOCAL.md) for
+clone instructions, controls, fair cold/prepared comparisons and browser tests.
+This is a separate original synthetic reference app—not Empire of Gold or a
+replacement for Hansika's existing lobby/player/visualizer. Older commands below
+run different surfaces. These local results do not establish production readiness.
+
 ## Start here
 
 1. Read [`CODE.md`](CODE.md) — authoritative constraints and measured facts.

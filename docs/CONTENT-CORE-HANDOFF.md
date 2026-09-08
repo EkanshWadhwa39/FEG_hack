@@ -1,5 +1,11 @@
 # Content-loading core — incremental integration handoff
 
+**Update:** the same branch now also includes a separate complete original playable
+localhost UI. Start with [CONTENT-DEMO-LOCAL.md](CONTENT-DEMO-LOCAL.md) and
+[CONTENT-DEMO-HANDOFF.md](CONTENT-DEMO-HANDOFF.md). The content-only milestones below
+describe the earlier four commits, not a claim that the new UI is still unwired.
+
+
 ## Step 0 / ownership reconciliation
 
 Based on Hansika's remote `add36df` (18 commits ahead of the session's original

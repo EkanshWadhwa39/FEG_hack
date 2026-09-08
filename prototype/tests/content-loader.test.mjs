@@ -231,3 +231,34 @@ test("authorization adapters must expose live revocation and explicit cancel abo
   f.loader.cancelLaunch(); resolve("GRANTED");
   assert.equal((await pending).status, "AUTHORIZATION_BLOCKED"); assert.equal(f.urls.length, 0);
 });
+
+test('explicit policy queue candidates keep exact identity and cannot bypass off, authorization or consent', async () => {
+  const f = setup();
+  const chosen = await f.loader.prepare({ ...variant, candidateId: 'title-17' });
+  assert.equal(chosen.status, 'REQUESTS_COMPLETE'); assert.equal(chosen.candidate.reason, 'POLICY_QUEUE');
+  assert.ok(f.urls.every(url => url.includes('/title-17/')));
+  const count = f.urls.length;
+  assert.equal((await f.loader.prepare({ ...variant, candidateId: 'unknown' })).status, 'NO_CANDIDATE');
+  f.loader.setPolicy('OFF'); assert.equal((await f.loader.prepare({ ...variant, candidateId: 'title-18' })).status, 'NO_CANDIDATE');
+  f.loader.setPolicy('POPULAR_UNPLAYED'); f.authorization.setState('DENIED');
+  assert.equal((await f.loader.prepare({ ...variant, candidateId: 'title-18' })).status, 'AUTHORIZATION_BLOCKED');
+  f.authorization.setState('GRANTED'); f.loader.setEnabled(false);
+  assert.equal((await f.loader.prepare({ ...variant, candidateId: 'title-18' })).reason, 'DISABLED');
+  assert.equal(f.urls.length, count);
+});
+
+test('replacement preparation drains non-cooperative old workers: global concurrency stays at two', async () => {
+  let active = 0; let peak = 0; const release = []; const urls = [];
+  const requestAsset = async (url, options) => {
+    urls.push(url); peak = Math.max(peak, ++active);
+    if (url.includes('/title-01/')) await new Promise(resolve => release.push(resolve));
+    active--; options.onBytes?.(4); return { completed: true };
+  };
+  requestAsset.validateUrl = createSandboxBrowserRequester({ origin }).validateUrl;
+  const f = setup({ requestAsset });
+  const old = prepare(f.loader, 'title-01'); await tick(); assert.equal(active, 2);
+  const next = prepare(f.loader, 'title-02'); await tick(); assert.equal(urls.length, 2);
+  release.forEach(resolve => resolve());
+  assert.equal((await old).status, 'CANCELLED'); assert.equal((await next).status, 'REQUESTS_COMPLETE');
+  assert.equal(peak, 2); assert.equal(active, 0); assert.equal(urls.length, 5);
+});

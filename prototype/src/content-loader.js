@@ -102,6 +102,11 @@ export function createContentLoader({ catalogue, session, prior, manifestSource,
       try { plan = await resolve(target, controller); }
       catch { return result(controller.signal.aborted ? "CANCELLED" : "IDENTITY_UNRESOLVED", fields); }
       if (controller.signal.aborted || !isGranted()) return result("CANCELLED", fields);
+      // A priority change must drain cancelled workers before admitting another
+      // pair. Non-cooperative adapters time out closed rather than exceed two.
+      try { await bounded(() => Promise.allSettled([...pendingRequests]), controller.signal, operationTimeoutMs); }
+      catch { return result(controller.signal.aborted ? "CANCELLED" : "REQUEST_DRAIN_BLOCKED", fields); }
+      if (controller.signal.aborted || !isGranted()) return result("CANCELLED", fields);
       const assets = plan.assets.filter(asset => !completed.has(asset.url));
       const bytes = assets.reduce((sum, asset) => sum + asset.estimatedBytes, 0);
       const decision = eligibility(bytes);
@@ -133,9 +138,15 @@ export function createContentLoader({ catalogue, session, prior, manifestSource,
     } finally { controller.abort(); if (active?.controller === controller) active = undefined; }
   }
 
-  function prepare({ intent, build, locale, tier } = {}) {
+  function prepare({ intent, build, locale, tier, candidateId } = {}) {
     if (disposed || foreground) return Promise.resolve(result("DISABLED"));
-    const candidate = selectCandidate({ catalogue, session: session.snapshot(), prior, policy, intent });
+    // Optional cache-only queue candidate. This never authorizes a launch or changes
+    // player ordering. Exact identity, authorization and governor checks still apply.
+    const candidate = candidateId === undefined
+      ? selectCandidate({ catalogue, session: session.snapshot(), prior, policy, intent })
+      : policy !== "OFF" && idSet.has(candidateId)
+        ? Object.freeze({ gameId: candidateId, policy, reason: "POLICY_QUEUE", label: "SIMULATED" })
+        : null;
     if (!candidate) { cancel(); return Promise.resolve(result("NO_CANDIDATE")); }
     const id = candidate.gameId;
     const target = Object.freeze({ id, build, locale, tier });
