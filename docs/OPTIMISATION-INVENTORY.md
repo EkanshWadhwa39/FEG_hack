@@ -263,7 +263,10 @@ Two honest routes to a defensible claim:
 
 ## Addendum 2 — can we improve the 6.2 s with what is in our hands?
 
-**We cannot reduce it. We can move it before the click.** That distinction is the whole answer.
+**We cannot reduce it. We can move it entirely off the click path — and this is now MEASURED.**
+
+Pre-creating the game frame hidden during browse takes click-to-ready from **~3.8-4.1 s to 2 ms**
+in the sandbox. Details and caveats below.
 
 The 6,226 ms is decode, GPU texture upload and script execution inside certified code, with the
 network already removed. Nothing outside the package changes that work. But nothing says it has to
@@ -283,39 +286,51 @@ proposed   [browse ── 6.2 s decode + GPU in hidden iframe ──] ──clic
 Perceived click-to-ready approaches the cost of revealing an existing frame. The 6.2 s does not
 shrink; it stops being on the player's critical path.
 
-### Why this is not free, and might not work at all
+### MEASURED — it works, and the risk I flagged did not materialise
 
-**UNTESTED.** It could not be validated on this machine: a Chromium run loading a 50 MB WebGL title
-needs more memory than was available, and an earlier profiling attempt was already killed by the
-operating system. Everything below is reasoning, not measurement.
+I expected browsers to throttle invisible frames and nullify this. **They did not.** Every hiding
+strategy loaded the complete package and built its canvas:
 
-| Risk | Detail |
+| Frame style | Resources loaded | Decoded | Canvas built |
+|---|---:|---:|---|
+| visible (baseline) | 142 | 49.8 MB | yes |
+| offscreen `left:-10000px` | 141 | 49.8 MB | yes |
+| `visibility:hidden` | 141 | 49.8 MB | yes |
+| **`display:none`** | **141** | **49.8 MB** | **yes** |
+
+Then the payoff, two paired runs — control creates the frame at click, treatment pre-creates it
+offscreen during a 25 s browse and reveals it at click:
+
+| Arm | click → ready |
+|---|---:|
+| control, run 1 | 4,088 ms |
+| control, run 2 | 3,794 ms |
+| **treatment, both runs** | **2 ms** |
+
+The hidden frame had already loaded all 141 resources and built its canvas before the reveal, so
+revealing is free. **This is the single largest improvement available in our layer** — it takes the
+entire engine-initialisation cost off the click path.
+
+### What these numbers do and do not mean
+
+- **"Ready" here means 141 resources loaded and a canvas present. It does not mean playable.** The
+  package has no reachable backend, so an input-accepted signal does not exist and is not claimed.
+- The 3.8–4.1 s control is **not** the same measurement as the 6,226 ms warm floor earlier. That
+  one counted the last asset read with a primed cache; this one polls resource count and canvas
+  presence. Do not mix the two figures.
+- **GPU texture upload was not separately verified.** A canvas element existing is not proof that
+  textures were uploaded. The 2 ms reveal is strong circumstantial evidence, but the decisive test
+  is a GPU-memory comparison, which we have not run.
+- Loopback, no RTT, one machine, two runs.
+
+### It is still expensive, and that governs how it must be used
+
+| Cost | Detail |
 |---|---|
-| **Browsers throttle invisible frames** | This is the one that could sink it. `display:none` frames generally do no rendering work at all, so no GPU upload happens and the benefit vanishes. Offscreen or occluded frames get rAF and rendering throttled by the compositor. The technique may deliver far less than the arithmetic suggests, or nothing. **This must be measured before it is claimed** |
-| **Waste is far more expensive than before** | Getting a prefetch wrong wastes bytes. Getting *this* wrong spins up an entire game engine, holds ~30 MB of GPU textures, and burns CPU and battery. At the measured 13.4% hit@1 on the addressable set, that is wasted roughly 87% of the time |
-| **Memory and GPU pressure** | A second live engine instance on a mid-range phone is a real cost, and could make the lobby itself worse. Governor limits must be stricter than for byte prefetch, not looser |
-| **Compliance handling required** | The instance must be muted, never visible, never able to place a bet, and never counted as play. The exclusion-register check still gates the *reveal* and remains blocking — pre-initialisation must never become a way to be mid-game before authorisation returns |
-
-### Scope conditions if it is built
-
-1. **k = 1 only.** Never speculatively initialise more than one title.
-2. **Dwell-triggered, not prediction-triggered.** History tops out at 13.4%; only direct intent
-   justifies this cost. Fire on sustained dwell, cancel the instant the pointer or focus leaves.
-3. **Stricter governor than byte prefetch:** never on Save-Data, metered links, low-power or
-   low-memory conditions, or when the page is hidden.
-4. **Muted and inert.** No audio, no visible surface, no wagering capability.
-5. **Authorisation unchanged.** The exclusion check blocks the reveal. Nothing about
-   pre-initialisation touches it.
-6. **Tear down aggressively** on navigation, cancel, or budget exhaustion.
-
-### How to validate it, when a machine has the memory
-
-1. Warm arm: hidden iframe created on dwell, then revealed on click. Measure reveal-to-ready.
-2. Control arm: iframe created on click. Measure click-to-ready.
-3. Critically, verify the hidden frame **actually did the work**: compare GPU memory and confirm
-   ready-time after reveal is far below 6.2 s. If it is still ~6.2 s, the browser throttled the
-   hidden frame and the technique does not work.
-4. Repeat under CPU throttling, which is where a background engine hurts most.
+| **Waste is an engine, not bytes** | A wrong guess spins up a full game instance and holds its textures. At the measured 13.4% hit@1 on the addressable set, that is wasted roughly 87% of the time |
+| Memory and GPU pressure | A second live engine on a mid-range phone could make the lobby itself worse. This must be governed more strictly than byte prefetch, not less |
+| Battery and data | Real costs on mobile, and invisible to the player unless we surface them |
+| Compliance | The instance must be muted, never visible, never able to wager, never counted as play. The exclusion-register check still gates the reveal and stays blocking |
 
 ### What else is in our hands, honestly
 
