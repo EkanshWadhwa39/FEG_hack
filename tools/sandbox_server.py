@@ -32,7 +32,7 @@ import threading
 import time
 import json
 from functools import partial
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler, SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
@@ -60,10 +60,15 @@ class SandboxHandler(SimpleHTTPRequestHandler):
     """Static handler with production-like caching and CORS headers."""
 
     def __init__(self, *args, directory: str, throttle_kbps: int = 0,
-                 manifest: bytes | None = None, latency_ms: int = 0, **kwargs):
+                 manifest: bytes | None = None, latency_ms: int = 0,
+                 posters: dict[str, bytes] | None = None, **kwargs):
         self._throttle_kbps = throttle_kbps
         self._manifest = manifest
         self._latency_ms = latency_ms
+        # Generated lobby thumbnails. They belong to the LOBBY origin, mirroring
+        # production where PSK serves game posters from its own CDN and the
+        # provider serves only the game package.
+        self._posters = posters or {}
         super().__init__(*args, directory=directory, **kwargs)
 
     def handle_one_request(self):
@@ -76,12 +81,24 @@ class SandboxHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self):  # noqa: N802 - BaseHTTPRequestHandler naming
         path = urlparse(self.path).path
+        if path in self._posters:
+            return self._send_bytes(self._posters[path], "image/webp", IMMUTABLE)
         match = GAME_PREFIX.match(path)
         if self._manifest is not None and match and (match.group(2) or "/") == MANIFEST_PATH:
             return self._send_manifest()
         if self._manifest is not None and path == MANIFEST_PATH:
             return self._send_manifest()
         super().do_GET()
+
+    def _send_bytes(self, body: bytes, content_type: str, cache_control: str):
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", cache_control)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Timing-Allow-Origin", "*")
+        BaseHTTPRequestHandler.end_headers(self)
+        self.wfile.write(body)
 
     def _send_manifest(self):
         self.send_response(200)
@@ -145,10 +162,11 @@ class SandboxHandler(SimpleHTTPRequestHandler):
 
 def serve(directory: Path, port: int, throttle_kbps: int,
           host: str = "127.0.0.1", manifest: bytes | None = None,
-          latency_ms: int = 0) -> ThreadingHTTPServer:
+          latency_ms: int = 0,
+          posters: dict[str, bytes] | None = None) -> ThreadingHTTPServer:
     handler = partial(SandboxHandler, directory=str(directory),
                       throttle_kbps=throttle_kbps, manifest=manifest,
-                      latency_ms=latency_ms)
+                      latency_ms=latency_ms, posters=posters)
     try:
         server = ThreadingHTTPServer((host, port), handler)
     except OSError as error:
@@ -182,6 +200,7 @@ def resolve_bundle(bundle: Path) -> Path:
 
 def main() -> None:
     from manifest_builder import build_manifest  # noqa: PLC0415 - avoids a cycle
+    from poster_builder import build_posters  # noqa: PLC0415 - avoids a cycle
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bundle", required=True, type=Path,
@@ -197,6 +216,8 @@ def main() -> None:
                         help="how much to warm; blocking is the measured minimum")
     parser.add_argument("--resolution", default="@1x", choices=["@1x", "@0.5x"],
                         help="resolution tier to warm; the other branch is excluded")
+    parser.add_argument("--games", type=int, default=24,
+                        help="how many lobby tiles to generate posters for")
     parser.add_argument("--host", default="127.0.0.1",
                         help="bind address; use 0.0.0.0 to let another device on the "
                              "same network open the demo")
@@ -211,13 +232,21 @@ def main() -> None:
     manifest = build_manifest(game_dir, args.resolution, args.profile)
     manifest_bytes = json.dumps(manifest).encode("utf-8")
 
-    serve(lobby_dir, args.lobby_port, 0, args.host)
+    # Posters are generated from the package's own art, so the demo ships no
+    # third-party thumbnails and needs no network. See tools/poster_builder.py.
+    posters = build_posters(game_dir, args.games)
+
+    serve(lobby_dir, args.lobby_port, 0, args.host, posters=posters)
     serve(game_dir, args.game_port, args.throttle_kbps, args.host, manifest_bytes,
           args.latency_ms)
 
     shown = "127.0.0.1" if args.host in {"127.0.0.1", "localhost"} else args.host
     print(f"lobby  http://{shown}:{args.lobby_port}/sandbox.html   ({lobby_dir})", flush=True)
     print(f"game   http://{shown}:{args.game_port}/    ({game_dir})", flush=True)
+    poster_bytes = sum(len(v) for v in posters.values())
+    print(f"posters {len(posters)} generated from the package, "
+          f"{poster_bytes / 1024:.0f} KB total "
+          f"({poster_bytes / max(1, len(posters)) / 1024:.1f} KB each)", flush=True)
     print(f"manifest {MANIFEST_PATH} [{args.profile}]: {manifest['warmFiles']} files, "
           f"{manifest['warmBytes'] / 1048576:.1f} MB of "
           f"{manifest['totalBytes'] / 1048576:.1f} MB "

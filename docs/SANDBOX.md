@@ -25,7 +25,7 @@ node tools/sandbox_measure.mjs --runs 3
 ### 1. Automated suite — nothing to set up
 
 ```bash
-./scripts/check.sh          # 151 JS + Python tests, ruff, shellcheck
+./scripts/check.sh          # 232 JS + 58 Python tests, ruff, shellcheck
 ```
 
 Covers the dwell tracker, prefetch policy, pre-init manager, progressive rendering, manifest
@@ -47,28 +47,36 @@ warming looks far less effective than it is. 12 Mbps with 40 ms RTT is closer to
 
 **The comparison to demonstrate, in this order:**
 
-The lobby shows six numbered tiles. Each is the **same provided package served under its own URL
-namespace** (`/g1`, `/g2`, …), so every tile has separate browser cache entries. Warming one does
-not warm the others — without that, the whole demo would be a trick.
+The lobby is laid out like the production one: rails of square posters with real titles, providers
+and chips. Each tile launches the **same provided package served under its own URL namespace**
+(`/g1`, `/g2`, …), so every tile has separate browser cache entries. Warming one does not warm the
+others — without that, the whole demo would be a trick.
+
+Pass `--games 24` (the default) to control how many tiles the lobby generates.
 
 | Step | What to do | What to point at |
 |---|---|---|
-| 1 | Load the page | Tiles appear as placeholders, then fill in. Never a blank rectangle |
-| 2 | Hover **Game 3** for ~0.3 s, then move away | **Rung reached** goes `CONNECT` → `WARM`. 2.8 MB of blocking assets fetched, no engine spent |
-| 3 | Hover **Game 3** again and hold ~1 s | Rung climbs to `PREINIT`; **Engine pre-init** goes `PREPARING` → `PREPARED (g3)`. It loads in a hidden frame while you talk |
-| 4 | Now click **Game 5** — one you did *not* rest on | Cold baseline. Status says `cold launch` |
-| 5 | Click **Reset**, rest on **Game 3** again until `PREPARED` | Watch **Speculative budget** climb, then watch it refund if you move to another tile |
-| 6 | Click **Game 3** | **Single-digit ms.** Status says `revealed pre-initialised engine` |
+| 1 | Load the page | A lobby: rails of square posters with titles, providers and chips. Two tiles already carry a `BYTES` badge — the continue-playing rail was warmed at load, before anyone touched anything |
+| 2 | Sweep the cursor across a rail without stopping | Tiles pick up `CONN` as the pointer heads toward them, and `BYTES` as it crosses. **No tile gets an engine**: crossing is travel, not intent |
+| 3 | Rest on one tile for ~1 s | Its badge goes `BYTES` → `ENGINE`. **Rung reached** climbs to `PREINIT`; the game is loading in a hidden frame while you talk |
+| 4 | Now click a tile you did *not* rest on | Cold baseline. Status says `cold launch` |
+| 5 | Click **Reset**, rest on a tile until its badge reads `ENGINE` | Watch **Speculative budget** climb, then watch it refund the moment you move to another tile |
+| 6 | Click that tile | **Single-digit ms.** Status says `revealed a pre-initialised engine` |
+| 7 | Click **← Natrag u lobi**, then click the same tile again | **0 ms again.** The engine was retained, not destroyed |
 
 Steps 4 and 6 are the whole pitch, and they happen **in the same page, seconds apart, on identical
 packages**. A judge can pick which tile to rest on and which to click.
+
+On a phone (or a touch-emulating browser), step 2 has no equivalent — there is no hover. Scroll and
+let a tile settle in the middle of the screen and it earns `BYTES`; a touch-down earns the engine
+rung outright, because at that point the tap has already begun.
 
 Then show it failing safely:
 
 | Step | What to do | What to point at |
 |---|---|---|
-| 7 | Tick **Simulate exclusion-register denial** mid-warm | Rung drops to `NONE (AUTHORIZATION)`, in-flight warming aborts, the budget is refunded, any engine is torn down |
-| 8 | Tick **Disable speculation** and launch again | The honest control arm, in the same page |
+| 8 | Tick **Simulate exclusion-register denial** mid-warm | Rung drops to `NONE (AUTHORIZATION)`, in-flight warming aborts, the budget is refunded, any engine is torn down |
+| 9 | Tick **Disable speculation** and launch again | The honest control arm, in the same page |
 
 Also worth showing:
 
@@ -83,7 +91,14 @@ Also worth showing:
 - `?maxrung=WARM` caps the ladder at byte warming, which is how the measurement harness isolates the
   bytes from the engine.
 - Every tile is the real package, served under its own URL namespace (`/g1`, `/g2`, …). The tile
-  *titles* are `SIMULATED` labels; the bytes behind each are the provided bundle, cached separately.
+  *titles*, providers and chips are labels taken from the public production lobby; the bytes behind
+  each are the provided bundle, cached separately.
+- **Posters are generated from the package itself** at server start (`tools/poster_builder.py`) — a
+  graded crop of its splash background with one of its own symbol sprites. 24 posters cost 182 KB in
+  total. No PSK or third-party artwork is shipped, copied or hotlinked.
+- The per-tile `CONN` / `BYTES` / `ENGINE` badge is **operator instrumentation** behind a toggle. It
+  is not a player-facing element: a "ready" badge would surface the predictor, which is the one thing
+  this architecture promises never to do.
 
 **Expect the game to render but not spin.** It has no backend. Say so before anyone clicks.
 
@@ -109,9 +124,9 @@ Measured on this machine (40 ms per-request latency, headless Chromium, median o
 
 | Arm | Launch-phase bytes | click → canvas | click → assets quiet |
 |---|---:|---:|---:|
-| cold | 52,220,191 | 542 ms | 4,881 ms |
-| warm | 49,845,707 | 459 ms | 4,816 ms |
-| preinit | **0** | **73 ms** | no further network |
+| cold | 52,220,191 | 542 ms | 4,848 ms |
+| warm | 49,845,707 | 450 ms | 4,767 ms |
+| preinit | **0** | **124 ms** | no further network |
 
 ### Serving the demo to another device
 

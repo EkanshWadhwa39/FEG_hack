@@ -1,0 +1,375 @@
+/**
+ * Lobby styling, matched to casino.psk.hr's own stylesheet.
+ *
+ * The colour tokens, tile geometry and hover behaviour below were read from the
+ * production stylesheet (`/_nuxt/entry.*.css`) rather than eyeballed, so the
+ * demo is a fair visual stand-in for the surface being proposed:
+ *
+ *   .psk.dark  --color-background-base   14 14 17
+ *              --color-surface-primary   34 34 43
+ *              --color-surface-secondary 24 24 30
+ *              --color-surface-panel     41 41 51
+ *              --color-surface-brand     23 82 191
+ *              --color-content-primary  255 255 255
+ *              --color-content-secondary 223 223 230
+ *   .game-tile            aspect-ratio 1/1; max-width 160 -> 224px
+ *                         width 41.25vw / 25vw / 18.33vw / 14.84vw
+ *   .game-tile-background border-radius .5rem; hover scale(1.1) over .3s
+ *   .game-tile-labels     absolute top-left, .75rem/1rem, weight 500
+ *
+ * No PSK stylesheet, font, logo or artwork is copied. These are our own rules
+ * written to the same measurements, and every poster is generated from the
+ * FEG-provided package (`tools/poster_builder.py`).
+ */
+
+:root {
+  --background-base: #0e0e11;
+  --surface-primary: #22222b;
+  --surface-secondary: #18181e;
+  --surface-panel: #292933;
+  --surface-brand: #1752bf;
+  --surface-brand-hover: #1447a6;
+  --content-primary: #fff;
+  --content-secondary: #dfdfe6;
+  --content-tertiary: #a3a3b3;
+  --border-secondary: #141419;
+  --positive: #0e7c1c;
+  --warning: #8a5a00;
+  --negative: #c52d16;
+  --radius-tile: 0.5rem;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--background-base);
+  color: var(--content-primary);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  clip-path: inset(50%);
+  overflow: hidden; white-space: nowrap;
+}
+
+/* ------------------------------ chrome ------------------------------ */
+
+.topbar {
+  position: sticky; top: 0; z-index: 40;
+  display: flex; align-items: center; gap: 16px;
+  padding: 10px 16px;
+  background: var(--surface-secondary);
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.brand {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-weight: 800; letter-spacing: 0.02em;
+}
+
+.brand-mark {
+  display: grid; place-items: center;
+  width: 30px; height: 30px; border-radius: 6px;
+  background: var(--surface-brand);
+  font-size: 13px; font-weight: 800;
+}
+
+.topbar nav {
+  display: flex; gap: 4px; margin-left: 8px;
+  overflow-x: auto; scrollbar-width: none;
+}
+.topbar nav::-webkit-scrollbar { display: none; }
+
+.topbar nav span {
+  padding: 6px 12px; border-radius: 999px;
+  font-size: 14px; color: var(--content-tertiary);
+  white-space: nowrap;
+}
+.topbar nav span[aria-current="page"] {
+  background: var(--surface-primary);
+  color: var(--content-primary);
+}
+
+.topbar .spacer { flex: 1; }
+
+.sim-badge {
+  padding: 4px 8px; border-radius: 4px;
+  background: var(--warning); color: #fff;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+}
+
+/* ------------------------------- rails ------------------------------ */
+
+main { padding: 8px 0 64px; }
+
+.rail { margin: 22px 0; }
+
+.rail-head {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 0 16px 10px;
+}
+
+.rail-head h2 {
+  margin: 0;
+  font-size: 17px; font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.rail-head .rail-en {
+  font-size: 12px; color: var(--content-tertiary);
+}
+
+.rail-head .rail-note {
+  margin-left: auto;
+  font-size: 11px; color: var(--content-tertiary);
+}
+
+.rail-track {
+  display: flex; gap: 12px;
+  padding: 2px 16px 6px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  /* Offscreen tiles cost nothing to lay out until they are scrolled to. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 200px;
+}
+
+.rail-track::-webkit-scrollbar { height: 6px; }
+.rail-track::-webkit-scrollbar-thumb {
+  background: var(--surface-panel); border-radius: 3px;
+}
+
+/* -------------------------------- tile ------------------------------ */
+
+.tile {
+  position: relative;
+  flex: 0 0 auto;
+  /* Production geometry, breakpoint for breakpoint. */
+  width: 41.25vw; max-width: 160px;
+  aspect-ratio: 1 / 1;
+  padding: 0; border: 0; background: none;
+  border-radius: var(--radius-tile);
+  overflow: hidden;
+  cursor: pointer;
+  scroll-snap-align: start;
+  isolation: isolate;
+}
+
+@media (min-width: 640px) { .tile { width: 25vw; max-width: 176px; } }
+@media (min-width: 960px) { .tile { width: 18.33vw; max-width: 223px; } }
+@media (min-width: 1280px) { .tile { width: 14.84vw; max-width: 224px; } }
+
+.tile img {
+  display: block;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-tile);
+  background: var(--surface-panel);
+  transition: transform 0.3s var(--ease);
+}
+
+.tile:hover img,
+.tile:focus-visible img { transform: scale(1.1); }
+
+.tile:focus-visible {
+  outline: 2px solid var(--surface-brand);
+  outline-offset: 2px;
+}
+
+.tile-overlay {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  gap: 2px;
+  padding: 8px;
+  background: linear-gradient(180deg, rgb(0 0 0 / 0%) 45%, rgb(0 0 0 / 78%) 100%);
+  text-align: left;
+  pointer-events: none;
+}
+
+.tile-title {
+  font-size: 12px; font-weight: 600; line-height: 1.2;
+  color: var(--content-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.tile-provider {
+  font-size: 10px; color: var(--content-tertiary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Production chips: absolute top-left, stacked, .75rem/1rem, weight 500. */
+.tile-labels {
+  position: absolute; top: 0; left: 0;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+  padding-top: 8px;
+  font-size: 12px; line-height: 16px; font-weight: 500;
+  pointer-events: none;
+}
+
+.chip {
+  display: flex; align-items: center;
+  padding: 0 4px 0 8px;
+  border-radius: 0 4px 4px 0;
+  color: #fff; text-transform: uppercase;
+  font-size: 10px; letter-spacing: 0.04em;
+}
+
+/* Instrumentation, not a player-facing element. Off unless the operator
+   overlay is on, because a "ready" badge would surface speculation. */
+.tile-state {
+  position: absolute; top: 6px; right: 6px;
+  display: none;
+  padding: 2px 5px; border-radius: 4px;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
+  background: rgb(0 0 0 / 62%); color: var(--content-tertiary);
+  border: 1px solid rgb(255 255 255 / 14%);
+}
+
+body[data-overlay="on"] .tile-state { display: block; }
+.tile-state[data-rung="CONNECT"] { color: #9fb6e8; border-color: #2c4a86; }
+.tile-state[data-rung="WARM"] { color: #ffd479; border-color: #7a5c14; }
+.tile-state[data-rung="PREINIT"] { color: #8fe39c; border-color: #2c6b38; }
+
+/* Skeleton, shown only until a tile's own content exists. */
+.tile.skeleton {
+  background: linear-gradient(100deg,
+    var(--surface-panel) 20%, var(--surface-primary) 40%, var(--surface-panel) 60%);
+  background-size: 220% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+@keyframes shimmer { to { background-position: -220% 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .tile.skeleton { animation: none; }
+  .tile img { transition: none; }
+  .tile:hover img, .tile:focus-visible img { transform: none; }
+}
+
+/* ------------------------------ operator ---------------------------- */
+
+.operator {
+  margin: 24px 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-secondary);
+  border-radius: 10px;
+  background: var(--surface-secondary);
+}
+
+.operator h2 {
+  margin: 0 0 4px; font-size: 14px; letter-spacing: 0.02em;
+}
+
+.operator p {
+  margin: 0 0 12px; font-size: 12px; color: var(--content-tertiary);
+  max-width: 78ch; line-height: 1.5;
+}
+
+.metrics {
+  display: grid; gap: 8px; margin: 0 0 12px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+}
+
+.metrics > div {
+  padding: 8px 10px; border-radius: 8px;
+  background: var(--surface-primary);
+}
+
+.metrics dt {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--content-tertiary);
+}
+
+.metrics dd {
+  margin: 2px 0 0; font-size: 13px; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.metrics dd[data-flag="NORMAL"] { color: #8fe39c; }
+.metrics dd[data-flag="ELEVATED"] { color: #ffd479; }
+.metrics dd[data-flag="UNKNOWN"] { color: var(--content-tertiary); }
+
+.controls {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  margin-bottom: 10px;
+}
+
+.controls button {
+  padding: 7px 12px; border-radius: 8px;
+  border: 1px solid var(--surface-panel);
+  background: var(--surface-primary); color: var(--content-primary);
+  font: inherit; font-size: 13px; cursor: pointer;
+}
+
+.controls button.primary {
+  background: var(--surface-brand); border-color: var(--surface-brand);
+}
+.controls button.primary:hover { background: var(--surface-brand-hover); }
+.controls button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+.toggles {
+  display: grid; gap: 6px;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+}
+
+.toggles label {
+  display: flex; align-items: flex-start; gap: 8px;
+  font-size: 12px; color: var(--content-secondary);
+}
+
+.toggles small {
+  display: block; color: var(--content-tertiary); font-size: 11px;
+}
+
+#status {
+  margin: 10px 0 0; padding: 8px 10px;
+  border-radius: 8px; background: var(--surface-primary);
+  font-size: 12px; color: var(--content-secondary);
+  min-height: 34px;
+}
+
+#runs { list-style: none; margin: 8px 0 0; padding: 0; font-size: 12px; }
+
+#runs li {
+  display: flex; justify-content: space-between; gap: 12px;
+  padding: 5px 0; border-bottom: 1px solid var(--border-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+#runs .run-detail { color: var(--content-tertiary); }
+
+/* ------------------------------- stage ------------------------------ */
+
+#frame-host { margin: 0 16px; }
+
+#frame-host iframe {
+  width: 100%; height: min(70vh, 560px);
+  border: 1px solid var(--surface-panel); border-radius: 10px;
+  background: #000;
+}
+
+details.operator > summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--content-secondary);
+}
+
+details.operator > summary::marker { color: var(--content-tertiary); }
+details.operator p { margin: 8px 0; }
+
+/* A narrow screen has no room for the rail's secondary labels, and wrapping
+   them turns a one-line heading into a three-line block that pushes the first
+   row of games below the fold. */
+@media (max-width: 640px) {
+  .rail-head { flex-wrap: nowrap; }
+  .rail-head h2 { font-size: 16px; white-space: nowrap; }
+  .rail-head .rail-en,
+  .rail-head .rail-note { display: none; }
+}

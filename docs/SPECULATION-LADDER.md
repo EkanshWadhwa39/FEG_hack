@@ -126,7 +126,64 @@ performs them. Every threshold and every refusal is testable without a browser
 
 A mouse press is deliberately *not* a commit: hover dwell already covered it.
 
+### Weak signals can never buy an engine
+
+Three signals feed the ladder, and they are not interchangeable:
+
+| Signal | Strength | Highest rung |
+|---|---|---|
+| Pointer or finger resting on a tile *right now* | evidence | `PREINIT` |
+| A touch-down (`pointerdown`) | evidence — the tap has begun | `PREINIT` |
+| Accumulated dwell from earlier in the session | history | `WARM` |
+| A tile centred in a settled viewport | guess | `WARM` |
+| A predicted pointer destination | guess | `CONNECT` |
+
+Two of these were learned the hard way while wiring the lobby:
+
+- **A pointer crossing a rail deposits a little dwell on every tile it passes.**
+  A few sweeps were enough for a tile nobody ever stopped on to out-rank
+  everything and buy itself an engine. The engine rung now reads `currentMs` —
+  *uninterrupted, present-moment* dwell, which is zero the instant the pointer
+  leaves — while bytes still read accumulated `score`.
+- **A settled viewport is not attention.** A desktop lobby left untouched kept
+  crediting whichever tile sat in the middle of the screen, forever, and
+  eventually bought it an engine. Viewport dwell is now enabled only where hover
+  genuinely does not exist (`(hover: none) and (pointer: coarse)`), bounded to
+  2.5 s per tile, and kept in a separate tracker whose entries are merged in at a
+  strength that stops at the byte rung.
+
 ---
+
+## The lobby it runs in
+
+The sandbox surface is now a PSK-shaped lobby rather than a row of buttons
+labelled `Game 1`..`Game 6`, because the levers below only make sense against a
+real browse pattern: rails of square posters that a player scans, scrolls, and
+rests on.
+
+What was copied and what was not:
+
+| | |
+|---|---|
+| Colour tokens, tile geometry, hover behaviour | Read from `casino.psk.hr`'s own stylesheet: `.psk.dark` background `#0e0e11`, surface `#22222b`, brand `#1752bf`; `.game-tile` `aspect-ratio: 1/1`, max-width 160→224 px across the same four breakpoints; `border-radius: .5rem`; hover `scale(1.1)` over 0.3 s |
+| Rail headings and chips | The production ones — `PSK Favoriti`, `Nove igre`, plus `JACKPOT` / `NOVE` / `EKSKLUZIVNO` / `IGRA DANA` |
+| Titles and providers | The real names listed publicly on that lobby, reproduced as labels |
+| **Poster artwork** | **Generated from the FEG-provided package itself** — a graded crop of its splash background with one of its own symbol sprites, lifted through the package's own atlas descriptors (`tools/poster_builder.py`). 320×320 WebP, ~7.6 KB each. No PSK or third-party artwork is copied, hotlinked, or shipped |
+| **Every tile's game** | **The same provided package**, under its own URL namespace (`/g1`, `/g2`, …), so each has separate browser cache entries and warming one never warms another |
+
+### The rails are not a recommender
+
+`CODE.md` forbids surfacing predictor output to the player. Every rail is built
+from something the player did (`Nastavi igrati` — this session's launches;
+`PSK Favoriti`) or from a fixed order identical for everyone (`Nove igre`,
+`Popularno`). There is no similarity model, no cross-player inference, and
+`buildRails` returns `algorithmic: false` as part of its contract. A browser test
+asserts the rendered titles, providers, chips and order are byte-identical before
+and after the ladder climbs.
+
+The per-tile `CONN` / `BYTES` / `ENGINE` badge is **operator instrumentation**
+behind a toggle, not a player-facing element — a "ready" badge would surface
+exactly the speculation this architecture promises to keep invisible.
 
 ## MEASURED result
 
@@ -138,9 +195,9 @@ sandbox, so no input-accepted signal exists and none is claimed.
 
 | Arm | Launch-phase bytes | click → canvas | click → assets quiet |
 |---|---:|---:|---:|
-| `cold` — speculation disabled | 52,220,191 | 542 ms | 4,881 ms |
-| `warm` — ladder capped at bytes | 49,845,707 (−4.5%) | 459 ms (−15.3%) | 4,816 ms |
-| `preinit` — full ladder | **0** (−100%) | **73 ms (−86.5%)** | no further network |
+| `cold` — speculation disabled | 52,220,191 | 542 ms | 4,848 ms |
+| `warm` — ladder capped at bytes | 49,845,707 (−4.5%) | 450 ms (−17.0%) | 4,767 ms |
+| `preinit` — full ladder | **0** (−100%) | **124 ms (−77.1%)** | no further network |
 
 Reproduce with:
 
@@ -161,6 +218,37 @@ and it is all that is available on the `REDUCED` tier. The remaining 71 points c
 from the engine rung, and they come from *moving* work rather than removing it:
 the 52 MB and the ~4.9 s of decode still happen, just during browse instead of
 after the click.
+
+### Levers wired beyond the ladder
+
+The ladder answers "what should we speculate on when the player shows intent".
+These answer "what can we do when they have not shown any yet", and they are the
+ones that matter for a player who opens the lobby and taps their usual game
+without pausing on it.
+
+| Lever | What it does | Evidence |
+|---|---|---|
+| **Preconnect at first paint** | Resolves the game origin's DNS, TCP and TLS before any tile is touched | A production `session/create` measured at 1,849 ms, of which **1,046 ms was connection setup** and only 303 ms was server wait |
+| **Warm the continue-playing rail at load** | Warms the player's own last-played (then favourite) titles at lobby paint, bytes only | Last-played is **MEASURED at 30.4% hit@1** on 3,337 real launch sequences — 2.7× a collaborative model, 5.5× global popularity |
+| **Cross-session warm memory** | Remembers what was warmed, so a returning player's budget goes to cold titles | **57.5% of repeat launches were MEASURED as already cached** (CDN `max-age` ≈ 19 years) |
+| **Pointer-trajectory prediction** | Fires the free rung against the tile the cursor is travelling toward | Ray/box intersection over a 220 ms horizon, refusing slow or turbulent movement. Buys back the 200–400 ms traversal |
+| **Device-aware governance** | A constrained phone gets bytes, never a speculative engine | `deviceMemory < 4 GB`, or discharging below 20%, downgrades `FULL` → `REDUCED` |
+| **Engine retention on exit** | Leaving a game hides its engine for 45 s instead of destroying it | Re-entry becomes the same reveal: **MEASURED at 0 ms** in the sandbox |
+| **Poster discipline** | 320×320 WebP with intrinsic dimensions, first rail eager and high priority, rest lazy | 7.6 KB per poster against 675 KB for the raw splash. A 60-tile lobby is 0.45 MB rather than 40 MB |
+
+Two of these are safety rather than speed. `deviceMemory` and the Battery Status
+API are **absent** on much of the audience (Chromium-only and iOS/Firefox
+respectively), so absence is treated as *no evidence of a constrained device* —
+never as a veto. That is the same rule the connection tier follows, and for the
+same reason: a check that only ever fires on one browser family is not a safety
+property.
+
+Cross-session warm memory is a *guess* and is calibrated to be wrong in the cheap
+direction. There is no browser API that answers "is this URL in your HTTP cache",
+so the record is local, expires in 6 hours (far short of the CDN's `max-age`,
+because eviction is invisible to us), is keyed by bundle version, and degrades to
+"we know nothing" on any storage failure. Being wrong costs one redundant warm.
+Being wrong the other way costs a slow launch.
 
 ### Scope, stated plainly
 

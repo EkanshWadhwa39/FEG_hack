@@ -140,3 +140,44 @@ def test_an_unknown_profile_is_rejected(tmp_path):
 def test_blocking_profile_never_includes_audio(tmp_path):
     manifest = build_manifest(make_package(tmp_path), "@1x", "blocking")
     assert all(not a["url"].endswith((".mp3", ".ogg")) for a in manifest["assets"])
+
+
+def test_no_profile_ever_emits_an_asset_the_warmer_will_reject(tmp_path: Path) -> None:
+    """The browser warmer validates a plan atomically.
+
+    A single ineligible entry does not warm fewer assets -- `warmAssets` throws
+    and warms *none*. The `all` profile used to emit 54 non-critical PRIMARY
+    assets for the provided package, which silently disabled warming entirely
+    for anyone who selected it.
+    """
+    bundle = tmp_path / "package"
+    (bundle / "assets" / "spines" / "@1x").mkdir(parents=True)
+    (bundle / "assets" / "sounds").mkdir(parents=True)
+    (bundle / "index.html").write_bytes(b"x" * 10)
+    # A PRIMARY asset that is not critical, and a SECONDARY one.
+    (bundle / "assets" / "spines" / "@1x" / "bigwins.png").write_bytes(b"x" * 4_000_000)
+    (bundle / "assets" / "spines" / "@1x" / "reels_frame.png").write_bytes(b"x" * 1_000)
+    (bundle / "assets" / "sounds" / "music.ogg").write_bytes(b"x" * 5_000)
+
+    for profile in ("blocking", "critical", "all"):
+        manifest = build_manifest(bundle, "@1x", profile)
+        for asset in manifest["assets"]:
+            assert asset["stage"] != "SECONDARY", profile
+            if asset["stage"] == "PRIMARY":
+                assert asset.get("critical") is True, profile
+
+
+def test_profiles_are_ordered_from_smallest_to_largest(tmp_path: Path) -> None:
+    bundle = tmp_path / "package"
+    (bundle / "assets" / "spines" / "@1x").mkdir(parents=True)
+    (bundle / "assets" / "images" / "@1x").mkdir(parents=True)
+    (bundle / "index.html").write_bytes(b"x" * 10)
+    (bundle / "assets" / "core-engine-abc.js").write_bytes(b"x" * 1_000)
+    (bundle / "assets" / "images" / "@1x" / "splashBG.jpg").write_bytes(b"x" * 2_000)
+    (bundle / "assets" / "spines" / "@1x" / "reels_frame.png").write_bytes(b"x" * 3_000)
+
+    sizes = {
+        profile: build_manifest(bundle, "@1x", profile)["warmFiles"]
+        for profile in ("blocking", "critical", "all")
+    }
+    assert sizes["blocking"] <= sizes["critical"] <= sizes["all"]

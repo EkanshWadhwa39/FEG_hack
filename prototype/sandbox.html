@@ -1,531 +1,149 @@
 <!doctype html>
-<html lang="en">
+<html lang="hr">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Sandbox — cold vs warm game launch</title>
-    <link rel="stylesheet" href="./styles/player.css">
+    <meta name="color-scheme" content="dark">
+    <title>Casino lobby sandbox — cold vs pre-initialised launch</title>
+    <link rel="stylesheet" href="./styles/lobby.css">
   </head>
-  <body>
-    <main class="shell">
-      <header>
-        <p class="eyebrow">Sandbox harness</p>
-        <h1>Cold vs warm launch</h1>
-        <p class="lede">
-          Launches the FEG-provided game package, served unmodified from a
-          separate origin. Intent expressed by pointer, keyboard, or touch
-          climbs a speculation ladder: a transport hint costs nothing, a short
-          dwell buys the blocking asset profile, and a sustained dwell buys a
-          pre-initialised engine. The governor decides how far up the ladder
-          this device is allowed to go.
-        </p>
-        <div class="banner" role="note">
-          <span class="label simulated">SANDBOX</span>
-          <span>
-            No provider backend. The game reaches engine start, not playable —
-            its preloader never clears because <code>api.spiniq.io</code> is unreachable.
-          </span>
-        </div>
-      </header>
+  <body data-overlay="on">
+    <a class="visually-hidden" href="#rails">Skip to games</a>
 
-      <section class="panel" aria-labelledby="lobby-title">
-        <div class="panel-head">
-          <div><p class="eyebrow">Lobby</p><h2 id="lobby-title">Games</h2></div>
-          <span class="label simulated">SIMULATED TILES</span>
-        </div>
-        <p class="empty-state">
-          Every tile is the same provided package served under its own URL
-          namespace, so each has separate cache entries. Rest on a tile — hover,
-          tab onto it, or let it settle in the middle of the screen on a phone —
-          then click it. Click a tile you did <em>not</em> rest on to see the
-          cold baseline.
-        </p>
-        <ul id="grid" class="results" role="list" aria-busy="true"></ul>
-        <p id="grid-status" class="visually-hidden" role="status" aria-live="polite"></p>
-      </section>
+    <header class="topbar">
+      <span class="brand"><span class="brand-mark">PS</span> Casino</span>
+      <nav aria-label="Lobby sections">
+        <span aria-current="page">Sve igre</span>
+        <span>Slotovi</span>
+        <span>Live Casino</span>
+        <span>Jackpot</span>
+        <span>Stolne igre</span>
+      </nav>
+      <span class="spacer"></span>
+      <span class="sim-badge">SANDBOX</span>
+    </header>
 
-      <section class="panel" aria-labelledby="cache-title">
-        <div class="panel-head">
-          <div><p class="eyebrow">Speculation</p><h2 id="cache-title">Ladder state</h2></div>
-        </div>
+    <main>
+      <details id="lobby-note" class="operator">
+        <summary><strong>What is real here, and what is not</strong></summary>
+        <p style="margin-top:10px">
+          Every tile launches the <em>same</em> FEG-provided game package, served
+          unmodified from a separate origin under its own URL namespace
+          (<code>/g1</code>, <code>/g2</code>, …), so each has separate browser
+          cache entries — warming one never warms another. That is what keeps the
+          hit-rate story honest rather than a demo trick.
+        </p>
+        <p>
+          Poster art is generated from that package's own splash background and
+          symbol atlases; no PSK or third-party artwork is used. Titles, providers
+          and chips are the ones listed publicly on the production lobby,
+          reproduced as labels only. Layout, colours and tile geometry are matched
+          to the production stylesheet.
+        </p>
+        <p style="margin-bottom:0">
+          The game reaches engine start, <strong>not playable</strong>: its backend
+          is unreachable here, so no input-accepted signal exists and none is
+          claimed.
+        </p>
+      </details>
+
+      <div id="rails"></div>
+
+      <div id="frame-host"></div>
+      <div class="controls" style="margin:12px 16px">
+        <button id="exit" type="button" hidden>← Natrag u lobi (back to lobby)</button>
+      </div>
+
+      <section class="operator" aria-labelledby="op-title">
+        <h2 id="op-title">Operator view — speculation ladder</h2>
+        <p>
+          Resting on a tile climbs a ladder whose rungs cost progressively more:
+          a transport hint is free, the blocking byte profile is cheap, and a
+          pre-initialised engine is expensive. None of this reaches the player —
+          the rails show the player's own history and a fixed editorial order,
+          and nothing below changes what is displayed or in what sequence.
+        </p>
         <dl class="metrics">
           <div><dt>Manifest</dt><dd id="m-manifest">loading…</dd></div>
           <div><dt>Intent (dwell)</dt><dd id="m-dwell">none</dd></div>
+          <div><dt>Predicted destination</dt><dd id="m-predicted">—</dd></div>
           <div><dt>Governor</dt><dd id="m-gov" data-flag="UNKNOWN">—</dd></div>
           <div><dt>Tier</dt><dd id="m-tier" data-flag="UNKNOWN">—</dd></div>
           <div><dt>Rung reached</dt><dd id="m-rung" data-flag="UNKNOWN">NONE</dd></div>
           <div><dt>Connections hinted</dt><dd id="m-connect">0</dd></div>
-          <div><dt>Warmed (bytes)</dt><dd id="m-warm">no</dd></div>
+          <div><dt>Warmed</dt><dd id="m-warm">none</dd></div>
           <div><dt>Engine pre-init</dt><dd id="m-preinit" data-flag="UNKNOWN">IDLE</dd></div>
           <div><dt>Speculative budget</dt><dd id="m-budget">—</dd></div>
           <div><dt>Authorization</dt><dd id="m-auth" data-flag="NORMAL">GRANTED</dd></div>
         </dl>
-        <div class="demo-controls">
-          <button id="launch" type="button" class="primary">Launch strongest candidate</button>
-          <button id="reset" type="button">Reset</button>
+
+        <div class="controls">
+          <button id="reset" type="button">Reset speculation</button>
         </div>
-        <div class="pref-row" style="margin-top:14px">
-          <span>
-            <strong><label for="override">Ignore governor (demo only)</label></strong>
-            <small>
-              Forces the FULL tier regardless of what the browser reports. This
-              exists so the demo can proceed on an unusual link, and is never
-              shipped.
-            </small>
-          </span>
-          <input id="override" type="checkbox">
+
+        <div class="toggles">
+          <label for="overlay">
+            <input id="overlay" type="checkbox" checked>
+            <span>
+              <strong>Show per-tile ladder state</strong>
+              <small>
+                Instrumentation only. A player-facing "ready" badge would
+                surface the predictor, so this never ships.
+              </small>
+            </span>
+          </label>
+          <label for="override">
+            <input id="override" type="checkbox">
+            <span>
+              <strong>Ignore governor (demo only)</strong>
+              <small>
+                Forces the FULL tier regardless of what the browser reports.
+                Never shipped.
+              </small>
+            </span>
+          </label>
+          <label for="deny-auth">
+            <input id="deny-auth" type="checkbox">
+            <span>
+              <strong>Simulate exclusion-register denial</strong>
+              <small>
+                Fails closed. Every rung stops, in-flight warming aborts, the
+                budget is refunded, and any engine is torn down.
+              </small>
+            </span>
+          </label>
+          <label for="disable-spec">
+            <input id="disable-spec" type="checkbox">
+            <span>
+              <strong>Disable speculation (baseline arm)</strong>
+              <small>The honest control, in the same page.</small>
+            </span>
+          </label>
         </div>
-        <div class="pref-row">
-          <span>
-            <strong><label for="deny-auth">Simulate exclusion-register denial</label></strong>
-            <small>
-              Fails the authorization check closed. Every rung of the ladder
-              stops and any live engine is torn down — warming a title for a
-              self-excluded player is speculative work on a launch that must
-              never happen.
-            </small>
-          </span>
-          <input id="deny-auth" type="checkbox">
-        </div>
-        <div class="pref-row">
-          <span>
-            <strong><label for="disable-spec">Disable speculation (baseline arm)</label></strong>
-            <small>
-              The honest control. Same page, same package, no ladder — this is
-              the number the treatment has to beat.
-            </small>
-          </span>
-          <input id="disable-spec" type="checkbox">
-        </div>
-        <p id="status" class="empty-state" role="status" aria-live="polite">Idle.</p>
+
+        <p id="status" role="status" aria-live="polite">Idle.</p>
       </section>
 
-      <section class="panel" aria-labelledby="runs-title">
-        <div class="panel-head">
-          <div><p class="eyebrow">Evidence</p><h2 id="runs-title">Launch log</h2></div>
-          <span class="label measured">MEASURED (this browser, this run)</span>
-        </div>
-        <p class="empty-state">
-          Click to reveal, in milliseconds. This measures click to frame
-          revealed. It does <em>not</em> measure playable: the package has no
-          reachable backend, so no input-accepted signal exists here.
+      <section class="operator" aria-labelledby="runs-title">
+        <h2 id="runs-title">Launch log — click to frame revealed</h2>
+        <p>
+          Milliseconds from click to the game frame being shown. This is not
+          click-to-playable: the package has no reachable backend here, so an
+          input-accepted signal does not exist and is never claimed.
         </p>
-        <ul id="runs" class="results" role="list"></ul>
-      </section>
-
-      <section class="panel">
-        <div class="panel-head"><h2>Game origin</h2></div>
-        <div id="frame-host"></div>
+        <ul id="runs"></ul>
       </section>
     </main>
 
     <script type="module">
-      import { createDwellTracker } from "./src/dwell.js";
-      import { attachTileIntent, createViewportDwell } from "./src/intent-sources.js";
-      import { planProgressiveRender, applyProgressiveRender } from "./src/progressive.js";
-      import { assessPrefetch, readConnectionCapability, SpeculationTier } from "./src/governor.js";
-      import {
-        planSpeculation, createByteLedger, Rung, SpeculationAction,
-      } from "./src/speculation.js";
-      import { warmAssets } from "./src/warmer.js";
-      import { createBrowserConnectionPrewarmer } from "./src/connection-prewarm.js";
-      import { Authorization, createPreinitManager } from "./src/preinit.js";
+      import { startLobby } from "./src/lobby.js";
 
       const params = new URLSearchParams(location.search);
-      const GAME = params.get("game") ?? "http://127.0.0.1:8091";
-      const COUNT = Number(params.get("games") ?? 6);
-      const $ = (id) => document.getElementById(id);
-      const grid = $("grid");
-
-      // Every tile is the SAME provided package served under a distinct URL
-      // namespace (/g1, /g2, ...), so each has its own browser cache entries.
-      // Warming one tile therefore does not warm the others, which is what
-      // makes the hit-rate story honest rather than a demo trick.
-      const CATALOGUE = Array.from({ length: COUNT }, (_, i) => ({
-        id: `g${i + 1}`,
-        title: `Game ${i + 1}`,
-        provider: `Provider ${String.fromCharCode(65 + (i % 3))}`,
-        url: `${GAME}/g${i + 1}/`,
-      }));
-      const byId = new Map(CATALOGUE.map((item) => [item.id, item]));
-
-      const dwell = createDwellTracker();
-      const preinit = createPreinitManager({ host: $("frame-host") });
-      const prewarmConnection = createBrowserConnectionPrewarmer();
-      const ledger = createByteLedger({ byteBudget: 96 * 1048576 });
-      const manifests = new Map();
-
-      const connected = new Set();
-      const warmed = new Set();
-      const warmInFlight = new Set();
-      let committed = null;
-      let recents = [];
-
-      /* ---------- tiles ---------- */
-
-      function renderTile(item) {
-        const li = document.createElement("li");
-        const button = document.createElement("button");
-        button.type = "button";
-        button.dataset.gameId = item.id;
-        const title = document.createElement("span");
-        title.className = "game-title";
-        title.textContent = item.title;
-        const provider = document.createElement("span");
-        provider.className = "game-provider";
-        provider.textContent = item.provider;
-        button.append(title, provider);
-
-        // Pointer, keyboard and touch are credited identically.
-        attachTileIntent({
-          element: button,
-          gameId: item.id,
-          dwell,
-          onCommit: (gameId) => { committed = gameId; tick(); },
-          onRelease: (gameId) => { if (committed === gameId) committed = null; },
-        });
-        button.addEventListener("click", () => launch(item));
-        li.append(button);
-        return li;
-      }
-
-      let loaded = [];
-      const paint = (settled) => {
-        const plan = planProgressiveRender({ expectedCount: COUNT, items: loaded, settled });
-        applyProgressiveRender(grid, plan, renderTile);
-        if (plan.announcement) $("grid-status").textContent = plan.announcement;
-      };
-      paint(false);
-      CATALOGUE.forEach((item, i) => setTimeout(() => {
-        loaded = CATALOGUE.slice(0, i + 1);
-        paint(i === COUNT - 1);
-      }, 180 * (i + 1)));
-
-      /* ---------- touch: a settled viewport stands in for hover ---------- */
-
-      const viewportDwell = createViewportDwell({
-        dwell,
-        readVisibleTiles: () => [...grid.querySelectorAll("button[data-game-id]")]
-          .map((button) => {
-            const box = button.getBoundingClientRect();
-            const visible = Math.max(0, Math.min(box.bottom, innerHeight) - Math.max(box.top, 0));
-            return {
-              gameId: button.dataset.gameId,
-              top: box.top,
-              bottom: box.bottom,
-              ratio: box.height > 0 ? visible / box.height : 0,
-            };
-          }),
+      startLobby({
+        gameOrigin: params.get("game") ?? "http://127.0.0.1:8091",
+        gameCount: Number(params.get("games") ?? 24),
+        maxRung: (params.get("maxrung") ?? "").toUpperCase() || null,
       });
-      addEventListener("scroll", () => viewportDwell.onScroll(), { passive: true });
-
-      /* ---------- manifests ---------- */
-
-      for (const item of CATALOGUE) {
-        fetch(`${item.url}warm-manifest.json`).then((r) => r.json())
-          .then((m) => { manifests.set(item.id, m); refreshManifestLabel(); })
-          .catch(() => {});
-      }
-      function refreshManifestLabel() {
-        const any = manifests.values().next().value;
-        $("m-manifest").textContent = any
-          ? `${manifests.size}/${COUNT} loaded · warm ${any.warmFiles} files `
-            + `${(any.warmBytes / 1048576).toFixed(1)} MB · package `
-            + `${(any.totalBytes / 1048576).toFixed(0)} MB`
-          : "unavailable";
-      }
-
-      /* ---------- the ladder ---------- */
-
-      // The exclusion-register check. It BLOCKS, and it gates speculation as
-      // well as the reveal. Granted in the sandbox only because there is no
-      // register to consult; the checkbox exercises the closed path.
-      const authorization = () =>
-        ($("deny-auth").checked ? Authorization.DENIED : Authorization.GRANTED);
-
-      // Evidence control: `?maxrung=WARM` caps the ladder at byte warming so
-      // the contribution of the engine rung can be isolated from the
-      // contribution of the bytes, rather than reported as one lump.
-      const MAX_RUNG = (params.get("maxrung") ?? "").toUpperCase();
-      const capTier = (tier) =>
-        (MAX_RUNG === "WARM" && tier === SpeculationTier.FULL ? SpeculationTier.REDUCED : tier);
-
-      function governorNow(nextAssetBytes) {
-        const capability = readConnectionCapability();
-        // The baseline arm wins over the demo override: a control that can be
-        // silently switched back on is not a control.
-        if ($("override").checked && !$("disable-spec").checked) {
-          return Object.freeze({
-            allowed: true,
-            reason: "OVERRIDDEN_FOR_DEMO",
-            tier: capTier(SpeculationTier.FULL),
-            remainingBytes: ledger.remaining(),
-            projectedBytes: null,
-          });
-        }
-        const decision = assessPrefetch({
-          enabled: !$("disable-spec").checked,
-          ...capability,
-          visibilityState: document.visibilityState,
-          byteBudget: ledger.byteBudget,
-          bytesUsed: ledger.bytesUsed(),
-          nextAssetBytes,
-        });
-        return MAX_RUNG === "WARM"
-          ? Object.freeze({ ...decision, tier: capTier(decision.tier) })
-          : decision;
-      }
-
-      // A governor that can only refuse *new* work is not a governor. Warming a
-      // 2.8 MB profile is not instant, so a page that is hidden, a link that
-      // turns metered, or an authorization that is withdrawn mid-flight has to
-      // be able to stop requests that are already running. `warmAssets` accepts
-      // an abort signal and is tested against uncooperative requests; nothing
-      // was ever passing one.
-      const warmAborts = new Map();
-
-      function abortAllWarming(reason) {
-        if (warmAborts.size === 0) return;
-        for (const [gameId, controller] of warmAborts) {
-          controller.abort();
-          ledger.refund(gameId, Rung.WARM);
-        }
-        warmAborts.clear();
-        $("status").textContent = `Speculative warming stopped: ${reason}.`;
-      }
-
-      async function warmBytes(gameId, estimatedBytes) {
-        const item = byId.get(gameId);
-        const manifest = manifests.get(gameId);
-        if (!item || !manifest || warmInFlight.has(gameId) || warmed.has(gameId)) return;
-        warmInFlight.add(gameId);
-        const controller = new AbortController();
-        warmAborts.set(gameId, controller);
-        ledger.charge(gameId, Rung.WARM, estimatedBytes || manifest.warmBytes);
-        const started = performance.now();
-        try {
-          const summary = await warmAssets({
-            plan: {
-              locale: "hr-HR", tier: "1x",
-              assets: manifest.assets.map((a) => ({ ...a, url: `${item.url}${a.url}` })),
-            },
-            target: { locale: "hr-HR", tier: "1x" },
-            concurrency: 2,
-            signal: controller.signal,
-            requestAsset: (url, { signal }) =>
-              fetch(url, { mode: "no-cors", credentials: "omit", signal }),
-          });
-          if (controller.signal.aborted) {
-            ledger.refund(gameId, Rung.WARM);
-            return;
-          }
-          warmed.add(gameId);
-          window.__WARM_DONE__ = (window.__WARM_DONE__ ?? 0) + summary.requested;
-          $("status").textContent =
-            `Warmed ${summary.requested}/${summary.attempted} blocking assets for `
-            + `${item.title} in ${Math.round(performance.now() - started)}ms, during browse.`;
-        } catch {
-          ledger.refund(gameId, Rung.WARM);
-        } finally {
-          warmInFlight.delete(gameId);
-          warmAborts.delete(gameId);
-        }
-      }
-
-      function execute(action) {
-        const item = byId.get(action.gameId);
-        if (!item) return;
-        switch (action.action) {
-          case SpeculationAction.PREWARM_CONNECTION:
-            // Free rung: DNS, TCP and TLS only. No bytes, nothing to refund.
-            connected.add(action.gameId);
-            prewarmConnection(item.url).catch(() => connected.delete(action.gameId));
-            break;
-          case SpeculationAction.WARM_BYTES:
-            warmBytes(action.gameId, action.estimatedBytes);
-            break;
-          case SpeculationAction.PREPARE_ENGINE:
-            ledger.charge(action.gameId, Rung.PREINIT, action.estimatedBytes);
-            preinit.prepare(action.gameId, item.url);
-            break;
-          case SpeculationAction.CANCEL_ENGINE:
-            // Intent withdrawn: reclaim the engine and give the bytes back, so
-            // a browse that wanders across the lobby is not billed for every
-            // engine it briefly considered.
-            preinit.cancel();
-            ledger.refund(action.gameId, Rung.PREINIT);
-            break;
-          default:
-            break;
-        }
-      }
-
-      let lastPlan = null;
-      function tick() {
-        const candidates = dwell.snapshot();
-        const anyManifest = manifests.values().next().value;
-        const governor = governorNow(anyManifest?.warmBytes ?? 0);
-        const plan = planSpeculation({
-          candidates,
-          committed,
-          authorization: authorization(),
-          governor,
-          connected: [...connected],
-          warmed: [...warmed],
-          preinit: preinit.getState(),
-          costs: {
-            warmBytes: anyManifest?.warmBytes ?? 0,
-            engineBytes: anyManifest?.totalBytes ?? 0,
-          },
-          budget: { byteBudget: ledger.byteBudget, bytesUsed: ledger.bytesUsed() },
-        });
-        lastPlan = plan;
-
-        // Any refusal reached at a point where work could already be running
-        // must stop that work, not merely decline to start more.
-        if (plan.refusedBecause === "AUTHORIZATION" || plan.refusedBecause === "GOVERNOR") {
-          abortAllWarming(plan.refusedBecause === "AUTHORIZATION"
-            ? "authorization was withdrawn"
-            : `the governor declined (${governor.reason})`);
-        }
-
-        // A revealed engine is the player's game now, not a speculation.
-        if (preinit.getState().state !== "REVEALED") {
-          for (const action of plan.actions) execute(action);
-        }
-        render(candidates, governor, plan);
-      }
-
-      function render(candidates, governor, plan) {
-        const top = candidates[0] ?? null;
-        $("m-dwell").textContent = committed
-          ? `${committed} (touch-down)`
-          : top ? `${top.gameId} (${top.score}ms)` : "none";
-        $("m-gov").textContent = governor.reason;
-        $("m-gov").dataset.flag = governor.allowed ? "NORMAL" : "ELEVATED";
-        $("m-tier").textContent = governor.tier;
-        $("m-tier").dataset.flag =
-          governor.tier === SpeculationTier.FULL ? "NORMAL"
-            : governor.tier === SpeculationTier.REDUCED ? "ELEVATED" : "UNKNOWN";
-        $("m-rung").textContent = plan.refusedBecause && plan.rung === Rung.NONE
-          ? `NONE (${plan.refusedBecause})`
-          : plan.rung;
-        $("m-rung").dataset.flag =
-          plan.rung === Rung.PREINIT ? "NORMAL"
-            : plan.rung === Rung.NONE ? "UNKNOWN" : "ELEVATED";
-        $("m-connect").textContent = String(connected.size);
-        $("m-warm").textContent = warmed.size === 0
-          ? "no"
-          : `${[...warmed].join(", ")}`;
-        $("m-budget").textContent =
-          `${(ledger.bytesUsed() / 1048576).toFixed(1)} / `
-          + `${(ledger.byteBudget / 1048576).toFixed(0)} MB`;
-        $("m-auth").textContent = authorization();
-        $("m-auth").dataset.flag = authorization() === "GRANTED" ? "NORMAL" : "ELEVATED";
-
-        const p = preinit.getState();
-        $("m-preinit").textContent = p.gameId ? `${p.state} (${p.gameId})` : p.state;
-        $("m-preinit").dataset.flag =
-          p.state === "PREPARED" || p.state === "REVEALED" ? "NORMAL"
-            : p.state === "PREPARING" ? "ELEVATED" : "UNKNOWN";
-      }
-
-      setInterval(tick, 200);
-      // Backgrounding the tab is the most common way speculation stops being
-      // worth its bytes, and it needs no tick to be noticed.
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState !== "visible") abortAllWarming("the page was hidden");
-        tick();
-      });
-
-      /* ---------- launch ---------- */
-
-      function logRun(item, ms, path, detail) {
-        const li = document.createElement("li");
-        const label = document.createElement("span");
-        label.className = "game-title";
-        label.textContent = `${item.title} — ${path}: ${ms} ms`;
-        const note = document.createElement("span");
-        note.className = "game-provider";
-        note.textContent = detail;
-        li.append(label, note);
-        $("runs").prepend(li);
-      }
-
-      function launch(item) {
-        const started = performance.now();
-        // Authorization is rechecked at launch and blocks. It is never raced,
-        // cached, or optimistically rendered past.
-        const decision = authorization();
-
-        const revealed = preinit.reveal({ authorization: decision, expectGameId: item.id });
-        if (revealed.revealed) {
-          const ms = Math.round(performance.now() - started);
-          window.__LAUNCH_MS__ = ms; window.__LAUNCH_PATH__ = "PREINIT";
-          $("status").textContent =
-            `${item.title}: revealed pre-initialised engine in ${ms}ms. `
-            + "It was prepared while you were browsing.";
-          logRun(item, ms, "PRE-INITIALISED", "engine built during browse; reveal is a style change");
-          recents = [item.id, ...recents.filter((r) => r !== item.id)];
-          committed = null;
-          return;
-        }
-
-        if (decision !== Authorization.GRANTED) {
-          window.__LAUNCH_PATH__ = "BLOCKED";
-          $("status").textContent =
-            `${item.title}: blocked. The exclusion-register check did not grant `
-            + "authorization, so nothing was started.";
-          return;
-        }
-
-        // Cold path. The frame is attached immediately rather than after any
-        // wait, so the player sees the game's own preloader straight away
-        // instead of a blank panel. Nothing here claims the game is ready.
-        const frame = document.createElement("iframe");
-        frame.id = "game";
-        frame.title = `${item.title} (sandbox)`;
-        frame.setAttribute("style", "width:100%;height:540px;border:1px solid #64748b;border-radius:10px");
-        frame.src = item.url;
-        $("frame-host").replaceChildren(frame);
-        const ms = Math.round(performance.now() - started);
-        window.__LAUNCH_MS__ = ms;
-        window.__LAUNCH_PATH__ = "COLD";
-        $("status").textContent =
-          `${item.title}: cold launch (${revealed.reason}). Loading — this is the baseline.`;
-        logRun(item, ms, "COLD", `${revealed.reason}; the engine starts now, on the click`);
-        recents = [item.id, ...recents.filter((r) => r !== item.id)];
-        committed = null;
-      }
-
-      $("launch").addEventListener("click", () => {
-        const top = dwell.strongest();
-        launch(byId.get(top?.gameId) ?? CATALOGUE[0]);
-      });
-
-      $("reset").addEventListener("click", () => {
-        preinit.reset();
-        $("frame-host").replaceChildren();
-        dwell.reset();
-        viewportDwell.stop();
-        warmed.clear();
-        warmInFlight.clear();
-        committed = null;
-        ledger.reset();
-        $("status").textContent = "Idle. Anything already cached stays cached.";
-        tick();
-      });
-
-      // Exposed for the measurement harness, never read by the page itself.
-      window.__SPECULATION__ = () => ({
-        plan: lastPlan,
-        warmed: [...warmed],
-        connected: [...connected],
-        bytesUsed: ledger.bytesUsed(),
-        preinit: preinit.getState(),
-      });
-
-      tick();
     </script>
   </body>
 </html>

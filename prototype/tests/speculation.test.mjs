@@ -250,3 +250,32 @@ test("a target whose bytes are already resident still reads as the WARM rung", (
   assert.equal(plan.refusedBecause, RefusalReason.ALREADY_DONE);
   assert.deepEqual(plan.actions, []);
 });
+
+test("the engine rung reads present dwell, not accumulated dwell", () => {
+  // A pointer crossing a rail leaves accumulated dwell on every tile it passes.
+  // Without the present-moment gate, a few sweeps buy an engine for a tile the
+  // player never actually stopped on.
+  const passedOver = planSpeculation({
+    ...base,
+    candidates: [{ gameId: "a", score: 5_000, currentMs: 0 }],
+  });
+  assert.equal(passedOver.rung, Rung.WARM);
+  assert.deepEqual(actionsOf(passedOver, SpeculationAction.PREPARE_ENGINE), []);
+
+  const restedOn = planSpeculation({
+    ...base,
+    candidates: [{ gameId: "a", score: 5_000, currentMs: PREINIT_DWELL_MS }],
+  });
+  assert.equal(restedOn.rung, Rung.PREINIT);
+  assert.deepEqual(actionsOf(restedOn, SpeculationAction.PREPARE_ENGINE), ["a"]);
+});
+
+test("a candidate with no present-dwell field falls back to its score", () => {
+  // Callers that predate `currentMs` must keep working rather than silently
+  // losing the engine rung.
+  const plan = planSpeculation({
+    ...base,
+    candidates: [{ gameId: "a", score: 5_000 }],
+  });
+  assert.equal(plan.rung, Rung.PREINIT);
+});

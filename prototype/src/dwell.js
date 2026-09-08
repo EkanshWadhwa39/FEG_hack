@@ -93,10 +93,26 @@ export function createDwellTracker({
     /**
      * Ranked candidates, strongest first. Tiles still open are included with
      * the dwell accumulated so far, so a player hovering right now counts.
+     *
+     * Two numbers per candidate, and the distinction matters:
+     *
+     *   - `score` is decayed *accumulated* dwell across the session. It answers
+     *     "has this title held their attention", which is the right question
+     *     for spending a few megabytes.
+     *   - `currentMs` is the *uninterrupted* dwell happening right now, and is
+     *     zero for a tile the pointer has left. It answers "are they looking at
+     *     this, this instant", which is the only question worth answering
+     *     before spending a whole engine.
+     *
+     * Without the second number, a pointer travelling across a rail of tiles
+     * deposits a little accumulated dwell on each one, and a few passes are
+     * enough for a tile nobody ever stopped on to out-rank everything and buy
+     * itself an engine.
      */
     snapshot() {
       const at = now();
       const scores = new Map();
+      const current = new Map();
 
       for (const [gameId, entry] of totals) {
         scores.set(gameId, decayed(entry, at));
@@ -105,10 +121,15 @@ export function createDwellTracker({
         const elapsed = at - startedAt;
         if (elapsed < minimumDwellMs) continue;
         scores.set(gameId, (scores.get(gameId) ?? 0) + elapsed);
+        current.set(gameId, elapsed);
       }
 
       return Object.freeze([...scores.entries()]
-        .map(([gameId, score]) => Object.freeze({ gameId, score: Math.round(score) }))
+        .map(([gameId, score]) => Object.freeze({
+          gameId,
+          score: Math.round(score),
+          currentMs: Math.round(current.get(gameId) ?? 0),
+        }))
         .filter((entry) => entry.score > 0)
         .sort((a, b) => b.score - a.score || a.gameId.localeCompare(b.gameId)));
     },

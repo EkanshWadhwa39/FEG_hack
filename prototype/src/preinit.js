@@ -157,6 +157,31 @@ export function createPreinitManager({
       return Object.freeze({ ...snapshot(), revealed: true, reason: "REVEALED" });
     },
 
+    /**
+     * Hide a revealed engine instead of destroying it.
+     *
+     * A player leaving a game to browse is the single most predictable return
+     * in the product: repeat launches dominate, and the title they just left is
+     * the likeliest next one. Destroying the frame throws away an engine that
+     * is already built, so that going back in pays the full cost again.
+     *
+     * Retention is not free — it holds the instance's memory and GPU textures —
+     * so the caller owns the deadline and must release it. This only changes
+     * style and accessibility attributes; `src` is untouched, because
+     * re-navigating would reload the frame and defeat the whole point.
+     */
+    retain() {
+      if (state !== PreinitState.REVEALED || frame == null) return snapshot();
+      frame.setAttribute("style", HIDDEN_STYLE);
+      frame.setAttribute("aria-hidden", "true");
+      frame.setAttribute("tabindex", "-1");
+      frame.setAttribute("title", "Game (retained)");
+      frame.removeAttribute("id");
+      state = PreinitState.PREPARED;
+      emit();
+      return snapshot();
+    },
+
     /** Return to idle after a launch ends or is abandoned. */
     reset() {
       teardown();

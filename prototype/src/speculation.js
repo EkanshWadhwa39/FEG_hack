@@ -141,9 +141,10 @@ export function planSpeculation({
 
   const ranked = candidates
     .filter((entry) => typeof entry?.gameId === "string" && Number.isFinite(entry.score));
-  // A touch-down outranks every hover score: the player is already tapping it.
+  // A touch-down outranks every hover score: the player is already tapping it,
+  // so both the accumulated and the present-moment measures are maximal.
   const top = committed != null
-    ? { gameId: committed, score: Infinity }
+    ? { gameId: committed, score: Infinity, currentMs: Infinity }
     : ranked[0] ?? null;
 
   if (top == null) {
@@ -177,7 +178,15 @@ export function planSpeculation({
   // Charging it a second time on the next tick would make a prepared engine
   // look unaffordable and quietly demote the ladder back down a rung.
   const alreadyBilled = engineLive && preinitGameId === top.gameId;
-  const preinitReady = top.score >= preinitDwellMs
+  // The engine rung reads *present* dwell, not accumulated. A pointer crossing
+  // a rail deposits a little accumulated dwell on every tile it passes, and a
+  // few passes would otherwise be enough for a tile nobody ever stopped on to
+  // buy itself a whole engine. `currentMs` is zero the moment the pointer
+  // leaves, so this rung can only ever be reached by standing still on a tile.
+  const presentMs = Number.isFinite(top.currentMs) || top.currentMs === Infinity
+    ? top.currentMs
+    : top.score;
+  const preinitReady = presentMs >= preinitDwellMs
     && governor.tier === SpeculationTier.FULL
     && (alreadyBilled || affordable(engineBytes));
 
@@ -209,7 +218,10 @@ export function planSpeculation({
   }
 
   // Intent has decayed below the hold threshold, or moved to another title, so
-  // give the memory back rather than holding a whole engine on a guess.
+  // give the memory back rather than holding a whole engine on a guess. Release
+  // reads accumulated dwell deliberately: a prepared engine should survive the
+  // pointer wandering off for a moment, even though it took a deliberate rest
+  // to earn in the first place.
   if (engineLive && (top.score < preinitReleaseMs || preinitGameId !== top.gameId)) {
     actions.push({ action: SpeculationAction.CANCEL_ENGINE, gameId: preinitGameId });
   }

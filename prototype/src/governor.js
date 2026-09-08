@@ -196,3 +196,71 @@ export function readConnectionCapability(navigatorImpl = globalThis.navigator) {
     effectiveType: connection.effectiveType,
   });
 }
+
+/** Below this, a speculative engine competes with the lobby for memory. */
+export const MIN_ENGINE_DEVICE_MEMORY_GB = 4;
+
+/** Below this charge level, an unrequested engine is not a fair trade. */
+export const MIN_ENGINE_BATTERY = 0.2;
+
+export const DeviceReason = Object.freeze({
+  OK: "OK",
+  LOW_MEMORY: "LOW_MEMORY",
+  LOW_BATTERY: "LOW_BATTERY",
+});
+
+/**
+ * Can this *device* afford a speculative engine?
+ *
+ * The connection tier answers whether the link can afford the bytes. It says
+ * nothing about whether the hardware can afford a second live game: a mid-range
+ * phone on good wifi is exactly where an extra engine and its GPU textures make
+ * the lobby itself worse, and where the battery cost lands on someone who never
+ * asked for it.
+ *
+ * Both inputs are optional in the platforms that matter -- `deviceMemory` is
+ * Chromium-only, and the Battery Status API is unavailable on iOS and removed
+ * from Firefox -- so absence must not veto the feature. Absence means "no
+ * evidence of a constrained device", which is the same position we were in
+ * before the check existed. Only a *positive* reading of a constrained device
+ * downgrades the tier.
+ *
+ * @param deviceMemory  `navigator.deviceMemory`, in GB, or undefined
+ * @param battery       `{ level, charging }` from `getBattery()`, or undefined
+ */
+export function assessDeviceForEngine({ deviceMemory, battery } = {}) {
+  const downgrade = (reason) => Object.freeze({
+    engineAllowed: false, reason, tier: SpeculationTier.REDUCED,
+  });
+
+  if (Number.isFinite(deviceMemory) && deviceMemory < MIN_ENGINE_DEVICE_MEMORY_GB) {
+    return downgrade(DeviceReason.LOW_MEMORY);
+  }
+  if (battery != null
+    && battery.charging === false
+    && Number.isFinite(battery.level)
+    && battery.level < MIN_ENGINE_BATTERY) {
+    return downgrade(DeviceReason.LOW_BATTERY);
+  }
+  return Object.freeze({
+    engineAllowed: true, reason: DeviceReason.OK, tier: SpeculationTier.FULL,
+  });
+}
+
+/**
+ * Fold a device assessment into a connection decision.
+ *
+ * A device constraint can only ever lower the tier. It never promotes REDUCED
+ * to FULL, and it never overturns a refusal.
+ */
+export function applyDeviceConstraint(decision, device) {
+  if (decision == null || decision.allowed !== true) return decision;
+  if (device == null || device.engineAllowed !== false) return decision;
+  if (decision.tier !== SpeculationTier.FULL) return decision;
+  return Object.freeze({
+    ...decision,
+    tier: SpeculationTier.REDUCED,
+    reason: GovernorReason.ALLOWED_DEGRADED,
+    deviceReason: device.reason,
+  });
+}

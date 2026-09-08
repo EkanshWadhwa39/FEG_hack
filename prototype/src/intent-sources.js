@@ -35,6 +35,15 @@ export const SCROLL_SETTLE_MS = 220;
 export const MIN_VISIBLE_RATIO = 0.6;
 
 /**
+ * Longest a settled viewport keeps crediting one tile.
+ *
+ * Viewport focus is a guess, and a guess does not become more true because the
+ * phone was left on the table. Bounding it stops an abandoned lobby from
+ * accumulating enough "dwell" to buy an engine for whatever is on screen.
+ */
+export const MAX_VIEWPORT_HOLD_MS = 2_500;
+
+/**
  * Of the tiles currently on screen, which one is the player looking at?
  *
  * Nearest to the vertical centre of the viewport wins, because that is where a
@@ -135,6 +144,7 @@ export function createViewportDwell({
   readVisibleTiles,
   viewportHeight = () => globalThis.innerHeight,
   settleMs = SCROLL_SETTLE_MS,
+  maxHoldMs = MAX_VIEWPORT_HOLD_MS,
   setTimeoutImpl = globalThis.setTimeout,
   clearTimeoutImpl = globalThis.clearTimeout,
 } = {}) {
@@ -142,17 +152,38 @@ export function createViewportDwell({
   if (typeof readVisibleTiles !== "function") {
     throw new TypeError("readVisibleTiles must be a function");
   }
+  if (!Number.isFinite(maxHoldMs) || maxHoldMs <= 0) {
+    throw new RangeError("maxHoldMs must be a positive finite number");
+  }
 
   let settleTimer = null;
+  let holdTimer = null;
   let focused = null;
+
+  function release() {
+    if (holdTimer != null) {
+      clearTimeoutImpl(holdTimer);
+      holdTimer = null;
+    }
+    if (focused != null) {
+      dwell.leave(focused);
+      focused = null;
+    }
+  }
 
   function settle() {
     const height = typeof viewportHeight === "function" ? viewportHeight() : viewportHeight;
     const next = selectViewportFocus(readVisibleTiles(), height);
     if (next === focused) return;
-    if (focused != null) dwell.leave(focused);
+    release();
     focused = next;
-    if (focused != null) dwell.enter(focused);
+    if (focused == null) return;
+    dwell.enter(focused);
+    // A tile sitting in a settled viewport is weak evidence that does not get
+    // stronger the longer nobody touches the phone. Without this bound, an
+    // abandoned lobby accumulates unlimited "intent" for whatever happens to be
+    // on screen and eventually buys it a whole engine.
+    holdTimer = setTimeoutImpl(release, maxHoldMs);
   }
 
   return Object.freeze({
@@ -160,10 +191,7 @@ export function createViewportDwell({
     onScroll() {
       // Scrolling means the player has not settled yet, so any tile that was
       // being credited stops being credited now.
-      if (focused != null) {
-        dwell.leave(focused);
-        focused = null;
-      }
+      release();
       if (settleTimer != null) clearTimeoutImpl(settleTimer);
       settleTimer = setTimeoutImpl(() => {
         settleTimer = null;
@@ -179,8 +207,7 @@ export function createViewportDwell({
     stop() {
       if (settleTimer != null) clearTimeoutImpl(settleTimer);
       settleTimer = null;
-      if (focused != null) dwell.leave(focused);
-      focused = null;
+      release();
     },
   });
 }

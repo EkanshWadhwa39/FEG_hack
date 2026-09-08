@@ -35,6 +35,13 @@ These are ours. Nothing here modifies certified code.
 | A13 | **Touch and keyboard intent, not only hover** | built | A touch screen fires no `mouseenter`. ~72% of launches are on a mobile client, so hover-only meant no speculation for most players |
 | A14 | **Governor degrades instead of refusing on non-Chromium** | built | `navigator.connection` is Chromium-only. Refusing on its absence disabled warming on Firefox and all iOS browsers |
 | A15 | **In-flight speculation is abortable** | built | A withdrawn authorization or a hidden page now stops requests already running, not only the next one |
+| A16 | **Warm the continue-playing rail at lobby load** | built | Needs no hover at all. Last-played is 30.4% hit@1 MEASURED; a player who opens the lobby and taps their usual game gets a warm launch |
+| A17 | **Cross-session warm memory** | built | Delivers A4: 57.5% of repeat launches are already cached, and the budget now goes to the cold ones instead |
+| A18 | **Preconnect at first paint**, before any tile is touched | built | Delivers A3 for the case A3 could not reach: the player who never pauses on a tile |
+| A19 | **Pointer-trajectory prediction** | built | Free rung only. Buys back the 200-400 ms it takes a cursor to cross a lobby |
+| A20 | **Device-aware governance** (memory, battery) | built | Safety, not speed. A constrained phone gets bytes and never a speculative engine |
+| A21 | **Engine retention on exit** | **MEASURED** | Leaving a game hides its engine for 45 s rather than destroying it. Re-entry measured at **0 ms** |
+| A22 | **Poster discipline** (320x320 WebP, intrinsic size, lazy below the fold) | built | 7.6 KB per tile against 675 KB for the raw splash. A 60-tile lobby is 0.45 MB, not 40 MB, and cannot shift as thumbnails arrive |
 
 > **Update.** The ceiling below describes byte warming only. The engine rung (A12)
 > does not lower the 6.2 s floor — it moves it off the click path. MEASURED in the

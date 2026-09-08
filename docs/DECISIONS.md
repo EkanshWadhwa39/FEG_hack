@@ -91,3 +91,46 @@ the top rung).
 
 **Why:** FEG telemetry puts ~72% of launches on a mobile client. A hover-only
 design gives the majority of real players no speculation at all, by construction.
+
+## ADR-010 — Speculation strength is tiered by signal quality
+
+**Status:** accepted, refines ADR-008
+
+Not every signal that reaches the ladder is the same kind of thing, and treating
+them alike produced two real failures during the lobby build:
+
+- A pointer crossing a rail deposits accumulated dwell on every tile it passes. A
+  few sweeps were enough for a tile nobody stopped on to out-rank everything and
+  buy itself a 52 MB engine.
+- A tile sitting in the middle of an untouched desktop lobby kept accruing
+  viewport "dwell" indefinitely, and eventually bought an engine for a page
+  nobody was looking at.
+
+So a signal's strength now caps the rung it can reach. A pointer or finger
+resting on a tile *right now*, and a touch-down, are evidence and may reach
+`PREINIT`. Accumulated session dwell and a settled viewport are weaker and stop
+at `WARM`. A predicted pointer destination is a guess and stops at `CONNECT`.
+
+Mechanically: the engine rung reads `currentMs` (uninterrupted, present-moment
+dwell, zero the instant the pointer leaves) rather than the decayed accumulated
+`score`; viewport focus lives in its own tracker merged in with `currentMs: 0`;
+and viewport focus is enabled only where hover genuinely does not exist.
+
+**Why:** the cost of a wrong guess is not uniform, so the evidence threshold must
+not be either. A free socket may be spent on a guess. An engine may not.
+
+## ADR-011 — Demo artwork is derived from the supplied package
+
+**Status:** accepted
+
+The sandbox lobby's posters are generated at server start from the FEG-provided
+package's own splash background and symbol atlases (`tools/poster_builder.py`).
+No PSK, provider, or third-party artwork is copied, hotlinked, or shipped.
+
+Layout, colour tokens, tile geometry, rail headings, chips, titles and provider
+names are matched to the public production lobby so the demo is a fair visual
+stand-in for the surface being proposed. Those are measurements and labels; the
+pixels are ours, derived from bytes FEG supplied.
+
+**Why:** the demo has to look like the product to be worth anything, and it must
+not distribute someone else's copyrighted art to do it.

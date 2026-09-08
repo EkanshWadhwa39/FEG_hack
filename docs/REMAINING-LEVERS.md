@@ -11,9 +11,16 @@ Ranked within each section by value per unit of effort.
 
 ---
 
+> **Status update.** D1–D7 are now **built and wired**, along with a new lever
+> not in the original list: poster discipline (320×320 WebP at ~7.6 KB, intrinsic
+> dimensions so the grid cannot shift, first rail eager and the rest lazy). See
+> `docs/SPECULATION-LADDER.md` for how, and the per-item notes below for what
+> each one actually became. Still unbuilt in section D: D8, D9, D10, D11, D12.
+> Sections E and F remain other people's to do.
+
 ## D. In our layer — web only, no certified code change
 
-### D1. Warm the last-played title at lobby load, before any intent — **build this first**
+### D1. Warm the last-played title at lobby load, before any intent — **BUILT**
 
 `recents[0]` was **MEASURED at 30.4% hit@1** on 3,337 real launch sequences
 (`docs/PREFETCH-POLICY.md`). That beats waiting for a hover, because it needs no
@@ -21,11 +28,12 @@ hover: the cost is 2.8 MB spent once at lobby paint, and one launch in three lan
 on it. Today the ladder only starts when a tile is looked at, so a player who
 opens the lobby and taps their usual game immediately gets nothing.
 
-Effort: small. Feed `recents[0]` into `planSpeculation` as a synthetic candidate at
-the `WARM` rung only — never the engine rung, because 30% is not a defensible hit
-rate for 52 MB.
+**As built:** `selectLobbyLoadWarmSet` in `prototype/src/warm-memory.js`, called once
+the manifests arrive. Recents first, favourites as the fallback for a player with no
+session history, capped at two titles, and it returns `rung: "WARM"` — it structurally
+cannot reach the engine rung, because 30% is not a defensible hit rate for 52 MB.
 
-### D2. Remember what is already cached, across sessions — **MEASURED opportunity**
+### D2. Remember what is already cached, across sessions — **BUILT**
 
 **57.5% of repeat launches are already cached** (provider CDN `max-age` ≈ 19
 years). Warming those is pure waste, and worse, it consumes the session byte
@@ -37,9 +45,12 @@ reliable API to ask the browser "is this URL in your cache", so a local record i
 the only available proxy — it can be wrong after an eviction, and being wrong
 costs one redundant warm, which is the cheap direction to be wrong in.
 
-Effort: small. Value: recovers more than half the budget on returning players.
+**As built:** `createWarmMemory` in `prototype/src/warm-memory.js`. Keyed by
+`gameId@bundleVersion`, 6-hour TTL, 120-entry cap, and every storage path wrapped so
+that private browsing, disabled storage and quota errors degrade to "we know nothing"
+rather than to "it's warm".
 
-### D3. Keep the last engine alive after the player exits a game
+### D3. Keep the last engine alive after the player exits a game — **BUILT**
 
 Repeat launches dominate. When a player returns to the lobby, the game iframe is
 destroyed today. Holding it hidden for a bounded window (30–60 s, and released on
@@ -49,9 +60,12 @@ path the ladder already produces, with no prediction required at all.
 Compliance note: the retained instance must stay muted, non-wagering, and must not
 count as play. The exclusion check still gates re-reveal.
 
-Effort: small — `preinit.js` already models exactly this lifecycle.
+**As built:** `preinit.retain()` hides the revealed frame instead of destroying it,
+and the lobby releases it after 45 s or as soon as intent moves elsewhere. Re-entry is
+**MEASURED at 0 ms** in the sandbox. `src` is never touched, because re-navigating
+would reload the frame and throw away exactly what is being kept.
 
-### D4. Preconnect every likely game origin at lobby paint
+### D4. Preconnect every likely game origin at lobby paint — **BUILT (single origin)**
 
 **Top 5 providers = 69.8% of stake, top 10 = 90.9%** (MEASURED). That is five
 origins covering two-thirds of launches. A production `session/create` was measured
@@ -61,18 +75,24 @@ The ladder's free rung already preconnects, but only once a tile has been seen.
 Emitting five `<link rel="preconnect">` at lobby paint costs five sockets the
 browser will very likely open anyway.
 
+**As built:** the lobby emits `dns-prefetch` + `preconnect` for the game origin at
+first paint, through the real `connection-prewarm.js` boundary. The sandbox has one
+game origin; production would emit five.
+
 Caveat: the causal milliseconds saved by hints remain **UNKNOWN** until an isolated
 approved-environment comparison is run. Do not put a number on this in the pitch.
 
-### D5. `fetchpriority="low"` on every speculative request
+### D5. `fetchpriority="low"` on every speculative request — **BUILT**
 
 Speculation should never compete with the lobby's own critical path, and today it
 can. `fetch(url, { priority: "low" })` is one argument. Chromium supports it;
 elsewhere it is ignored, which is the safe direction.
 
-Effort: one line. **STATIC** benefit, not measured.
+**As built:** every speculative `fetch` carries `priority: "low"`; posters below the
+first rail carry `fetchpriority="low"` and `loading="lazy"`. **STATIC** benefit, not
+measured.
 
-### D6. Governed on connection, not on the device
+### D6. Governed on connection, not on the device — **BUILT**
 
 The engine rung costs ~52 MB of RAM and a GPU texture set. It is currently gated
 only on link quality. A mid-range phone on good wifi is exactly the device where a
@@ -83,24 +103,31 @@ engine rung when `navigator.getBattery()` reports discharging below ~20%. Both A
 are absent on some browsers — absence must degrade to `REDUCED`, following the same
 rule the connection capability now uses.
 
-Effort: small. This is a *safety* lever, not a speed one, and it is what makes the
-engine rung defensible on mobile at all.
+**As built:** `assessDeviceForEngine` + `applyDeviceConstraint` in `governor.js`. A
+device constraint can only ever *lower* the tier, never raise one or overturn a
+refusal. This is a *safety* lever, not a speed one, and it is what makes the engine
+rung defensible on mobile at all.
 
-### D7. Pointer-trajectory prediction
+### D7. Pointer-trajectory prediction — **BUILT**
 
 Start the ladder for the tile the cursor is *heading toward*, before it arrives.
 Buys 100–300 ms of head start on desktop. Well-understood technique; the risk is
 false positives, which at the `CONNECT` and `WARM` rungs cost almost nothing.
 
-Effort: medium. **ESTIMATED** benefit.
+**As built:** `prototype/src/trajectory.js`. Ray/box intersection over a 220 ms
+horizon, refusing movement that is too slow (browsing, not travelling), too turbulent
+(circling or hesitating), or aimed at a tile the pointer is already inside. The
+prediction reaches the **free rung only** — a wrong guess opens a socket the browser
+would very likely have opened anyway. **ESTIMATED** benefit; the mechanism is tested,
+the milliseconds saved are not.
 
-### D8. Scroll-velocity gating for the touch path
+### D8. Scroll-velocity gating for the touch path — still unbuilt
 
 `createViewportDwell` currently credits any settled viewport. Adding velocity means
 a slow, deliberate scroll credits sooner and a flick never credits at all. Refines
 D-tier touch intent rather than adding a new signal.
 
-### D9. Paint the warmed splash immediately in the transition screen
+### D9. Paint the warmed splash immediately in the transition screen — still unbuilt
 
 The blocking profile includes the splash art. Once warmed it can be painted in our
 own transition screen at effectively zero cost, which puts a branded, correct

@@ -2,8 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   DEGRADED_BYTE_BUDGET,
+  DeviceReason,
   GovernorReason,
   SpeculationTier,
+  applyDeviceConstraint,
+  assessDeviceForEngine,
   assessPrefetch,
   readConnectionCapability,
 } from "../src/governor.js";
@@ -139,4 +142,56 @@ test("capability reading reports absence explicitly rather than as a missing val
     true,
   );
   assert.equal(readConnectionCapability(undefined).connectionApiAvailable, false);
+});
+
+/* ------------------------- device capability ------------------------- */
+
+test("a constrained device gets bytes but never a speculative engine", () => {
+  const lowMemory = assessDeviceForEngine({ deviceMemory: 2 });
+  assert.equal(lowMemory.engineAllowed, false);
+  assert.equal(lowMemory.reason, DeviceReason.LOW_MEMORY);
+
+  const lowBattery = assessDeviceForEngine({
+    deviceMemory: 8, battery: { level: 0.1, charging: false },
+  });
+  assert.equal(lowBattery.engineAllowed, false);
+  assert.equal(lowBattery.reason, DeviceReason.LOW_BATTERY);
+});
+
+test("a low but charging battery is not a constraint", () => {
+  const charging = assessDeviceForEngine({
+    deviceMemory: 8, battery: { level: 0.05, charging: true },
+  });
+  assert.equal(charging.engineAllowed, true);
+});
+
+test("absent device APIs are not evidence of a constrained device", () => {
+  // deviceMemory is Chromium-only and the Battery API is gone from iOS and
+  // Firefox. Treating absence as a constraint would disable the engine rung
+  // for most of the audience, which is the bug this whole tier exists to avoid.
+  assert.equal(assessDeviceForEngine({}).engineAllowed, true);
+  assert.equal(assessDeviceForEngine().engineAllowed, true);
+  assert.equal(
+    assessDeviceForEngine({ deviceMemory: 8, battery: { level: Number.NaN } }).engineAllowed,
+    true,
+  );
+});
+
+test("a device constraint lowers the tier but never raises or overturns one", () => {
+  const constrained = assessDeviceForEngine({ deviceMemory: 2 });
+
+  const full = assessPrefetch(safeInput);
+  const lowered = applyDeviceConstraint(full, constrained);
+  assert.equal(lowered.tier, SpeculationTier.REDUCED);
+  assert.equal(lowered.deviceReason, DeviceReason.LOW_MEMORY);
+
+  // Already reduced: unchanged.
+  const reduced = assessPrefetch({ ...safeInput, effectiveType: "3g" });
+  assert.equal(applyDeviceConstraint(reduced, constrained).tier, SpeculationTier.REDUCED);
+
+  // A refusal stays a refusal, and a healthy device changes nothing.
+  const refused = assessPrefetch({ ...safeInput, saveData: true });
+  assert.equal(applyDeviceConstraint(refused, constrained), refused);
+  assert.equal(applyDeviceConstraint(full, assessDeviceForEngine({ deviceMemory: 8 })), full);
+  assert.equal(applyDeviceConstraint(full, null), full);
 });
