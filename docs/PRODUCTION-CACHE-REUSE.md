@@ -53,6 +53,37 @@ casino.psk.hr                      top-level lobby (site: psk.hr)
 - The heavy provider bundle is served from **`v1t.eu`, a different site**. `CODE.md` assumed all
   assets were same-site. They are not.
 
+## The provider bundle — the number that matters
+
+The container shell above is 92 KB. The payload that actually dominates load time is the provider
+game bundle on **`games-cdn-3.v1t.eu` / `psk-hr-games-provider.v1t.eu` — a different site from the
+lobby**. It was unreachable on an earlier network; on T-Hub wifi it loads.
+
+Measured with `tools/prod_provider_probe.mjs`, which reads real wire bytes from CDP
+`Network.loadingFinished.encodedDataLength`. Resource Timing cannot be used here: the provider CDN
+sends no `Timing-Allow-Origin`, so cross-origin entries report zeros.
+
+| Arm | Provider responses from network | Provider bytes on the wire |
+|---|---:|---:|
+| Control | 112 · 112 · 112 · 112 | 11,252,536 · 11,253,203 · 7,186,900 · 11,253,576 |
+| Treatment (107 URLs warmed) | 22 · 22 · 22 · **14** | 394,233 · 394,342 · 394,174 · **35,113** |
+
+**Median reduction: 11,253,576 → 35,113 bytes, or 99.7%.** The final run warmed the full discovered
+set of 107 URLs; the earlier three used a hand-collected 91 and still cut ~96.5%.
+
+**Cross-site cache reuse works.** The expectation that Chrome's partition key would isolate a
+`v1t.eu` iframe from a `psk.hr` top-level warm was wrong, and testing it rather than reasoning
+about it is what found that.
+
+Reproduce:
+
+```bash
+node tools/prod_provider_probe.mjs --runs 2
+```
+
+The tool is self-contained: the control arm discovers the exact query-free asset URLs, and the
+treatment arm warms that discovered set.
+
 ## What is proven, and what is not
 
 **Proven (MEASURED):** a parent-page `fetch(url, {mode:'no-cors', credentials:'include'})` at
@@ -62,13 +93,13 @@ query-free URLs, over 3 control and 3 treatment runs.
 
 **Not proven (UNKNOWN):**
 
-- **The provider bundle on `v1t.eu` was never reached.** During these runs the game frame's
-  `api/session/create` returned a 302 and the provider assets did not load — plausibly geo
-  restriction from this network. The 92 KB we warmed is the container shell, **not** the ~15–20 MB
-  of game assets that dominate load time. Whether the same reuse holds across sites for `v1t.eu`
-  is the next thing to test, and it is the difference between a 92 KB saving and a real one.
-- Click-to-interactive time. This measures bytes, not the launch milestone.
+- **Click-to-interactive time.** Everything above measures bytes. We have not yet measured the
+  launch milestone, and bytes saved is not the same as seconds saved.
+- **One title.** Multiplay 81 (Multiplay81TS 1.10.51-1), one provider, demo mode.
 - Other titles, providers, browsers, mobile web, and any native surface.
+- Whether warming 11 MB speculatively is *acceptable* — that is what the governor, the data
+  budget, and the hit-rate policy exist to answer. A 99.7% cut on a launch that never happens is
+  pure waste.
 - Behaviour for an authenticated (non-demo) launch.
 
 ## Incidental confirmation: the 404 probe is real
