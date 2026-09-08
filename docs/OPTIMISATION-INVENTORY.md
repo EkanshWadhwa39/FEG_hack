@@ -180,3 +180,81 @@ game we probed (Multiplay 81) has an ~11 MB payload, not 65 MB.
 The warm-floor profiling run that would have split the 6,226 ms into decode versus GPU upload
 versus script execution was **killed by the operating system for memory** on the test machine. The
 6,226 ms total is measured; its internal breakdown is **not**, and is not claimed anywhere above.
+
+---
+
+## Addendum — does implementing items 2–5 solve it?
+
+**Short answer: no. They roughly halve to quarter the problem. They do not reach 500 ms.**
+
+### The launch path, measured
+
+The browser fetches 52.2 MB across 143 requests. Static composition of that path (`@1x` branch,
+excluding the mp3 set the browser never requests):
+
+| Component | Size | Share |
+|---|---:|---:|
+| spines `@1x` (PNG) | 29.9 MB | 56% |
+| ogg audio | 15.8 MB | 29% |
+| images `@1x` | 3.0 MB | 6% |
+| everything else (JS, CSS, fonts, splash, JSON) | 4.8 MB | 9% |
+| **total** | **53.6 MB** | |
+
+### What each item actually removes from that path
+
+| Item | Effect on the launch path | Note |
+|---|---|---|
+| **4. Ship one audio codec** | **none** | The 11.3 MB mp3 set is never fetched. This shrinks the *package*, not the load. Real benefit is storage and integrity, not speed |
+| **3. Defer audio past first interaction** | **−15.8 MB** | The largest single removable block |
+| **5. WebP for the PNG atlases** | **−7.5 to −10.5 MB** | ESTIMATED at 25–35% of 29.9 MB. Unverified |
+| **2. A real `@0.5x` tier** | **−22.4 MB, mobile only** | Desktop `@1x` is unaffected. Quarter-pixel export takes spines from 29.9 MB to roughly 7.5 MB |
+
+### Resulting payload
+
+| Scenario | Launch path |
+|---|---:|
+| today, desktop `@1x` | 53.6 MB |
+| desktop, items 3 + 5 | **~27–30 MB** |
+| mobile, items 2 + 3 + 5 | **~11–13 MB** |
+
+### Does that reach 500 ms?
+
+The binding constraint is not bytes on the wire — a warm cache already removes those. It is the
+**warm floor**: 6,226 ms measured with essentially zero network, of which 687 ms was reached at
+first canvas. Treating 687 ms as fixed cost (script parse, engine init, shader compile) and the
+rest as per-byte work gives roughly **110 ms per MB**:
+
+| Scenario | Projected warm floor |
+|---|---:|
+| today, 52 MB | 6,226 ms *(measured)* |
+| desktop, ~28 MB | **~3.7 s** *(projected)* |
+| mobile, ~12 MB | **~2.0 s** *(projected)* |
+| target | **0.5 s** |
+
+**Even with every one of items 2–5 done, and a perfect cache, the best case is roughly 2 seconds
+on mobile — four times over target.** Note that today's warm *first canvas* alone is 687 ms, which
+already exceeds 500 ms.
+
+⚠️ **These projections are ESTIMATES.** The affine model above is fitted to two measured points and
+was never validated. The run that would have split the 6,226 ms into decode, GPU upload and script
+execution was killed by the operating system for memory. Deferring audio also removes OGG *decode*,
+which may be disproportionately expensive and would make the mobile figure better than projected.
+Treat 2.0 s as an order of magnitude, not a number.
+
+### What would actually reach 500 ms
+
+Only one thing: **the game becoming playable on a small subset of its assets, rather than after all
+143 are resident.** That is progressive or streaming asset loading inside the engine — a provider
+architecture change, not an asset-size change. No amount of shrinking a package that must be fully
+loaded before it is ready will get a 50 MB game to 500 ms.
+
+Two honest routes to a defensible claim:
+
+1. **Establish that "playable" gates on a subset.** We measure to *all assets read* because we have
+   no backend. If the spin control activates after, say, 8 MB, the real warm number today may
+   already be 1–2 s, and items 2–5 could plausibly bring it near target. **Only FEG can tell us
+   this, and it costs nothing to ask.**
+2. **Scope the claim to the right metric.** 500 ms to a *rendered, branded, interactive-looking
+   screen* is reachable now and gets more reachable with items 2–5. 500 ms to *all assets resident*
+   is not reachable for this class of title. These are different promises and should not be
+   conflated in the pitch.
