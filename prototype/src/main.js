@@ -1,5 +1,7 @@
 import { assessPrefetch } from "./governor.js";
 import { resolveManifest } from "./manifest.js";
+import { createSimulatedRequester } from "./simulation.js";
+import { warmAssets } from "./warmer.js";
 
 // Illustrative local metadata only. No URL in this scaffold is requested.
 const DEMO_MANIFEST = Object.freeze({
@@ -41,7 +43,16 @@ const reasonElement = document.querySelector("#governor-reason");
 const branchElement = document.querySelector("#resolved-branch");
 const bytesElement = document.querySelector("#planned-bytes");
 const assetList = document.querySelector("#asset-list");
+const runButton = document.querySelector("#run-warming");
+const warmingStatus = document.querySelector("#warming-status");
+const warmingSummary = document.querySelector("#warming-summary");
+const warmingCard = document.querySelector("#warming-card");
 const decisionCard = decisionElement.closest(".metric");
+
+let currentPlan;
+let currentDecision;
+let running = false;
+let hasResult = false;
 
 const formatBytes = (bytes) => `${(bytes / 1_048_576).toFixed(2)} MiB · SIMULATED`;
 
@@ -62,23 +73,75 @@ function renderAsset(asset) {
 }
 
 function render() {
-  const plan = resolveManifest(DEMO_MANIFEST, DEMO_SELECTION);
-  const plannedBytes = plan.assets.reduce((total, asset) => total + asset.estimatedBytes, 0);
-  const decision = assessPrefetch({
+  currentPlan = resolveManifest(DEMO_MANIFEST, DEMO_SELECTION);
+  const plannedBytes = currentPlan.assets.reduce((total, asset) => total + asset.estimatedBytes, 0);
+  currentDecision = assessPrefetch({
     enabled: enabledControl.checked,
     byteBudget: Number(budgetControl.value),
     nextAssetBytes: plannedBytes,
     ...SIMULATED_ENVIRONMENT,
   });
 
-  decisionElement.textContent = `${decision.allowed ? "ELIGIBLE" : "BLOCKED"} · SIMULATED`;
-  reasonElement.textContent = `${decision.reason.replaceAll("_", " ")} · SIMULATED`;
-  decisionCard.dataset.state = decision.allowed ? "allowed" : "blocked";
-  branchElement.textContent = `${plan.locale} / ${plan.tier} · SIMULATED`;
+  decisionElement.textContent = `${currentDecision.allowed ? "ELIGIBLE" : "BLOCKED"} · SIMULATED`;
+  reasonElement.textContent = `${currentDecision.reason.replaceAll("_", " ")} · SIMULATED`;
+  decisionCard.dataset.state = currentDecision.allowed ? "allowed" : "blocked";
+  branchElement.textContent = `${currentPlan.locale} / ${currentPlan.tier} · SIMULATED`;
   bytesElement.textContent = formatBytes(plannedBytes);
-  assetList.replaceChildren(...plan.assets.map(renderAsset));
+  assetList.replaceChildren(...currentPlan.assets.map(renderAsset));
+  runButton.disabled = running || !currentDecision.allowed;
+
+  if (!running && !hasResult) {
+    warmingCard.dataset.state = currentDecision.allowed ? "" : "blocked";
+    warmingStatus.textContent = currentDecision.allowed
+      ? "NOT RUN · SIMULATED"
+      : "NOT RUN — GOVERNOR BLOCKED · SIMULATED";
+    warmingSummary.textContent = "No network request sent · SIMULATED";
+  }
 }
 
-enabledControl.addEventListener("change", render);
-budgetControl.addEventListener("change", render);
+async function runSimulation() {
+  render();
+  if (running || !currentDecision.allowed) return;
+
+  running = true;
+  runButton.disabled = true;
+  runButton.setAttribute("aria-busy", "true");
+  enabledControl.disabled = true;
+  budgetControl.disabled = true;
+  warmingCard.dataset.state = "allowed";
+  warmingStatus.textContent = "RUNNING · SIMULATED";
+  warmingSummary.textContent = "Local tasks in progress; no network request sent · SIMULATED";
+
+  try {
+    const summary = await warmAssets({
+      plan: currentPlan,
+      target: DEMO_SELECTION,
+      concurrency: 2,
+      requestAsset: createSimulatedRequester(),
+    });
+    hasResult = true;
+    warmingStatus.textContent = "COMPLETE · SIMULATED";
+    warmingSummary.textContent = `${summary.attempted} attempted; ${summary.requested} simulated successes; ${summary.failed} failed; ${summary.cancelled} cancelled · SIMULATED`;
+  } catch {
+    hasResult = true;
+    warmingCard.dataset.state = "blocked";
+    warmingStatus.textContent = "FAILED · SIMULATED";
+    warmingSummary.textContent = "No network request sent; simulation stopped safely · SIMULATED";
+  } finally {
+    running = false;
+    runButton.removeAttribute("aria-busy");
+    enabledControl.disabled = false;
+    budgetControl.disabled = false;
+    render();
+  }
+}
+
+function resetSimulation() {
+  hasResult = false;
+  render();
+}
+
+enabledControl.addEventListener("change", resetSimulation);
+budgetControl.addEventListener("change", resetSimulation);
+runButton.addEventListener("click", runSimulation);
 render();

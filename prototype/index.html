@@ -35,7 +35,7 @@
           <label class="toggle-row" for="prefetch-enabled">
             <span>
               <strong>Prefetch enabled</strong>
-              <small>Evaluation only; this scaffold does not call fetch().</small>
+              <small>Local simulation only; this scaffold does not call fetch().</small>
             </span>
             <input id="prefetch-enabled" type="checkbox" checked>
           </label>
@@ -48,6 +48,11 @@
               <option value="5242880">5 MiB — SIMULATED</option>
             </select>
           </label>
+
+          <div class="action-row">
+            <button id="run-warming" type="button">Run simulated warming</button>
+            <small>Runs local asynchronous tasks only. No provider or staging request is sent.</small>
+          </div>
         </div>
       </section>
 
@@ -66,6 +71,11 @@
           <span>Planned transfer</span>
           <strong id="planned-bytes">UNKNOWN</strong>
           <small>No request sent · SIMULATED</small>
+        </article>
+        <article class="metric" id="warming-card" role="status" aria-live="polite" aria-atomic="true">
+          <span>Warm execution</span>
+          <strong id="warming-status">NOT RUN · SIMULATED</strong>
+          <small id="warming-summary">No network request sent · SIMULATED</small>
         </article>
       </section>
 

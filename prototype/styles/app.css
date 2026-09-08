@@ -108,6 +108,30 @@ h2 { font-size: 1.35rem; }
 .toggle-row input { width: 22px; height: 22px; accent-color: #22d3ee; }
 .field { flex-direction: column; justify-content: center; gap: 8px; font-weight: 700; }
 
+.action-row {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.action-row small { color: #8491a9; line-height: 1.5; }
+
+button {
+  padding: 11px 16px;
+  border: 1px solid #22d3ee;
+  border-radius: 9px;
+  background: #155e75;
+  color: #ecfeff;
+  font-weight: 800;
+  cursor: pointer;
+}
+button:hover:not(:disabled) { background: #0e7490; }
+button:focus-visible, select:focus-visible, input:focus-visible {
+  outline: 3px solid #fbbf24;
+  outline-offset: 3px;
+}
+button:disabled { cursor: not-allowed; opacity: 0.48; }
+
 select {
   width: 100%;
   padding: 9px 11px;
@@ -119,7 +143,7 @@ select {
 
 .status-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 14px;
   margin-top: 18px;
 }
@@ -151,6 +175,7 @@ footer { padding: 26px 2px 0; color: #7f8ca4; font-size: 0.82rem; line-height: 1
 @media (max-width: 720px) {
   .shell { padding-top: 38px; }
   .controls, .status-grid { grid-template-columns: 1fr; }
+  .action-row { align-items: stretch; flex-direction: column; }
   .asset-list li { grid-template-columns: 82px 1fr; }
   .asset-size { grid-column: 2; }
 }
