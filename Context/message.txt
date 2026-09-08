@@ -13,11 +13,11 @@ Same title, same session, cold versus warm, captured as HAR:
 
 | | Cold | Warm |
 |---|---|---|
-| Load time | 35.5s | **6.7s** |
+| Final exact 16-request asset-batch completion from capture start | 35.568s | **6.714s** |
 | Bytes transferred | 16.6 MB | **12 KB** |
 | Requests served from cache | 15 / 150 | **139 / 149** |
 
-The warm number already beats the challenge's 500ms-per-asset-path target and lands inside its stated 6–8s baseline for the whole experience — with zero code written, using nothing but the browser's own HTTP cache. Our entire proposal is: make that warm state exist *before* the player clicks, instead of after. Everything below is how, where it breaks, and what we still don't know.
+The warm capture shows a large repeat-state opportunity using the browser's own HTTP cache. The timing above is an exact HAR asset-batch completion milestone, not click-to-interactive: neither capture contains an authoritative input-accepted signal. Our proposal is to create eligible warm state *before* the player clicks, then prove causality in an isolated staging control/treatment run when staging becomes available.
 
 We're not guessing at the size of the problem, either. FEG's own web-platform telemetry shows **25–31 seconds** as the average time to first game launched, consistently across 12 months — not the 6–8s the brief opens with. Our own HAR capture (29–35s) and a static analysis of a real certified bundle both independently land in the same range. Three sources agree the real number is worse than the stated baseline. We'll show all of this and ask which number we're being judged against.
 
@@ -30,7 +30,7 @@ We captured the full request waterfall for a real game launch (SavannaSunriseDel
 | Phase | Cost | Ours to fix? |
 |---|---|---|
 | Lobby/launcher shell | ~1s | Yes |
-| Session handshake (`session/create`) | 1,850ms — **86% of which is DNS+SSL+TCP connect, only 303ms server think time** | Yes — this is a connection problem, not a server problem |
+| Session handshake (`session/create`) | 1,849.593ms — DNS + connect is **83.3%** (connect includes the SSL subset); 302.772ms server wait | Connection setup is a measured opportunity; causal preconnect savings remain UNKNOWN |
 | A wasted 404 probe before fallback | 712ms | Yes — trivial fix, real measured waste |
 | Engine bootstrap JS | ~3s | Yes |
 | Static asset burst (textures, audio, fonts) | ~15–20s | Yes — this is 60%+ of the total |
@@ -68,7 +68,7 @@ The platform here is web, on every device including mobile — we have no native
      Screen clears only when the spin control accepts input
 ```
 
-**The one assumption this whole architecture rests on: same-site cache partitioning.** The game iframe (`gamelauncher-*.psk.hr` or a provider CDN) and the parent lobby (`casino.psk.hr`) share the top-level site `psk.hr`. Chrome's HTTP cache partitions by top-level site in most current implementations, which means a fetch issued from the parent page can pre-populate a cache entry the iframe later hits. **We verified this holds** with a direct test: fetch a known asset URL from the parent page, then load the game iframe, and confirm the matching request shows as a cache hit rather than a new transfer. This is the load-bearing claim in the whole proposal, and it's the first thing we checked, not an assumption we're hoping survives contact with staging.
+**The load-bearing browser mechanism is parent-to-iframe HTTP-cache reuse.** We verified it locally in Chromium with an exact synthetic URL and one private-bundle fixture: the parent fetched first, the iframe later received the object with zero origin response-body bytes and a browser cache marker. Exact staging behavior remains **UNKNOWN** because response policy, request semantics, redirects, and browser cache partitioning can differ. A mapped `.test` top-level partition diagnostic in the local Chromium build still reused the entry, so no universal partition claim is made.
 
 ### 2.1 Prefetch target: the game the player hasn't opened, not their favourite
 

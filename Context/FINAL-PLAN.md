@@ -37,7 +37,7 @@ The central conflict between `challenge3-strategic-analysis.md` and `message.txt
 - `challenge3-strategic-analysis.md` proposes `shouldInterceptRequest` / `WKURLSchemeHandler` — a native WebView interception SDK
 - `message.txt` proposes browser HTTP cache warming via `fetch()`/`<link rel="prefetch">` from the parent lobby page
 
-**The resolution**: PSK is a web-only track. No native app build access is available. The web-only constraint makes the browser-cache approach the only feasible one. And it's proven: same-site cache partitioning was directly tested (fetch from parent, confirm cache hit in iframe).
+**The resolution**: PSK is a web-only track. No native app build access is available. The web-only constraint makes the browser-cache approach the only feasible one. The browser mechanism is **MEASURED locally**: a parent fetch populated an HTTP-cache entry later reused by an iframe. Exact staging CORS/cache/partition behavior remains **UNKNOWN** while staging is unavailable.
 
 ## Data Verification Status
 
@@ -49,7 +49,7 @@ Every data claim in the final submission is verified:
 | 5-market comparison: PSK lowest games/session, highest session frequency | Same file | ✅ All 5 markets computed |
 | Provider concentration: top 5 = 69.8%, top 10 = 90.9% | `CA_MOM.csv` (4.2M rows) | ✅ Direct extraction |
 | Event logs: 13,682 launches, 887 titles, top-10 = 34.7% | `top_casino_users_event_logs.csv` | ✅ Direct extraction |
-| Cold/warm HAR: 35.5s → 6.7s, 16.6 MB → 12 KB, 15/150 → 139/149 | Independent capture | Claimed as measured |
+| Historical HAR final 16-request asset batch: 35.568s → 6.714s; full-capture transfer ~16.6 MB → ~12 KB | Independent captures + committed parser | ✅ MEASURED as capture-relative network milestones; authoritative input-accepted time and prototype causality remain UNKNOWN |
 | Bundle analysis: 40 claims checked | `empireofgold/` (379 files) | ✅ All 40 verified |
 | offline-data-DTb4NQY9.js missing | `empireofgold/` | ✅ Confirmed absent |
 | Zero anti-tamper, zero automation detection | All JS files grepped | ✅ Confirmed |
@@ -106,6 +106,6 @@ The staging URL is unavailable because of a technical issue and will not be acce
 
 ## One Honest Statement to Lead With in the Demo
 
-> *"We didn't design a caching system. We measured what the browser already does on a repeat game load. A warm cache is 6.7 seconds. A cold one is 35. The difference is 28 seconds, and the only thing that changed between the two runs was whether the browser had seen those URLs earlier in the session. Our entire solution is a single JavaScript file that makes 'earlier in the session' happen before the first click."*
+> *"We measured what the browser did across one historical cold/repeat title comparison. The same final 16-request asset batch completed at 35.568 seconds cold and 6.714 seconds warm from capture start, while the full HARs continued with sparse background traffic. That is a measured warm-state opportunity—not click-to-interactive and not yet proof that our prototype caused the difference. Locally, we separately proved that a parent fetch can populate the browser cache for a later iframe request. Staging causal validation remains the next gate."*
 
 This is the thesis. Everything else is evidence and implementation detail.

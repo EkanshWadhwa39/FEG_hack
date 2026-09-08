@@ -44,7 +44,7 @@ Only now add favourite vs unplayed policy and a small operator-only comparison. 
 
 ## Four-minute demo
 
-1. **Measured opportunity (20s):** historical repeat capture: 35.5s/16.6MB vs 6.7s/12KB. Say this proves warm-state value, not yet the prototype effect.
+1. **Measured opportunity (20s):** historical exact 16-request asset-batch completion: 35.568s cold vs 6.714s repeat from capture start; full-capture transfer was approximately 16.6MB vs 12KB. Say this shows warm-state opportunity, not click-to-interactive or prototype causality.
 2. **Mechanism (20s):** bounded static-asset warm before click; certified game and mandatory checks untouched.
 3. **Control (50s):** clean isolated context, warming disabled, declared start/end milestone.
 4. **Treatment (60s):** second clean context; show intent trigger and exact warming before click, then same launch.

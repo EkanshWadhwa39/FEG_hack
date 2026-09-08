@@ -22,20 +22,20 @@ There is real telemetry showing a native-labeled "Casino Android" platform accou
 
 ## VERIFIED — real measurements, do not re-model these
 
-### The core mechanism already works (proof, not projection)
-Same game (SavannaSunriseDeluxe), same session, cold vs warm HAR capture, cache enabled:
-- Cold: 35.5s load, 16.6 MB over the wire, 15/150 requests cached
-- Warm: **6.7s load, 12 KB over the wire, 139/149 requests cached**
-- This is the entire thesis of the project, proven before we wrote a line of code.
+### Historical warm-state opportunity and local mechanism proof
+Same game (SavannaSunriseDeluxe), historical cold vs repeat HAR captures, cache enabled:
+- Cold: exact final 16-request asset batch completed at 35.568s from capture start; approximately 16.6 MB over the full capture; 15/150 requests marked cached
+- Warm: **the same exact batch completed at 6.714s; approximately 12 KB over the full capture; 139/149 requests marked cached**
+- The HAR pair measures repeat-state opportunity, not click-to-interactive or prototype causality. A separate controlled local experiment proves parent-to-iframe cache reuse for one exact object; staging proof remains required.
 
 ### Real baseline is worse than the brief states
 - Brief says 6–8s. FEG's own web-platform telemetry shows **25–31s consistently across 12 months** (session-to-first-game-launched).
-- Our own HAR capture independently shows 29–35s for a real launch.
+- The historical cold HAR's exact final asset batch completes at 35.568s from capture start; it does not contain an authoritative input-accepted event.
 - Static bundle analysis independently corroborates the same order of magnitude.
 - Three independent sources agree. State both numbers; ask FEG which one we're judged against.
 
 ### The session/handshake call is a connection problem, not a server problem
-`session/create` measured at 1,850ms total: DNS 494ms + SSL 321ms + TCP connect 1,046ms + actual server wait only 303ms. **86% of the cost is connection setup.** This directly justifies `preconnect`/`dns-prefetch` on drawer-open — it's not a theoretical optimization, we measured the exact bottleneck.
+One historical `session/create` request measured 1,849.593ms total: DNS 494.022ms, connect 1,046.412ms (including an SSL subset of 321.076ms), and server wait 302.772ms. DNS plus connect is **83.3%** of total; SSL must not be double-counted. This measures a connection-setup opportunity for `preconnect`/`dns-prefetch` on drawer-open, but the causal milliseconds saved by hints remain **UNKNOWN** until an isolated approved-environment comparison is run.
 
 ### A real, measured, trivial waste
 A 404 probe (`GameView/Egaming`) costs 712ms before falling back to a generic container view. Fix it; it's free.
@@ -43,7 +43,7 @@ A 404 probe (`GameView/Egaming`) costs 712ms before falling back to a generic co
 ### Bundle structure (static analysis, one provider: Spiniq / Empire of Gold SDK)
 - **Zero anti-tamper, zero automation/headless detection, zero SRI hashes, standard minification only.** Native-style interception or JS-level cache warming is clean against this bundle — nothing fights us.
 - Asset URLs are **stable**: JS is content-hashed at build time, no session tokens or `Date.now()` in fetch paths. Safe to cache aggressively.
-- Staged load order: **PRELOADER → COMMON → SPLASH → PRIMARY (~15–20MB, the real wall) → SECONDARY (lazy, safe to background-prefetch even after first spin)**.
+- Staged load order: **PRELOADER → COMMON → SPLASH → PRIMARY → SECONDARY**. Proactive warming is limited to PRELOADER, COMMON, SPLASH, and a proven critical PRIMARY subset; SECONDARY is never proactively warmed.
 - **Two real failure modes to design around, found in the actual code:**
   1. **Resolution branching** — game picks `@1x` or `@0.5x` texture sets *after* JS executes, based on device info. Resolve device tier BEFORE issuing prefetch, or you waste ~30MB warming both tiers, or cold-miss on the wrong one.
   2. **Locale branching** — asset path is `assets/locale/${language}/...`, where `language` is injected at runtime by the operator frame, not present in the URL ahead of time. Read the launch config for target locale before warming.
