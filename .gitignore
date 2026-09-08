@@ -38,3 +38,7 @@ node_modules/
 .env.*
 !.env.example
 .cptr
+
+# Bulk hackathon asset bundle (3.9GB uncompressed) — never commit
+/assets.zip
+/assets/
