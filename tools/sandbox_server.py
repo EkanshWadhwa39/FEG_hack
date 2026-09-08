@@ -35,16 +35,16 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
-# Matches /game/{N} at the start of a URL path.  Each lobby slot gets a
-# distinct URL prefix so the browser keeps a separate cache partition per
-# game — /game/1/assets/foo.js and /game/2/assets/foo.js are different
-# cache keys even though they come from the same bundle file on disk.
-_GAME_SLOT_RE = re.compile(r"^/game/\d+")
+# Matches /game/{slot-tag} at the start of a URL path.  The slot tag may
+# include a session nonce (e.g. /game/3_a1b2c3/) so each page load starts
+# with a truly cold cache — no leftover entries from previous sessions.
+# All content after the prefix maps to the same bundle files on disk.
+_GAME_SLOT_RE = re.compile(r"^/game/[^/]+")
 
 # Extensions treated as immutable versioned static assets.
 STATIC_SUFFIXES = frozenset({
     ".js", ".css", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".ttf", ".woff",
-    ".woff2", ".ogg", ".mp3", ".atlas", ".json", ".ts",
+    ".woff2", ".ogg", ".mp3", ".atlas", ".json", ".ts", ".fnt",
 })
 
 IMMUTABLE = "public, max-age=31536000, immutable"
@@ -58,7 +58,7 @@ class SandboxHandler(SimpleHTTPRequestHandler):
         self._throttle_kbps = throttle_kbps
         super().__init__(*args, directory=directory, **kwargs)
 
-    def log_message(self, fmt, *args):  # noqa: A003 - quiet by default
+    def log_message(self, fmt, *args):
         if os.environ.get("SANDBOX_VERBOSE"):
             super().log_message(fmt, *args)
 
@@ -81,17 +81,22 @@ class SandboxHandler(SimpleHTTPRequestHandler):
     def copyfile(self, source, outputfile):
         """Copy with optional bandwidth throttling to imitate a real link."""
         if self._throttle_kbps <= 0:
-            return super().copyfile(source, outputfile)
+            try:
+                return super().copyfile(source, outputfile)
+            except (BrokenPipeError, ConnectionResetError):
+                return
 
         chunk = 16 * 1024
-        # Seconds each chunk should take at the requested rate.
         per_chunk = chunk / (self._throttle_kbps * 1024 / 8)
         while True:
-            block = source.read(chunk)
-            if not block:
+            try:
+                block = source.read(chunk)
+                if not block:
+                    return
+                outputfile.write(block)
+                time.sleep(per_chunk)
+            except (BrokenPipeError, ConnectionResetError):
                 return
-            outputfile.write(block)
-            time.sleep(per_chunk)
 
     def translate_path(self, path):
         # Strip /game/{N} prefix so every slot ID maps to the bundle root.
@@ -174,7 +179,7 @@ def main() -> None:
     shown = "127.0.0.1" if args.host in {"127.0.0.1", "localhost"} else args.host
     print(f"lobby  http://{shown}:{args.lobby_port}/sandbox.html   ({lobby_dir})", flush=True)
     print(f"game   http://{shown}:{args.game_port}/    ({game_dir})", flush=True)
-    if args.host == "0.0.0.0":  # noqa: S104 - deliberate, demo on a local network
+    if args.host == "0.0.0.0":
         print("Reachable from other devices on this network. Sandbox data only.", flush=True)
     if args.throttle_kbps:
         print(f"game origin throttled to ~{args.throttle_kbps} kbps", flush=True)

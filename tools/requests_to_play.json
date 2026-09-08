@@ -1,0 +1,238 @@
+[
+  {
+    "url": "",
+    "time": 394.640708
+  },
+  {
+    "url": "assets/panel/css/common.css",
+    "time": 399.94075
+  },
+  {
+    "url": "assets/panel/css/footer.css",
+    "time": 399.982041
+  },
+  {
+    "url": "assets/panel/css/commonGameRules.css",
+    "time": 399.999958
+  },
+  {
+    "url": "assets/panel/css/gameRules.css",
+    "time": 400.017875
+  },
+  {
+    "url": "assets/panel/css/history.css",
+    "time": 400.034833
+  },
+  {
+    "url": "assets/index-canvas-_ynnR-4e.js",
+    "time": 400.052583
+  },
+  {
+    "url": "assets/vendor-pixi-C8WzrnZv.js",
+    "time": 400.069875
+  },
+  {
+    "url": "assets/core-engine-DXW-O-mj.js",
+    "time": 400.091791
+  },
+  {
+    "url": "assets/game-empireofgold-CK6MbOiD.js",
+    "time": 400.12
+  },
+  {
+    "url": "assets/images/loader.webp",
+    "time": 400.138958
+  },
+  {
+    "url": "assets/panel/devUtils/cheatTool.css",
+    "time": 1492.806916
+  },
+  {
+    "url": "assets/fonts/en/Mulish.ttf",
+    "time": 1495.973625
+  },
+  {
+    "url": "assets/fonts/en/NewRocker-Regular.ttf",
+    "time": 1497.051208
+  },
+  {
+    "url": "assets/fonts/en/Oswald-Bold.ttf",
+    "time": 1497.06975
+  },
+  {
+    "url": "assets/locale/en/gameContent.json",
+    "time": 1520.859875
+  },
+  {
+    "url": "assets/locale/en/commonContent.json",
+    "time": 1520.876916
+  },
+  {
+    "url": "assets/images/@1x/brandLogo.png",
+    "time": 1521.022041
+  },
+  {
+    "url": "assets/spines/@1x/EOG_Logo_Anim.json",
+    "time": 1659.735791
+  },
+  {
+    "url": "assets/spines/@1x/EOG_Logo_Anim.atlas",
+    "time": 1659.755458
+  },
+  {
+    "url": "assets/images/@1x/controlPanelPrimaryAssets.json",
+    "time": 1659.900875
+  },
+  {
+    "url": "assets/spines/@1x/EOG_Logo_Anim.png",
+    "time": 1659.915791
+  },
+  {
+    "url": "assets/spines/@1x/EOG_Logo_Anim_2.png",
+    "time": 1661.933291
+  },
+  {
+    "url": "assets/images/@1x/controlPanelPrimaryAssets.webp",
+    "time": 1662.227875
+  },
+  {
+    "url": "assets/images/@1x/splashBG.json",
+    "time": 3132.553208
+  },
+  {
+    "url": "assets/images/@1x/splashAssets.json",
+    "time": 3132.81
+  },
+  {
+    "url": "assets/images/@1x/splashBG.jpg",
+    "time": 3139.543916
+  },
+  {
+    "url": "assets/images/@1x/splashAssets.webp",
+    "time": 3139.558541
+  },
+  {
+    "url": "assets/images/@1x/loader_anim.gif",
+    "time": 3943.96725
+  },
+  {
+    "url": "assets/fonts/bmp/bitmapFont.fnt",
+    "time": 3944.010166
+  },
+  {
+    "url": "assets/spines/@1x/BG_king.json",
+    "time": 3944.149666
+  },
+  {
+    "url": "assets/spines/@1x/BG_king.atlas",
+    "time": 3945.791416
+  },
+  {
+    "url": "assets/images/@1x/controlPanelAssets.json",
+    "time": 3945.853875
+  },
+  {
+    "url": "assets/images/@1x/en/commonLangAssets.json",
+    "time": 3945.866583
+  },
+  {
+    "url": "assets/images/@1x/gameElements.json",
+    "time": 3945.879
+  },
+  {
+    "url": "assets/spines/@1x/reels_frame.json",
+    "time": 3945.888875
+  },
+  {
+    "url": "assets/spines/@1x/reels_frame.atlas",
+    "time": 3945.898208
+  },
+  {
+    "url": "assets/images/@1x/symbols.json",
+    "time": 3945.907291
+  },
+  {
+    "url": "assets/spines/@1x/king_character.json",
+    "time": 3945.916083
+  },
+  {
+    "url": "assets/spines/@1x/king_character.atlas",
+    "time": 3945.926375
+  },
+  {
+    "url": "assets/spines/@1x/explosion1.json",
+    "time": 3945.93675
+  },
+  {
+    "url": "assets/spines/@1x/explosion1.atlas",
+    "time": 3945.946791
+  },
+  {
+    "url": "assets/images/@1x/en/langImages.json",
+    "time": 3945.955375
+  },
+  {
+    "url": "assets/spines/@1x/BG_king.png",
+    "time": 3945.965416
+  },
+  {
+    "url": "assets/spines/@1x/reels_frame.png",
+    "time": 3945.976083
+  },
+  {
+    "url": "assets/spines/@1x/king_character.png",
+    "time": 3945.985541
+  },
+  {
+    "url": "assets/spines/@1x/explosion1.png",
+    "time": 3945.9945
+  },
+  {
+    "url": "assets/fonts/bmp/bitmapFont_0.png",
+    "time": 3957.819458
+  },
+  {
+    "url": "assets/spines/@1x/BG_king_2.png",
+    "time": 3957.874083
+  },
+  {
+    "url": "assets/images/@1x/controlPanelAssets.webp",
+    "time": 3957.914083
+  },
+  {
+    "url": "assets/images/@1x/en/commonLangAssets.webp",
+    "time": 3957.941
+  },
+  {
+    "url": "assets/images/@1x/gameElements.webp",
+    "time": 3958.139791
+  },
+  {
+    "url": "assets/spines/@1x/reels_frame_2.png",
+    "time": 3958.195625
+  },
+  {
+    "url": "assets/images/@1x/symbols.webp",
+    "time": 3958.221041
+  },
+  {
+    "url": "assets/spines/@1x/king_character_2.png",
+    "time": 3959.5625
+  },
+  {
+    "url": "assets/spines/@1x/king_character_3.png",
+    "time": 3959.574125
+  },
+  {
+    "url": "assets/images/@1x/en/langImages.webp",
+    "time": 3959.9205
+  },
+  {
+    "url": "assets/sounds/ogg/BBGM.ogg",
+    "time": 8099.95025
+  },
+  {
+    "url": "assets/sounds/ogg/genericButtonSound.ogg",
+    "time": 8099.994333
+  }
+]

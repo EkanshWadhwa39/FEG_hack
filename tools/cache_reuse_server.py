@@ -91,7 +91,7 @@ class QuietHandler(BaseHTTPRequestHandler):
 class LobbyHandler(QuietHandler):
     asset_origin = ""
 
-    def do_GET(self) -> None:  # noqa: N802
+    def do_GET(self) -> None:
         parsed = urlsplit(self.path)
         if parsed.path != "/":
             self.send_error(HTTPStatus.NOT_FOUND)
@@ -110,10 +110,10 @@ class AssetHandler(QuietHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
 
-    def do_OPTIONS(self) -> None:  # noqa: N802
+    def do_OPTIONS(self) -> None:
         self.end_cors_preflight()
 
-    def do_POST(self) -> None:  # noqa: N802
+    def do_POST(self) -> None:
         parsed = urlsplit(self.path)
         if parsed.path == "/reset":
             self.state.reset()
@@ -137,7 +137,7 @@ class AssetHandler(QuietHandler):
             return
         self.send_error(HTTPStatus.NOT_FOUND)
 
-    def do_GET(self) -> None:  # noqa: N802
+    def do_GET(self) -> None:
         parsed = urlsplit(self.path)
         if parsed.path == "/frame.html":
             self.send_text(frame_page())

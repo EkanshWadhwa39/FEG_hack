@@ -42,7 +42,7 @@
       import { warmAssets } from "./src/warmer.js";
 
       const GAME_ORIGIN = new URLSearchParams(location.search).get("game")
-        ?? "http://127.0.0.1:8091";
+        ?? `${location.protocol}//${location.hostname || "127.0.0.1"}:8091`;
       const statusEl = document.getElementById("status");
       const host = document.getElementById("frame-host");
 

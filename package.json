@@ -4,11 +4,13 @@
   "type": "module",
   "scripts": {
     "test": "node --test prototype/tests/*.test.mjs",
-    "check:js": "find prototype -type f \\( -name '*.js' -o -name '*.mjs' \\) -print0 | xargs -0 -r -n1 node --check && node --check tools/run_cache_reuse.mjs",
+    "check:js": "find prototype -type f \\( -name '*.js' -o -name '*.mjs' \\) -print0 | xargs -0 -r -n1 node --check && node --check tools/run_cache_reuse.mjs && node --check tools/benchmark_cold_vs_warm.mjs && node --check tools/test_lobby_flow.mjs",
+    "test:lobby-flow": "node tools/test_lobby_flow.mjs",
+    "benchmark:cold-vs-warm": "node tools/benchmark_cold_vs_warm.mjs",
     "experiment:cache-reuse": "node tools/run_cache_reuse.mjs --runs 2",
     "serve": "python3 -m http.server 8080 --directory prototype --bind 0.0.0.0"
   },
   "devDependencies": {
-    "playwright": "1.52.0"
+    "playwright": "^1.63.0"
   }
 }

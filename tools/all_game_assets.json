@@ -1,0 +1,848 @@
+[
+  {
+    "path": "assets/panel/css/common.css?v=1788443825853",
+    "bytes": 2507,
+    "mimeType": "text/css",
+    "type": "Stylesheet"
+  },
+  {
+    "path": "assets/panel/css/footer.css?v=1788443825853",
+    "bytes": 3042,
+    "mimeType": "text/css",
+    "type": "Stylesheet"
+  },
+  {
+    "path": "assets/panel/css/commonGameRules.css?v=1788443825853",
+    "bytes": 14372,
+    "mimeType": "text/css",
+    "type": "Stylesheet"
+  },
+  {
+    "path": "assets/panel/css/gameRules.css?v=1788443825853",
+    "bytes": 1620,
+    "mimeType": "text/css",
+    "type": "Stylesheet"
+  },
+  {
+    "path": "assets/panel/css/history.css?v=1788443825853",
+    "bytes": 19793,
+    "mimeType": "text/css",
+    "type": "Stylesheet"
+  },
+  {
+    "path": "assets/index-canvas-_ynnR-4e.js",
+    "bytes": 7522,
+    "mimeType": "text/javascript",
+    "type": "Script"
+  },
+  {
+    "path": "assets/vendor-pixi-C8WzrnZv.js",
+    "bytes": 1293232,
+    "mimeType": "text/javascript",
+    "type": "Script"
+  },
+  {
+    "path": "assets/core-engine-DXW-O-mj.js",
+    "bytes": 389518,
+    "mimeType": "text/javascript",
+    "type": "Script"
+  },
+  {
+    "path": "assets/game-empireofgold-CK6MbOiD.js",
+    "bytes": 45981,
+    "mimeType": "text/javascript",
+    "type": "Script"
+  },
+  {
+    "path": "assets/images/loader.webp",
+    "bytes": 109530,
+    "mimeType": "image/webp",
+    "type": "Image"
+  },
+  {
+    "path": "assets/panel/devUtils/cheatTool.css",
+    "bytes": 8209,
+    "mimeType": "text/css",
+    "type": "Stylesheet"
+  },
+  {
+    "path": "assets/fonts/en/Mulish.ttf",
+    "bytes": 210676,
+    "mimeType": "font/ttf",
+    "type": "Font"
+  },
+  {
+    "path": "assets/fonts/en/NewRocker-Regular.ttf",
+    "bytes": 168424,
+    "mimeType": "font/ttf",
+    "type": "Font"
+  },
+  {
+    "path": "assets/fonts/en/Oswald-Bold.ttf",
+    "bytes": 87895,
+    "mimeType": "font/ttf",
+    "type": "Font"
+  },
+  {
+    "path": "assets/locale/en/gameContent.json",
+    "bytes": 4299,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/locale/en/commonContent.json",
+    "bytes": 15168,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/images/@1x/brandLogo.png",
+    "bytes": 10907,
+    "mimeType": "image/png",
+    "type": "Image"
+  },
+  {
+    "path": "assets/spines/@1x/EOG_Logo_Anim.json",
+    "bytes": 9879,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/EOG_Logo_Anim.atlas",
+    "bytes": 2071,
+    "mimeType": "application/octet-stream",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/images/@1x/controlPanelPrimaryAssets.json",
+    "bytes": 1935,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/EOG_Logo_Anim.png",
+    "bytes": 1853319,
+    "mimeType": "image/png",
+    "type": "Image"
+  },
+  {
+    "path": "assets/spines/@1x/EOG_Logo_Anim_2.png",
+    "bytes": 944742,
+    "mimeType": "image/png",
+    "type": "Image"
+  },
+  {
+    "path": "assets/images/@1x/controlPanelPrimaryAssets.webp",
+    "bytes": 27023,
+    "mimeType": "image/webp",
+    "type": "Image"
+  },
+  {
+    "path": "assets/images/@1x/splashBG.json",
+    "bytes": 821,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/images/@1x/splashAssets.json",
+    "bytes": 1437,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/images/@1x/splashBG.jpg",
+    "bytes": 675409,
+    "mimeType": "image/jpeg",
+    "type": "Image"
+  },
+  {
+    "path": "assets/images/@1x/splashAssets.webp",
+    "bytes": 869650,
+    "mimeType": "image/webp",
+    "type": "Image"
+  },
+  {
+    "path": "assets/images/@1x/loader_anim.gif",
+    "bytes": 61706,
+    "mimeType": "image/gif",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/fonts/bmp/bitmapFont.fnt",
+    "bytes": 2483,
+    "mimeType": "application/octet-stream",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/BG_king.json",
+    "bytes": 2183378,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/BG_king.atlas",
+    "bytes": 5970,
+    "mimeType": "application/octet-stream",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/images/@1x/controlPanelAssets.json",
+    "bytes": 10895,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/images/@1x/en/commonLangAssets.json",
+    "bytes": 1011,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/images/@1x/gameElements.json",
+    "bytes": 5874,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/reels_frame.json",
+    "bytes": 29132,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/reels_frame.atlas",
+    "bytes": 7888,
+    "mimeType": "application/octet-stream",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/images/@1x/symbols.json",
+    "bytes": 3226,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/king_character.json",
+    "bytes": 541872,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/king_character.atlas",
+    "bytes": 12670,
+    "mimeType": "application/octet-stream",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/explosion1.json",
+    "bytes": 2846,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/explosion1.atlas",
+    "bytes": 1003,
+    "mimeType": "application/octet-stream",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/images/@1x/en/langImages.json",
+    "bytes": 1402,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/BG_king.png",
+    "bytes": 1747929,
+    "mimeType": "image/png",
+    "type": "Image"
+  },
+  {
+    "path": "assets/spines/@1x/reels_frame.png",
+    "bytes": 924321,
+    "mimeType": "image/png",
+    "type": "Image"
+  },
+  {
+    "path": "assets/spines/@1x/king_character.png",
+    "bytes": 4751791,
+    "mimeType": "image/png",
+    "type": "Image"
+  },
+  {
+    "path": "assets/spines/@1x/explosion1.png",
+    "bytes": 136463,
+    "mimeType": "image/png",
+    "type": "Image"
+  },
+  {
+    "path": "assets/fonts/bmp/bitmapFont_0.png",
+    "bytes": 175542,
+    "mimeType": "image/png",
+    "type": "Image"
+  },
+  {
+    "path": "assets/spines/@1x/BG_king_2.png",
+    "bytes": 3508388,
+    "mimeType": "image/png",
+    "type": "Image"
+  },
+  {
+    "path": "assets/images/@1x/controlPanelAssets.webp",
+    "bytes": 312842,
+    "mimeType": "image/webp",
+    "type": "Image"
+  },
+  {
+    "path": "assets/images/@1x/en/commonLangAssets.webp",
+    "bytes": 36833,
+    "mimeType": "image/webp",
+    "type": "Image"
+  },
+  {
+    "path": "assets/images/@1x/gameElements.webp",
+    "bytes": 288806,
+    "mimeType": "image/webp",
+    "type": "Image"
+  },
+  {
+    "path": "assets/spines/@1x/reels_frame_2.png",
+    "bytes": 220752,
+    "mimeType": "image/png",
+    "type": "Image"
+  },
+  {
+    "path": "assets/images/@1x/symbols.webp",
+    "bytes": 696802,
+    "mimeType": "image/webp",
+    "type": "Image"
+  },
+  {
+    "path": "assets/spines/@1x/king_character_2.png",
+    "bytes": 2485068,
+    "mimeType": "image/png",
+    "type": "Image"
+  },
+  {
+    "path": "assets/spines/@1x/king_character_3.png",
+    "bytes": 419560,
+    "mimeType": "image/png",
+    "type": "Image"
+  },
+  {
+    "path": "assets/images/@1x/en/langImages.webp",
+    "bytes": 193694,
+    "mimeType": "image/webp",
+    "type": "Image"
+  },
+  {
+    "path": "assets/sounds/ogg/BBGM.ogg?version=0.036",
+    "bytes": 4715597,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/genericButtonSound.ogg?version=0.036",
+    "bytes": 24137,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/ERROR%20POP%20UP.ogg?version=0.036",
+    "bytes": 96088,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/Symbol%20pop%20up.ogg?version=0.036",
+    "bytes": 46541,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/SLIDER%20SFX.ogg?version=0.036",
+    "bytes": 15817,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/FBGM.ogg?version=0.036",
+    "bytes": 0,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/WIN%201.ogg?version=0.036",
+    "bytes": 381473,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/WIN%202.ogg?version=0.036",
+    "bytes": 397647,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/WIN%203.ogg?version=0.036",
+    "bytes": 514747,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/WIN%204.ogg?version=0.036",
+    "bytes": 1097945,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/WIN%20TERMINATION.ogg?version=0.036",
+    "bytes": 88179,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/ROLL%20UP.ogg?version=0.036",
+    "bytes": 219595,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/ROLL%20UP%20TERMINATION.ogg?version=0.036",
+    "bytes": 140851,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/spin%20clicked.ogg?version=0.036",
+    "bytes": 38589,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/stop%20spin%20clicked.ogg?version=0.036",
+    "bytes": 66886,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/REEL%20DROP%20SFX.ogg?version=0.036",
+    "bytes": 43210,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/REEL%20SPIN.ogg?version=0.036",
+    "bytes": 53895,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/smallSymbolsDrop.ogg?version=0.036",
+    "bytes": 15954,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/REEL%20STOP.ogg?version=0.036",
+    "bytes": 15624,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/Symbol%20Burst.ogg?version=0.036",
+    "bytes": 47481,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/SYMBOL%20BURST_H1.ogg?version=0.036",
+    "bytes": 82813,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/SYMBOL%20BURST_H2.ogg?version=0.036",
+    "bytes": 99839,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/SYMBOL%20BURST_H3.ogg?version=0.036",
+    "bytes": 84346,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/SYMBOL%20BURST_H4.ogg?version=0.036",
+    "bytes": 96562,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/NORMAL%20PAYLINE%201.ogg?version=0.036",
+    "bytes": 81743,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/NORMAL%20PAYLINE%202.ogg?version=0.036",
+    "bytes": 84490,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/NORMAL%20PAYLINE%203.ogg?version=0.036",
+    "bytes": 83785,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/NORMAL%20PAYLINE%204.ogg?version=0.036",
+    "bytes": 81987,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/NORMAL%20PAYLINE%205.ogg?version=0.036",
+    "bytes": 87407,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/NORMAL%20PAYLINE%206.ogg?version=0.036",
+    "bytes": 86708,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/TURBO%20PAYLINE%201.ogg?version=0.036",
+    "bytes": 104991,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/TURBO%20PAYLINE%202.ogg?version=0.036",
+    "bytes": 106936,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/TURBO%20PAYLINE%203.ogg?version=0.036",
+    "bytes": 105251,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/TURBO%20PAYLINE%204.ogg?version=0.036",
+    "bytes": 103893,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/TURBO%20PAYLINE%205.ogg?version=0.036",
+    "bytes": 107179,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/TURBO%20PAYLINE%206.ogg?version=0.036",
+    "bytes": 105489,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/MULTIPLIER%20LAND%20SFX.ogg?version=0.036",
+    "bytes": 71703,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/MULTIPLIER%20TRAIL%20SFX.ogg?version=0.036",
+    "bytes": 25964,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/MULTIPLIER%20TOTAL%20WIN.ogg?version=0.036",
+    "bytes": 52447,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/Scatter%20Land%201.ogg?version=0.036",
+    "bytes": 84916,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/Scatter%20Land%202.ogg?version=0.036",
+    "bytes": 85856,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/Scatter%20Land%203.ogg?version=0.036",
+    "bytes": 86139,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/Scatter%20Land%204.ogg?version=0.036",
+    "bytes": 88020,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/Scatter%20Land%205.ogg?version=0.036",
+    "bytes": 87172,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/Scatter%20Land%206.ogg?version=0.036",
+    "bytes": 85299,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/SCATTER%20WIN%201.ogg?version=0.036",
+    "bytes": 108685,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/SCATTER%20WIN%202.ogg?version=0.036",
+    "bytes": 109049,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/INTRO.ogg?version=0.036",
+    "bytes": 134544,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/OUTRO.ogg?version=0.036",
+    "bytes": 110076,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/Ante%20bet%20button.ogg?version=0.036",
+    "bytes": 28802,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/sounds/ogg/Buy%20bonus%20button.ogg?version=0.036",
+    "bytes": 18197,
+    "mimeType": "audio/ogg",
+    "type": "XHR"
+  },
+  {
+    "path": "assets/spines/@1x/bigwins.json",
+    "bytes": 530586,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/bigwins.atlas",
+    "bytes": 16864,
+    "mimeType": "application/octet-stream",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/scatter.json",
+    "bytes": 471867,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/scatter.atlas",
+    "bytes": 5911,
+    "mimeType": "application/octet-stream",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/chest.json",
+    "bytes": 147289,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/chest.atlas",
+    "bytes": 5718,
+    "mimeType": "application/octet-stream",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/book.json",
+    "bytes": 142539,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/book.atlas",
+    "bytes": 6480,
+    "mimeType": "application/octet-stream",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/shield.json",
+    "bytes": 244167,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/shield.atlas",
+    "bytes": 3398,
+    "mimeType": "application/octet-stream",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/cup.json",
+    "bytes": 147957,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/cup.atlas",
+    "bytes": 6161,
+    "mimeType": "application/octet-stream",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/low_1.json",
+    "bytes": 97437,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/low_1.atlas",
+    "bytes": 3047,
+    "mimeType": "application/octet-stream",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/low_2.json",
+    "bytes": 75416,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/low_2.atlas",
+    "bytes": 2965,
+    "mimeType": "application/octet-stream",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/low_3.json",
+    "bytes": 115135,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/low_3.atlas",
+    "bytes": 3043,
+    "mimeType": "application/octet-stream",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/low_4.json",
+    "bytes": 90824,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/low_4.atlas",
+    "bytes": 3173,
+    "mimeType": "application/octet-stream",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/low_5.json",
+    "bytes": 105623,
+    "mimeType": "application/json",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/low_5.atlas",
+    "bytes": 3089,
+    "mimeType": "application/octet-stream",
+    "type": "Fetch"
+  },
+  {
+    "path": "assets/spines/@1x/bigwins.png",
+    "bytes": 3128504,
+    "mimeType": "image/png",
+    "type": "Image"
+  },
+  {
+    "path": "assets/spines/@1x/scatter.png",
+    "bytes": 238726,
+    "mimeType": "image/png",
+    "type": "Image"
+  },
+  {
+    "path": "assets/spines/@1x/chest.png",
+    "bytes": 268085,
+    "mimeType": "image/png",
+    "type": "Image"
+  },
+  {
+    "path": "assets/spines/@1x/book.png",
+    "bytes": 335,
+    "mimeType": "text/html",
+    "type": "Image"
+  },
+  {
+    "path": "assets/spines/@1x/shield.png",
+    "bytes": 259336,
+    "mimeType": "image/png",
+    "type": "Image"
+  },
+  {
+    "path": "assets/spines/@1x/cup.png",
+    "bytes": 1400847,
+    "mimeType": "image/png",
+    "type": "Image"
+  },
+  {
+    "path": "assets/spines/@1x/low_1.png",
+    "bytes": 231470,
+    "mimeType": "image/png",
+    "type": "Image"
+  },
+  {
+    "path": "assets/spines/@1x/low_2.png",
+    "bytes": 232825,
+    "mimeType": "image/png",
+    "type": "Image"
+  },
+  {
+    "path": "assets/spines/@1x/low_3.png",
+    "bytes": 242675,
+    "mimeType": "image/png",
+    "type": "Image"
+  },
+  {
+    "path": "assets/spines/@1x/low_4.png",
+    "bytes": 225434,
+    "mimeType": "image/png",
+    "type": "Image"
+  },
+  {
+    "path": "assets/spines/@1x/low_5.png",
+    "bytes": 249440,
+    "mimeType": "image/png",
+    "type": "Image"
+  },
+  {
+    "path": "assets/spines/@1x/bigwins_2.png",
+    "bytes": 1315660,
+    "mimeType": "image/png",
+    "type": "Image"
+  }
+]

@@ -33,6 +33,9 @@ node_modules/
 .DS_Store
 .vscode/*.log
 
+# Claude Code reference (local only)
+CLAUDE.md
+
 # Secrets
 .env
 .env.*
@@ -42,3 +45,5 @@ node_modules/
 # Bulk hackathon asset bundle (3.9GB uncompressed) — never commit
 /assets.zip
 /assets/
+*.zip
+*.png

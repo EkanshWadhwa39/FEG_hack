@@ -11,9 +11,10 @@ from __future__ import annotations
 import argparse
 import json
 import math
+from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 MEASURED = "MEASURED"
 UNKNOWN = "UNKNOWN"
@@ -109,7 +110,7 @@ def _wire_bytes(entry: Mapping[str, Any], classification: str) -> int | None:
 
     transfer_size = _nonnegative(response.get("_transferSize"))
     if transfer_size is not None:
-        return int(round(transfer_size))
+        return round(transfer_size)
     if classification == "hit":
         return 0
 
@@ -117,7 +118,7 @@ def _wire_bytes(entry: Mapping[str, Any], classification: str) -> int | None:
     headers_size = _nonnegative(response.get("headersSize"))
     body_size = _nonnegative(response.get("bodySize"))
     if headers_size is not None and body_size is not None:
-        return int(round(headers_size + body_size))
+        return round(headers_size + body_size)
     return None
 
 

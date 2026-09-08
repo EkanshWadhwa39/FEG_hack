@@ -7,7 +7,6 @@ import pytest
 
 from tools import measure_har
 
-
 SCRIPT = Path(__file__).parents[1] / "tools" / "measure_har.py"
 
 
