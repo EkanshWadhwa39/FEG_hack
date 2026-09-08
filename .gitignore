@@ -3,6 +3,9 @@
 !/.cptr/skills/
 !/.cptr/skills/**
 
+# Local cptr runtime output (skills above remain shareable)
+/cptr.log
+
 # Raw hackathon inputs and evidence (large and/or potentially sensitive)
 /FEG Innovation Hackathon 2026/
 /Devtools_games/

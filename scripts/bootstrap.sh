@@ -13,6 +13,7 @@ if [[ ! -d .venv ]]; then
 fi
 .venv/bin/python -m pip install --quiet --upgrade pip
 .venv/bin/python -m pip install --quiet -r requirements-dev.txt
+npm ci --no-audit --no-fund
 
 mkdir -p evidence/derived evidence/private
 printf 'Ready: Node %s, Python %s\n' "$(node --version)" "$(.venv/bin/python --version)"

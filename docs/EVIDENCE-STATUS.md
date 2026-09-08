@@ -8,7 +8,7 @@
 | Existing cache counts | MEASURED, exporter semantics must be named | State counts from the parser and preserve UNKNOWN classifications. |
 | 35.5s to 6.7s | MEASURED according to prior analysis, milestone definition not encoded here | Do not mix with full-HAR span; document exact start/end extraction before demo. |
 | Full HAR entry span | MEASURED by `tools/measure_har.py` | Diagnostic only; not automatically click-to-interactive. |
-| Parent-to-iframe proactive warming | REPORTED VERIFIED in later Context, but no reproducible artifact indexed | Reproduce in the exact demo browser before calling prototype-proven. |
+| Parent-to-iframe cache reuse, one local Empire of Gold static asset | MEASURED locally in Chromium 136.0.7103.25, 2 control + 2 treatment runs | Browser mechanism only: both treatment iframe requests were browser-cache hits with 0 server response-body bytes. Production behavior remains UNKNOWN; see `docs/LOCAL-CACHE-REUSE.md`. |
 | Exclusion-register latency | UNKNOWN | Never invent; mandatory fail-closed integration gate. |
 | Cross-provider generalization | UNKNOWN beyond tested captures/static inspection | Report provider/title separately. |
 | Native/WebView transfer | UNVERIFIED and out of scope | Future test only. |

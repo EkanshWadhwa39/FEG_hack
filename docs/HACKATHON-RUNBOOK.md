@@ -11,9 +11,18 @@
 
 ### Gate 1 — reproduce cache reuse
 
-Use one clean Chrome profile. From the actual lobby/top-level context, issue a request matching the game's exact URL/mode/credentials, then launch the iframe and verify reuse in DevTools. Record browser version, parent/iframe/asset origins, URL, request semantics, and save a redacted HAR. Repeat from another clean profile.
+The local browser-mechanism diagnostic is reproducible with:
 
-**Stop:** if exact parent-to-iframe reuse fails, do not build a governor around it. Pivot to measurement/preconnect/404 evidence and report the failed assumption honestly.
+```bash
+npx playwright install chromium
+npm run experiment:cache-reuse
+```
+
+It runs two controls and two treatments in fresh Chromium processes against a synthetic 1 MiB object. It must report a full control iframe response, one completed treatment prefetch, zero treatment iframe-phase origin responses, zero iframe `transferSize`, and an explicit Chromium cache marker. See `docs/LOCAL-CACHE-REUSE.md` for the measured title-scoped private-fixture repetition and limitations.
+
+This local pass does not close the production gate. Using fresh profiles serially, repeat from the actual lobby/top-level context with the game's exact credential-free URL, mode, credentials, headers, and normal iframe launch. Record browser version, parent/iframe/asset origins, request semantics, and save a redacted HAR. Repeat from another clean profile.
+
+**Stop:** if exact parent-to-iframe reuse fails in the target environment, do not build a governor around it. Pivot to measurement/preconnect/404 evidence and report the failed assumption honestly.
 
 ### Gate 2 — measurement harness
 
