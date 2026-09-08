@@ -20,6 +20,83 @@ the iframe is created.
 node tools/sandbox_measure.mjs --runs 3
 ```
 
+## How to test it
+
+### 1. Automated suite — nothing to set up
+
+```bash
+./scripts/check.sh          # 151 JS + Python tests, ruff, shellcheck
+```
+
+Covers the dwell tracker, prefetch policy, pre-init manager, progressive rendering, manifest
+generation, contrast, and the browser accessibility suite. The Playwright browser tests skip
+cleanly if Chromium is not installed (`npx playwright install chromium` enables them).
+
+### 2. Manual demo — this is what you show a judge
+
+```bash
+.venv/bin/python tools/sandbox_server.py \
+  --bundle ~/evidence/private/bundles/empireofgold \
+  --profile blocking --throttle-kbps 12000 --latency-ms 40
+```
+
+It prints the two URLs. Open **http://127.0.0.1:8090/sandbox.html**.
+
+The throttle and latency matter: on unthrottled loopback there is no network cost to remove, so
+warming looks far less effective than it is. 12 Mbps with 40 ms RTT is closer to a real link.
+
+**The comparison to demonstrate, in this order:**
+
+| Step | What to do | What to point at |
+|---|---|---|
+| 1 | Load the page | Tiles appear immediately as placeholders, then fill in — the grid is never a blank rectangle |
+| 2 | **Cold baseline:** click **Launch game** straight away | ~4 s before the game renders. This is today's experience |
+| 3 | Click **Reset** | |
+| 4 | Hover *Empire of Gold* for ~1 second | **Engine pre-init** goes `PREPARING` → `PREPARED`. The game is loading in a hidden frame while you talk |
+| 5 | Click **Launch game** | Appears effectively instantly. Status reads `Revealed pre-initialised engine` |
+| 6 | Move the pointer away before launching | Pre-init returns to `IDLE` — withdrawn intent reclaims the engine immediately |
+
+Steps 2 and 5 are the whole pitch: **~4 s versus ~25 ms**, same package, same machine.
+
+Also worth showing:
+
+- **Warm now** performs byte-only warming of the 16-file blocking manifest, without pre-init.
+- The **Governor** tile shows the live decision. It fails closed when the browser reports no
+  connection information, which is normal on localhost — the clearly-labelled demo-only override
+  exists for that reason and never ships.
+- Only the first tile is the real package; the rest are marked `SIMULATED` and exist to exercise
+  intent and progressive rendering.
+
+**Expect the game to render but not spin.** It has no backend. Say so before anyone clicks.
+
+### 3. Automated measurement
+
+```bash
+node tools/sandbox_measure.mjs --runs 2        # cold vs warm, drives the real page
+node tools/prod_provider_probe.mjs --runs 1    # live production, needs network
+```
+
+`sandbox_measure` reports bytes, time to engine-canvas, and time to assets-quiet for both arms.
+Raise `SANDBOX_SETTLE_MS` if the warmed manifest looks short under heavy throttling.
+
+### Serving the demo to another device
+
+```bash
+.venv/bin/python tools/sandbox_server.py --bundle ... --host 0.0.0.0
+```
+
+Then open `http://<your-ip>:8090/sandbox.html` from another machine on the same network
+(`hostname -I` gives the address). Only do this on trusted venue wifi: it serves the provider
+bundle to anyone who can reach the port.
+
+### If a port is in use
+
+The server tells you exactly how to clear it. A previous run left behind is the usual cause:
+
+```bash
+kill $(ss -lptn 'sport = :8090' | grep -oP 'pid=\K[0-9]+' | head -1)
+```
+
 ## What the sandbox does and does not do
 
 **Does:** serves the package byte-for-byte from disk. Nothing in the package is rewritten,
