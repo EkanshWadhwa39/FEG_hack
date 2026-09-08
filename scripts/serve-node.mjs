@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const ROOT = resolve(__dirname, '..', 'prototype');
-const PORT = Number(process.env.PORT) || 8080;
+const PORT = Number(process.env.PORT) || 8090;
 const BIND = process.env.BIND || '0.0.0.0';
 
 const MIME = {
@@ -99,7 +99,6 @@ async function serve(req, res) {
 const server = createServer(serve);
 server.listen(PORT, BIND, () => {
   console.log(`\n  Prototype server running at:\n`);
-  console.log(`    http://localhost:${PORT}/`);
   console.log(`    http://localhost:${PORT}/lobby.html`);
   console.log(`    http://localhost:${PORT}/player.html`);
   console.log(`    http://localhost:${PORT}/sandbox.html\n`);
