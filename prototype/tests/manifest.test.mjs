@@ -105,3 +105,14 @@ test("strict identity rejects missing/mismatched versions, duplicate keys and un
     assert.throws(() => resolvePreparationIdentity(manifest, strictTarget, { validateUrl }));
   }
 });
+
+test("explicit content-hash path identity and configured query version are validated without rewriting", () => {
+  const manifest = structuredClone(strictManifest);
+  const asset = manifest.locales["hr-HR"].tiers["1x"].assets[0];
+  Object.assign(asset, { version: "abc123def456", versionInPath: true, url: "https://cdn.example.test/start-abc123def456.js?locale=hr-HR" });
+  assert.equal(resolvePreparationIdentity(manifest, strictTarget, { validateUrl }).assets[0].url, asset.url);
+  asset.version = "bad12345";
+  assert.throws(() => resolvePreparationIdentity(manifest, strictTarget, { validateUrl }), /version/);
+  Object.assign(asset, { version: "2026", versionInPath: false, versionKey: "revision", url: "https://cdn.example.test/a?revision=2026&b=2" });
+  assert.equal(resolvePreparationIdentity(manifest, strictTarget, { validateUrl }).assets[0].url, asset.url);
+});

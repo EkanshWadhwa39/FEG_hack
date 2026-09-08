@@ -89,8 +89,13 @@ export function resolvePreparationIdentity(manifest, target, { validateUrl } = {
     const url = new URL(asset.url);
     // Exact immutable version contract. A real adapter may supply content-hash
     // identity instead of a query; validate it explicitly, not by guessing.
+    const versionKey = asset.versionKey ?? "v";
+    const exactQuery = typeof versionKey === "string" && url.searchParams.getAll(versionKey).length === 1
+      && url.searchParams.get(versionKey) === asset.version;
+    const exactPathHash = asset.versionInPath === true && /^[a-f0-9]{8,128}$/i.test(asset.version)
+      && url.pathname.split(/[./_-]/).includes(asset.version);
     if (typeof asset.version !== "string" || !asset.version
-        || !(url.searchParams.getAll("v").length === 1 && url.searchParams.get("v") === asset.version)) {
+        || !(asset.versionInPath === true ? exactPathHash : exactQuery)) {
       throw new TypeError("unresolved versioned URL");
     }
     if (seen.has(asset.url)) throw new RangeError("duplicate exact asset URL");

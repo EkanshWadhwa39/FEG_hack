@@ -79,3 +79,90 @@ Ownership: the original failed delegations were explicitly released before
 recovery. The replacement catalogue and server specialists completed and
 released their disjoint files; lead reviewed and integrated them. Only lead ran
 browser experiments. No specialist committed or changed the UI.
+
+## Increment 3: content coordinator and UI handoff
+
+New modules: `content-loader.js`, `content-adapters.js`, `content-integration.js`.
+New tests: `content-loader.test.mjs`, `content-integration.test.mjs`; strict
+manifest tests also cover explicit version-query names and content-hash path
+identity without rebuilding the URL.
+
+**SIMULATED defaults:** warming starts disabled, policy OFF. The coordinator
+reserves a caller-configured session body budget atomically before scheduling;
+never refunds cancellations/failures/unstarted remainder; observes delivered
+chunks; stops the session on overrun. Request slots remain owned until body work
+settles. Completed URL metadata prevents duplicate speculative requests, but is
+not a custom asset cache and never asserts that the HTTP cache retained an object.
+
+Every preparation requires exact title/build/locale/tier/version, a fresh explicit
+`GRANTED` authorization result and an independently current grant. Every launch
+performs its own fresh check, cancels speculative work, waits for cancellation to
+settle, then returns either a blocked result or `LAUNCH_AUTHORIZED`. A grant carries
+a live AbortSignal for revocation/replacement/disposal. No player-visible launch
+or iframe is created by the coordinator. Authorization denial, error, timeout or
+malformed result never falls through to foreground launch.
+
+Governor inputs are live and conservative: Save-Data, unknown/slow connection,
+hidden document, disabled opt-in, observed long tasks and exhausted budget block
+new speculation. Missing connection/visibility capabilities do not invent a fast
+network. Requester bounds are readable-body bounds, **not exact wire-byte caps**.
+
+### Narrow integration seam (UI owner)
+
+1. Run `npm run serve:content` for the **SIMULATED**, loopback-only fixture server.
+   `/health` and `/__metrics` are safe diagnostics. `/` still serves the existing
+   UI; it is **not automatically wired to this core**. No HTML/CSS/player skin was
+   modified in these commits.
+2. Import catalogue/session/prior factories, adapters, `createContentLoader`,
+   `bindContentLoading` and `bindThumbnailFallback`. Share one requester instance
+   and one loader per session so concurrency and budget cannot reset on each tile.
+3. Supply existing catalogue root `[data-game-id]` buttons. Binding returns
+   `playerCatalogue` (existing three-field whitelist, fixed order) and a separate
+   static `playerThumbnails` map (`label`, `url` only). Use those for rendering,
+   never `selectCandidate`, weights, reasons or operator telemetry. Attach each
+   thumbnail fallback before assigning its static URL. Call its disposer on removal.
+4. Supply `readVariant()` returning explicit `{build, locale, tier}`. There is no
+   implicit browser-locale, resolution or version fallback. The integrated dwell
+   minimum is **SIMULATED configuration: 150 ms**. Click is immediate known intent,
+   but never skips authorization and never starts speculative work.
+5. Wire the explicit opt-in to `loader.setEnabled(boolean)` and the **operator-only**
+   policy control to `loader.setPolicy("FAVOURITE" | "POPULAR_UNPLAYED" | "OFF")`.
+   For policy-only preparation call `loader.prepare({build, locale, tier})`.
+   Hover dispatch is handled by the binding. Do not reorder/restyle/refocus tiles.
+6. `onLaunch(grant)` may start NORMAL foreground loading only while
+   `!grant.signal.aborted`. Observe that signal throughout the launch and fail
+   closed on revocation. Use `grant.plan` exact URLs; do not reconstruct them.
+   Opt-out/budget exhaustion only disable speculation, not a separately authorized
+   ordinary launch. A failed preparation is not a failed game and not a success.
+7. Report reference-scene input acceptance separately from provider input
+   acceptance. Record a synthetic session play only on the intended explicit
+   synthetic play event—not on hover, asset-body completion or first paint.
+   `loader.resumeBrowsing()` ends that foreground lifecycle. Dispose the binding,
+   loader/environment and thumbnail bindings when leaving the view.
+
+Adapter contracts (no caller needs production endpoint knowledge):
+
+```text
+manifestSource.resolve({id,build,locale,tier}, {signal}) -> manifest
+requestAsset(exactUrl, {signal,estimatedBytes,onBytes}) -> {completed,bodyBytes}
+requestAsset.validateUrl(exactUrl) -> exactUrl (validation only)
+authorization.check({purpose,signal}) -> exactly "GRANTED" or a denial state
+authorization.isGranted() -> boolean; subscribe(listener) -> unsubscribe
+environment.read() -> {saveData,effectiveType,visibilityState,performanceBusy}
+environment.subscribe(listener) -> unsubscribe
+```
+
+**UNKNOWN / not supplied here:** real exclusion endpoint/permission, authorized
+production manifest and matching credential/cache/CORS/Vary behavior, true
+provider PRIMARY critical-path proof, authoritative provider input acceptance,
+actual player conversions and production catalogue-wide effect. Fixtures are not
+exclusion checks. Swap only approved adapters after those contracts exist;
+judges' sandbox remains independent of staging.
+
+Read-only review corrections before integration commit: explicit UI cancellation
+and every replacement click now invalidate pending launch callbacks and abort the
+launch signal **before** reading the new variant. Authorization adapters must
+provide a live subscription/unsubscribe interface; pending/unknown/denied/error
+transitions must notify. These paths have regression tests. Caller implementations
+must still honor the returned launch AbortSignal; an adapter cannot revoke UI code
+that ignores it. No new browser/security claim is based solely on interface shape.
