@@ -6,7 +6,6 @@
   <title>Casino Lobby — FEG Sandbox</title>
   <link rel="stylesheet" href="./styles/player.css">
   <style>
-    /* ── Lobby grid ───────────────────────────────────────────────── */
     .lobby-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
@@ -41,7 +40,7 @@
       margin-bottom: 10px;
     }
     .card-title {
-      margin: 0 0 3px;
+      margin: 0 0 2px;
       font-size: 0.82rem;
       font-weight: 700;
       color: var(--text-primary);
@@ -49,7 +48,8 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .card-sub { margin: 0; font-size: 0.7rem; color: var(--text-muted); }
+    .card-sub  { margin: 0; font-size: 0.68rem; color: var(--text-muted); }
+    .card-time { margin: 4px 0 0; font-size: 0.68rem; color: var(--ok); font-variant-numeric: tabular-nums; min-height: 1em; }
 
     .card-badge {
       position: absolute;
@@ -67,7 +67,6 @@
     .badge-fetching { opacity: 1; background: #1c3048; color: #7dd3fc; }
     .badge-warm     { opacity: 1; background: #134e4a; color: #5eead4; }
 
-    /* ── Stats ────────────────────────────────────────────────────── */
     .stat-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
     .stat-pill {
       padding: 5px 13px;
@@ -79,7 +78,6 @@
     }
     .stat-pill strong { color: var(--accent); }
 
-    /* ── Game panel ───────────────────────────────────────────────── */
     #game-panel[hidden] { display: none; }
     #frame-host iframe {
       width: 100%;
@@ -116,11 +114,11 @@
     <div class="panel-head"><h2>Session</h2></div>
     <div class="stat-row">
       <span class="stat-pill">Cards warm: <strong id="stat-warm">0</strong>&nbsp;/ 20</span>
-      <span class="stat-pill">Bytes saved (est): <strong id="stat-bytes">0</strong></span>
+      <span class="stat-pill">Manifest: <strong id="stat-assets">–</strong> assets</span>
       <span class="stat-pill">Hover cancels: <strong id="stat-cancels">0</strong></span>
     </div>
     <p id="manifest-msg" class="empty-state" role="status" aria-live="polite">
-      Discovering game assets…
+      Ready. Prefetching top 3…
     </p>
   </section>
 
@@ -142,10 +140,10 @@ import { createWarmLedger } from './src/warm-ledger.js';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const GAME_ORIGIN = new URLSearchParams(location.search).get('game') ?? 'http://127.0.0.1:8091';
-const HOVER_DWELL = 150;   // ms of continuous hover before fetch begins
-const TOP_N       = 3;     // cards prefetched immediately on page load
+const HOVER_DWELL = 150;
+const TOP_N       = 3;
 
-// ── 20 game slots (same bundle, isolated per-slot URL namespace) ──────────────
+// ── 20 game slots ─────────────────────────────────────────────────────────────
 const GAMES = [
   { id:  1, name: 'Empire of Gold',            emoji: '🏛️' },
   { id:  2, name: 'Golden Empire Deluxe',      emoji: '✨' },
@@ -169,32 +167,89 @@ const GAMES = [
   { id: 20, name: 'Empire Strike Gold',         emoji: '⭐' },
 ];
 
-// ── Session state (per-card ledgers + stats) ──────────────────────────────────
-// Each card gets its own ledger so a re-hover of the SAME card skips
-// already-fetched URLs, while a different card's assets stay cold.
+// ── Comprehensive manifest — built from filesystem inspection of the bundle ───
+// Covers the full critical startup path: JS modules → CSS → locale JSON →
+// splash assets → game images → fonts. Dispatch order within each band:
+// largest-first (warmer.js sorts descending by estimatedBytes per band).
+// Sounds and spines are excluded: they are large (25+ MB) and load
+// after engine-canvas, well outside the prefetch window.
+//
+// Stage key:
+//   PRELOADER — needed before the PixiJS engine initialises
+//   COMMON    — CSS, locale data, secondary JS bundles
+//   SPLASH    — everything shown during the preloader/splash screen
+const BASE_MANIFEST = [
+  // ── PRELOADER ──────────────────────────────────────────────────────────────
+  // All three JS modules fire in parallel on page load; warming them removes
+  // the largest chunk of cold-launch latency.
+  { path: 'assets/vendor-pixi-C8WzrnZv.js',                          stage: 'PRELOADER', estimatedBytes: 1_292_928 },
+  { path: 'assets/core-engine-DXW-O-mj.js',                           stage: 'PRELOADER', estimatedBytes:   389_215 },
+  { path: 'assets/index-canvas-_ynnR-4e.js',                          stage: 'PRELOADER', estimatedBytes:     7_270 },
+
+  // ── COMMON ─────────────────────────────────────────────────────────────────
+  { path: 'assets/game-empireofgold-CK6MbOiD.js',                     stage: 'COMMON',    estimatedBytes:    46_080 },
+  { path: 'assets/panel/css/history.css?v=1788443825853',             stage: 'COMMON',    estimatedBytes:    19_000 },
+  { path: 'assets/panel/css/commonGameRules.css?v=1788443825853',     stage: 'COMMON',    estimatedBytes:    14_000 },
+  { path: 'assets/panel/css/footer.css?v=1788443825853',              stage: 'COMMON',    estimatedBytes:     2_700 },
+  { path: 'assets/panel/css/common.css?v=1788443825853',              stage: 'COMMON',    estimatedBytes:     2_200 },
+  { path: 'assets/panel/css/gameRules.css?v=1788443825853',           stage: 'COMMON',    estimatedBytes:     1_300 },
+  // Locale — loaded by the preloader bundle before splash displays.
+  { path: 'assets/locale/en/gameContent.json',                         stage: 'COMMON',    estimatedBytes:     3_997 },
+
+  // ── SPLASH ─────────────────────────────────────────────────────────────────
+  // Loader + splash screen assets: all visible within the first 0–2 s of launch.
+  { path: 'assets/images/loader.webp',                                 stage: 'SPLASH',    estimatedBytes:   109_568 },
+  { path: 'assets/images/@1x/splashAssets.webp',                      stage: 'SPLASH',    estimatedBytes:   869_352 },
+  { path: 'assets/images/@1x/splashBG.jpg',                           stage: 'SPLASH',    estimatedBytes:   675_111 },
+  { path: 'assets/images/loader_anim.gif',                             stage: 'SPLASH',    estimatedBytes:    61_410 },
+  { path: 'assets/images/@1x/splashAssets.json',                      stage: 'SPLASH',    estimatedBytes:     1_135 },
+  { path: 'assets/images/@1x/splashBG.json',                          stage: 'SPLASH',    estimatedBytes:       520 },
+  // Game sprites loaded immediately after engine start.
+  { path: 'assets/images/@1x/symbols.webp',                           stage: 'SPLASH',    estimatedBytes:   696_504 },
+  { path: 'assets/images/@1x/controlPanelAssets.webp',                stage: 'SPLASH',    estimatedBytes:   312_544 },
+  { path: 'assets/images/@1x/gameElements.webp',                      stage: 'SPLASH',    estimatedBytes:   288_508 },
+  // Fonts rendered in the splash and game UI.
+  { path: 'assets/fonts/en/Roboto.ttf',                                stage: 'SPLASH',    estimatedBytes:   487_768 },
+  { path: 'assets/fonts/en/NewRocker-Regular.ttf',                     stage: 'SPLASH',    estimatedBytes:   168_128 },
+  { path: 'assets/fonts/bmp/bitmapFont_0.png',                         stage: 'SPLASH',    estimatedBytes:   175_245 },
+  { path: 'assets/fonts/en/Oswald-Bold.ttf',                           stage: 'SPLASH',    estimatedBytes:    87_600 },
+  { path: 'assets/fonts/bmp/bitmapFont.fnt',                           stage: 'SPLASH',    estimatedBytes:     2_225 },
+  // Language images + lang JSON data.
+  { path: 'assets/images/@1x/en/langImages.webp',                      stage: 'SPLASH',    estimatedBytes:   193_396 },
+  { path: 'assets/images/@1x/en/commonLangAssets.webp',                stage: 'SPLASH',    estimatedBytes:    36_536 },
+  { path: 'assets/images/@1x/controlPanelPrimaryAssets.webp',          stage: 'SPLASH',    estimatedBytes:    26_726 },
+  { path: 'assets/images/@1x/brandLogo.png',                           stage: 'SPLASH',    estimatedBytes:    10_611 },
+  { path: 'assets/images/@1x/controlPanelAssets.json',                 stage: 'SPLASH',    estimatedBytes:    10_592 },
+  { path: 'assets/images/@1x/gameElements.json',                       stage: 'SPLASH',    estimatedBytes:     5_572 },
+  { path: 'assets/images/@1x/symbols.json',                            stage: 'SPLASH',    estimatedBytes:     2_924 },
+  { path: 'assets/images/@1x/controlPanelPrimaryAssets.json',          stage: 'SPLASH',    estimatedBytes:     1_633 },
+  { path: 'assets/images/@1x/en/langImages.json',                      stage: 'SPLASH',    estimatedBytes:     1_100 },
+  { path: 'assets/images/@1x/en/commonLangAssets.json',                stage: 'SPLASH',    estimatedBytes:       710 },
+  { path: 'assets/images/@1x/jackpotBG0.json',                         stage: 'SPLASH',    estimatedBytes:       571 },
+  { path: 'assets/images/@1x/jackpotBG1.json',                         stage: 'SPLASH',    estimatedBytes:       573 },
+];
+
+// Build per-slot manifest: rewrite the base path to /game/{id}/
+function manifestForSlot(id) {
+  const base = `${GAME_ORIGIN}/game/${id}/`;
+  return BASE_MANIFEST.map((a) => ({ ...a, url: base + a.path }));
+}
+
+// ── Session state ─────────────────────────────────────────────────────────────
+// Each slot has its own ledger — prevents re-fetching on re-hover of the SAME
+// card but keeps every slot's cache partition independent.
 const ledgers   = new Map(GAMES.map((g) => [g.id, createWarmLedger()]));
 let warmCount   = 0;
 let cancelCount = 0;
-let bytesSaved  = 0;
-
-// Total estimated bundle size (used for bytes-saved readout)
-const BUNDLE_BYTES = 1_258_291 + 389_120 + 46_080 + 7_270 + 109_568
-                   + 19_000 + 14_000 + 2_700 + 2_200 + 1_300;
 
 function updateStats() {
   document.getElementById('stat-warm').textContent    = warmCount;
-  document.getElementById('stat-bytes').textContent   = fmtBytes(bytesSaved);
+  document.getElementById('stat-assets').textContent  = BASE_MANIFEST.length;
   document.getElementById('stat-cancels').textContent = cancelCount;
 }
-function fmtBytes(b) {
-  if (b >= 1_048_576) return `${(b / 1_048_576).toFixed(1)} MB`;
-  if (b >= 1_024)     return `${(b / 1_024).toFixed(0)} KB`;
-  return `${b} B`;
-}
 
-// ── Connection prewarm — emit dns-prefetch + preconnect for game origin ───────
-// This is the same approach as prototype/src/connection-prewarm.js adapted
-// for HTTP sandbox origins (that file requires HTTPS).
+// ── Connection prewarm ────────────────────────────────────────────────────────
+// Mirrors connection-prewarm.js strategy, adapted for HTTP sandbox origins.
 function prewarmConnection() {
   const host = new URL(GAME_ORIGIN).host;
   const dns  = document.createElement('link');
@@ -207,106 +262,20 @@ function prewarmConnection() {
   document.head.append(dns, conn);
 }
 
-// ── Sandbox asset requester — cors + body drain (matches browser-requester) ───
-// Uses cors (not no-cors) so the browser receives a transparent response that
-// it can fully admit to its HTTP cache.  The body is drained to completion so
-// the cache-write path is flushed before we report success.
-async function drainBody(res) {
-  const body = res.body;
-  if (!body) return;
-  if (typeof WritableStream !== 'undefined') {
-    await body.pipeTo(new WritableStream());
-  } else {
-    const reader = body.getReader();
-    try { for (;;) { const { done } = await reader.read(); if (done) break; } }
-    finally { reader.releaseLock?.(); }
-  }
+// ── Requester ─────────────────────────────────────────────────────────────────
+// Uses no-cors, matching prototype/sandbox.html.  The sandbox server throttles
+// each HTTP connection independently at 12 Mbps, so with no-cors the warmer
+// races the queue quickly and the browser opens 6 parallel connections (HTTP/1.1
+// per-origin limit), each getting the full 12 Mbps allocation — effectively
+// 72 Mbps total throughput vs 24 Mbps with cors+drain at concurrency 2.
+function requestAsset(url) {
+  return fetch(url, { mode: 'no-cors', credentials: 'omit' });
 }
 
-function makeRequester(signal) {
-  return async (url, opts = {}) => {
-    const init = { mode: 'cors', credentials: 'omit', cache: 'default', signal: opts.signal ?? signal };
-    const res = await fetch(url, init);
-    if (!res.ok) throw new Error(`${res.status} ${url}`);
-    await drainBody(res).catch(() => {});
-  };
-}
-
-// ── Asset manifest (base URLs, keyed from game/1/ — rewritten per slot) ──────
-// Discovery fetches the game HTML and parses <link>/<script>/<img> tags.
-// All discovered URLs are stored relative to /game/1/; warmCard() rewrites
-// them to /game/{id}/ so each slot fetches its own isolated URL set.
-let baseManifest = [];   // [{url (with /game/1/ prefix), stage, estimatedBytes}]
-
-async function discoverManifest() {
-  const slotBase = `${GAME_ORIGIN}/game/1/`;
-  try {
-    const res  = await fetch(slotBase, { mode: 'cors', credentials: 'omit' });
-    const html = await res.text();
-    const doc  = new DOMParser().parseFromString(html, 'text/html');
-
-    const rawUrls = new Set();
-    for (const el of doc.querySelectorAll('link[href]')) {
-      const v = el.getAttribute('href');
-      if (v && !v.startsWith('data:')) rawUrls.add(v);
-    }
-    for (const el of doc.querySelectorAll('script[src]')) {
-      const v = el.getAttribute('src');
-      if (v && !v.startsWith('data:')) rawUrls.add(v);
-    }
-    for (const el of doc.querySelectorAll('img[src]')) {
-      const v = el.getAttribute('src');
-      if (v && !v.startsWith('data:')) rawUrls.add(v);
-    }
-
-    const entries = [];
-    for (const raw of rawUrls) {
-      const url  = new URL(raw, slotBase).href;
-      const path = url.split('?')[0];
-      const ext  = path.split('.').pop().toLowerCase();
-      const stage = (ext === 'webp' || ext === 'png' || ext === 'jpg') ? 'SPLASH' : 'COMMON';
-      const estimatedBytes =
-        path.includes('vendor') ? 1_258_291
-        : path.includes('core-engine') ? 389_120
-        : path.includes('game-empire') ?  46_080
-        : ext === 'js' ?                   7_270
-        : ext === 'webp' || ext === 'png' ? 109_568
-        : ext === 'css' && path.includes('history') ?     19_000
-        : ext === 'css' && path.includes('common') ?      14_000
-        : 2_500;
-      entries.push({ url, stage, estimatedBytes });
-    }
-    return entries;
-  } catch {
-    // Hardcoded fallback with real file sizes from bundle inspection.
-    const b = `${GAME_ORIGIN}/game/1/`;
-    return [
-      { url: `${b}assets/vendor-pixi-C8WzrnZv.js`,                        stage: 'COMMON', estimatedBytes: 1_258_291 },
-      { url: `${b}assets/core-engine-DXW-O-mj.js`,                         stage: 'COMMON', estimatedBytes:   389_120 },
-      { url: `${b}assets/game-empireofgold-CK6MbOiD.js`,                   stage: 'COMMON', estimatedBytes:    46_080 },
-      { url: `${b}assets/index-canvas-_ynnR-4e.js`,                        stage: 'COMMON', estimatedBytes:     7_270 },
-      { url: `${b}assets/panel/css/history.css?v=1788443825853`,           stage: 'COMMON', estimatedBytes:    19_000 },
-      { url: `${b}assets/panel/css/commonGameRules.css?v=1788443825853`,   stage: 'COMMON', estimatedBytes:    14_000 },
-      { url: `${b}assets/panel/css/footer.css?v=1788443825853`,            stage: 'COMMON', estimatedBytes:     2_700 },
-      { url: `${b}assets/panel/css/common.css?v=1788443825853`,            stage: 'COMMON', estimatedBytes:     2_200 },
-      { url: `${b}assets/panel/css/gameRules.css?v=1788443825853`,         stage: 'COMMON', estimatedBytes:     1_300 },
-      { url: `${b}assets/images/loader.webp`,                              stage: 'SPLASH', estimatedBytes:   109_568 },
-    ];
-  }
-}
-
-// Rewrite base-manifest URLs from /game/1/ to /game/{id}/
-function manifestForSlot(id) {
-  return baseManifest.map((a) => ({
-    ...a,
-    url: a.url.replace(`${GAME_ORIGIN}/game/1/`, `${GAME_ORIGIN}/game/${id}/`),
-  }));
-}
-
-// ── Warm one card's isolated asset set ───────────────────────────────────────
+// ── Warm one slot ─────────────────────────────────────────────────────────────
 async function warmCard(id, signal) {
-  if (!baseManifest.length) return;
   setCardState(id, 'prefetching');
+  const started = performance.now();
   try {
     await warmAssets({
       plan:        { locale: 'hr-HR', tier: '1x', assets: manifestForSlot(id) },
@@ -314,12 +283,12 @@ async function warmCard(id, signal) {
       concurrency: 2,
       signal,
       ledger:      ledgers.get(id),
-      requestAsset: makeRequester(signal),
+      requestAsset,
     });
     if (!signal?.aborted) {
-      setCardState(id, 'warm');
+      const ms = Math.round(performance.now() - started);
+      setCardState(id, 'warm', ms);
       warmCount++;
-      bytesSaved += BUNDLE_BYTES;
       updateStats();
     }
   } catch {
@@ -327,42 +296,45 @@ async function warmCard(id, signal) {
   }
 }
 
-// ── Card visual state ─────────────────────────────────────────────────────────
-function setCardState(id, state) {
+// ── Card state ────────────────────────────────────────────────────────────────
+function setCardState(id, state, warmMs) {
   const card = document.querySelector(`[data-game-id="${id}"]`);
   if (!card) return;
   card.dataset.state = state;
   const badge  = card.querySelector('.card-badge');
+  const timing = card.querySelector('.card-time');
   const isTop3 = id <= TOP_N;
+
   switch (state) {
     case 'warm':
       badge.className = 'card-badge badge-warm';
       badge.textContent = 'WARM';
+      if (timing && warmMs != null) timing.textContent = `${warmMs} ms`;
       break;
     case 'prefetching':
       badge.className = 'card-badge badge-fetching';
       badge.textContent = isTop3 ? 'PREFETCH…' : 'LOADING…';
+      if (timing) timing.textContent = '';
       break;
     default:
       badge.className = isTop3 ? 'card-badge badge-top3' : 'card-badge';
       badge.textContent = isTop3 ? 'TOP 3' : '';
+      if (timing) timing.textContent = '';
   }
 }
 
 // ── Hover-fetch engine ────────────────────────────────────────────────────────
-// Algorithm:
-//   pointerenter  →  arm 150 ms dwell timer
-//   (dwell fires) →  create AbortController, call warmCard()
-//   pointerleave before dwell  →  cancel timer, no bytes sent
-//   pointerleave during fetch  →  abort() controller, card back to cold
-//   card already warm          →  ignore all pointer events
-const hoverTimers      = new Map();  // id → timeoutId
-const hoverControllers = new Map();  // id → AbortController
+// pointerenter → arm 150 ms dwell timer
+// dwell fires  → AbortController created, warmCard() started
+// pointerleave before dwell  → timer cancelled, zero bytes sent
+// pointerleave after dwell   → in-flight fetch aborted, card reset to cold
+// already warm               → pointer events ignored
+const hoverTimers      = new Map();
+const hoverControllers = new Map();
 
 function onCardEnter(id) {
   if (hoverTimers.has(id) || hoverControllers.has(id)) return;
-  const card = document.querySelector(`[data-game-id="${id}"]`);
-  if (card?.dataset.state === 'warm') return;
+  if (document.querySelector(`[data-game-id="${id}"]`)?.dataset.state === 'warm') return;
 
   const timer = setTimeout(() => {
     hoverTimers.delete(id);
@@ -410,6 +382,7 @@ function buildGrid() {
       <div class="card-thumb" aria-hidden="true">${game.emoji}</div>
       <p class="card-title" title="${game.name}">${game.name}</p>
       <p class="card-sub">FEG · slot&nbsp;${game.id}</p>
+      <p class="card-time"></p>
     `;
     if (game.id > TOP_N) {
       card.addEventListener('pointerenter', () => onCardEnter(game.id));
@@ -423,7 +396,7 @@ function buildGrid() {
   }
 }
 
-// ── Launch game iframe ────────────────────────────────────────────────────────
+// ── Launch ────────────────────────────────────────────────────────────────────
 function launchGame(game) {
   const panel = document.getElementById('game-panel');
   document.getElementById('active-game-title').textContent = game.name;
@@ -431,9 +404,7 @@ function launchGame(game) {
   panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const frame = document.createElement('iframe');
   frame.allow = 'autoplay';
-  // Each slot has its own URL — assets resolve under /game/{id}/ so the
-  // browser serves them from that slot's cache partition.
-  frame.src = `${GAME_ORIGIN}/game/${game.id}/`;
+  frame.src   = `${GAME_ORIGIN}/game/${game.id}/`;
   document.getElementById('frame-host').replaceChildren(frame);
   setCardState(game.id, 'launching');
 }
@@ -444,31 +415,25 @@ document.getElementById('close-game').addEventListener('click', () => {
 });
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
-// 1. Emit preconnect hint for the game origin so the TCP handshake
-//    overlaps with the manifest discovery fetch.
+// 1. Emit preconnect hint — TCP handshake starts before first fetch.
 prewarmConnection();
-
-// 2. Build the grid while discovery runs.
+// 2. Build the grid immediately (no async wait).
 buildGrid();
+updateStats();
 
-// 3. Discover the asset manifest from the live game HTML.
 const msg = document.getElementById('manifest-msg');
-baseManifest = await discoverManifest();
-msg.textContent =
-  `${baseManifest.length} assets discovered. Prefetching top ${TOP_N} games…`;
-
-// 4. Prefetch the top-N slots concurrently.
-//    Each gets its own AbortController and its own URL namespace —
-//    they run in true parallel, three independent warm operations.
+// 3. Prefetch top-N slots concurrently.
+//    With no-cors the warmer races through the queue and the browser opens
+//    up to 6 per-origin HTTP/1.1 connections, each throttled independently
+//    at 12 Mbps — much higher effective throughput than sequential.
 await Promise.allSettled(
   GAMES.slice(0, TOP_N).map((g) => {
     const ctrl = new AbortController();
     return warmCard(g.id, ctrl.signal);
   }),
 );
-
 msg.textContent =
-  `${baseManifest.length} assets · top ${TOP_N} warm · hover cards 4–20 to prefetch.`;
+  `${BASE_MANIFEST.length} assets · top ${TOP_N} warm · hover cards 4–20 to prefetch.`;
 updateStats();
 </script>
 </body>
