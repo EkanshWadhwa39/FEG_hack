@@ -4,6 +4,8 @@ Source: [`FEG Hackathon 2026 Repository Structure and Submission Guidelines.docx
 
 This note records the actionable requirements from the organiser-provided technical submission guide. The DOCX remains the authoritative source if this summary differs.
 
+Before final submission, complete every blocking item in [`PRE-SUBMISSION-AUDIT.md`](PRE-SUBMISSION-AUDIT.md) and repeat its checks against the intended frozen commit.
+
 ## Repository and freeze requirements
 
 - Keep the submission in a private, team-controlled repository through the end of judging.
