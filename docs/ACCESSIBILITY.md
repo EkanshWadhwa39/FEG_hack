@@ -74,6 +74,19 @@ focus-trap index maths are pure functions in
 There is no keyboard trap: the drawer is dismissible with `Escape`, and the modal always
 contains a reachable cancel control.
 
+## Reflow and text resize — SC 1.4.10, SC 1.4.4
+
+| Check | Requirement | Result |
+|---|---|---|
+| Lobby, drawer, and transition at a 320px viewport | No horizontal scrolling | PASS |
+| Transition remains operable at 320px | Controls still reachable and functional | PASS |
+| Root font size doubled to 32px | No horizontal scrolling, no lost content | PASS |
+| Full launch flow completed at 200% text | Dialog controls still reachable | PASS |
+
+Both are verified by driving the real page, not by inspecting breakpoints. The 200% case
+exercises the scrolling overlay directly: when text doubles, the transition card grows past the
+viewport, and the test fails if its controls become unreachable.
+
 ## Announcements — SC 4.1.3
 
 - Drawer result counts and every empty state are announced through a polite live region.
@@ -177,8 +190,6 @@ Stated plainly, because an untested claim is worse than an absent one.
 - **One browser.** Chromium 136 headless only. No Firefox, Safari, or mobile browser run.
 - **Automated contrast covers tokens, not renderings.** Combinations produced by future
   inline styles, images, or user stylesheets are unchecked.
-- **No zoom or reflow testing.** SC 1.4.4 (resize to 200%) and SC 1.4.10 (reflow at 320px)
-  have not been verified beyond a responsive breakpoint.
 - **No cognitive or plain-language review.** Copy has not been assessed for reading level.
 - **Synthetic data only.** Every figure on this surface is `SIMULATED`. None of this
   demonstrates behaviour against real player data or a real game.

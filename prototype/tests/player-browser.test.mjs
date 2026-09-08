@@ -258,6 +258,46 @@ test("reduced motion stops the animation and extends the announcement window", o
   }, { reducedMotion: "reduce" });
 });
 
+test("content reflows at 320px without horizontal scrolling (SC 1.4.10)", options, async () => {
+  await withPage(async (page) => {
+    const overflows = () => page.evaluate(() =>
+      document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
+
+    assert.equal(await overflows(), false, "lobby scrolls horizontally at 320px");
+
+    await page.click("#drawer-trigger");
+    assert.equal(await overflows(), false, "drawer scrolls horizontally at 320px");
+
+    await page.click("#drawer-results button");
+    assert.equal(await overflows(), false, "transition scrolls horizontally at 320px");
+
+    // The dialog must still be operable, not merely non-overflowing.
+    await page.click("#signal-fail");
+    assert.match(await page.textContent("#transition-status"), /Nothing was started/);
+  }, { viewport: { width: 320, height: 640 } });
+});
+
+test("text resized to 200% loses no content or function (SC 1.4.4)", options, async () => {
+  await withPage(async (page) => {
+    // Doubling the root font size is the text-only resize the SC describes.
+    await page.evaluate(() => { document.documentElement.style.fontSize = "32px"; });
+
+    assert.equal(
+      await page.evaluate(() =>
+        document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
+      false,
+      "page scrolls horizontally at 200% text size",
+    );
+
+    await page.click("#drawer-trigger");
+    await page.click("#drawer-results button");
+    // Controls inside the scrolling overlay must remain reachable when text
+    // doubles and the card grows past the viewport.
+    await page.click("#signal-interactive");
+    await page.waitForSelector("#transition", { state: "hidden", timeout: 6_000 });
+  }, { viewport: { width: 800, height: 600 } });
+});
+
 test("counter-metrics stay out of the player-facing transition screen", options, async () => {
   await withPage(async (page) => {
     await page.click("#drawer-trigger");
