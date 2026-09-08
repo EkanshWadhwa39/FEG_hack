@@ -8,6 +8,7 @@
 | Existing cache counts | MEASURED, exporter semantics must be named | State counts from the parser and preserve UNKNOWN classifications. |
 | 35.5s to 6.7s | MEASURED according to prior analysis, milestone definition not encoded here | Do not mix with full-HAR span; document exact start/end extraction before demo. |
 | Full HAR entry span | MEASURED by `tools/measure_har.py` | Diagnostic only; not automatically click-to-interactive. |
+| **Production parent-to-iframe cache reuse, 9 container-shell assets** | **MEASURED** in Chromium 136.0.7103.25 against `casino.psk.hr` public demo play, 3 control + 3 treatment runs | **Treatment transfer 0 bytes vs control ~92.5 KB, identical 241,898 decoded bytes. Warmed by `prototype/src/warmer.js` itself. Container shell only — the provider bundle on `v1t.eu` is a different site and was never reached. See `docs/PRODUCTION-CACHE-REUSE.md`.** |
 | Parent-to-iframe cache reuse, one local Empire of Gold static asset | MEASURED locally in Chromium 136.0.7103.25, 2 control + 2 treatment runs | Browser mechanism only: both treatment iframe requests were browser-cache hits with 0 server response-body bytes. Production behavior remains UNKNOWN; see `docs/LOCAL-CACHE-REUSE.md`. |
 | Exclusion-register latency | UNKNOWN | Never invent; mandatory fail-closed integration gate. |
 | Cross-provider generalization | UNKNOWN beyond tested captures/static inspection | Report provider/title separately. |
