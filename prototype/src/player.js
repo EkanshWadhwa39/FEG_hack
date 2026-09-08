@@ -71,6 +71,7 @@ const pageStatus = $("page-status");
 const motionState = $("motion-state");
 const extendedControl = $("extended-duration");
 
+const pageContent = document.querySelector("main.shell");
 const overlay = $("transition");
 const transitionStatus = $("transition-status");
 const cancelButton = $("transition-cancel");
@@ -259,6 +260,9 @@ function openTransition(item) {
   lastFocusedBeforeTransition = document.activeElement;
   transition.open();
   overlay.hidden = false;
+  // aria-modal is respected by focus, but a virtual cursor can still wander
+  // into the page behind it. inert removes the background from the a11y tree.
+  pageContent.inert = true;
   transitionStatus.textContent =
     `Opening ${item.title}. Waiting for the game to accept input. SIMULATED.`;
   cancelButton.textContent = "Cancel and return to lobby";
@@ -276,6 +280,7 @@ function openTransition(item) {
 
 function closeTransition({ announce }) {
   overlay.hidden = true;
+  pageContent.inert = false;
   setDemoControlsEnabled(false);
   if (tickTimer != null) {
     globalThis.clearInterval(tickTimer);

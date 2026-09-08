@@ -181,6 +181,20 @@ test("launching opens a modal transition and traps focus", options, async () => 
   });
 });
 
+test("the page behind the modal is inert while it is open", options, async () => {
+  await withPage(async (page) => {
+    assert.equal(await page.$eval("main.shell", (node) => node.inert), false);
+
+    await page.click("#drawer-trigger");
+    await page.click("#drawer-results button");
+    // Removed from the accessibility tree, not merely visually covered.
+    assert.equal(await page.$eval("main.shell", (node) => node.inert), true);
+
+    await page.click("#transition-cancel");
+    assert.equal(await page.$eval("main.shell", (node) => node.inert), false);
+  });
+});
+
 test("first paint does not clear the transition", options, async () => {
   await withPage(async (page) => {
     await page.click("#drawer-trigger");
