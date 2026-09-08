@@ -186,10 +186,29 @@ git push origin main
 
 ## Still not done
 
-- **Click-to-playable is unmeasured.** Every timing is to *engine start*. The package cannot reach
-  playable in a sandbox: `offline-data-*.js` is absent from the package as supplied and it calls
-  `api.spiniq.io`. A mock endpoint would convert this into a real number.
+- **Click-to-playable is unmeasured.** "Playable" means the spin control accepts input, which is
+  what the brief's 6-8s baseline and sub-500ms target almost certainly refer to. The package cannot
+  reach that state in a sandbox: `offline-data-*.js` is absent from the package as supplied and it
+  calls `api.spiniq.io`. Its preloader therefore never clears. A mock endpoint would convert this
+  into a real number.
+
+  Where we actually are, sandbox at 12 Mbps + 40 ms RTT, `blocking` profile:
+
+  | Milestone | Cold | Warmed | Change |
+  |---|---:|---:|---:|
+  | engine-canvas (first render) | 1,450 ms | 1,070 ms | -26% |
+  | assets-quiet (bytes stop) | 18,538 ms | 18,247 ms | -1.6% |
+
+  Warming all 52 MB instead reaches 481 ms to engine-canvas (-68%), which the 30.4% hit rate makes
+  indefensible. Total load stays ~18 s regardless, because the package eagerly fetches ~50 MB, 42%
+  of it audio, and we cannot change that without modifying certified code.
+
+  **We are not at "under 500 ms to playable" and must not claim to be.**
 - **Exclusion-register latency: UNKNOWN**, deliberately not estimated.
-- **No real screen reader** has driven the surface; ARIA and focus are verified programmatically.
+- **No real screen reader has driven the surface.** This is a *verification* gap, not an
+  implementation gap: ARIA roles, live regions, the focus trap, roving tabindex, `inert`, contrast,
+  reflow and 200% text resize are all implemented and tested programmatically and in Chromium. What
+  is missing is a pass with NVDA or VoiceOver to confirm the announcements *sound* correct. Dwell,
+  keyboard-focus intent, and every other feature work; they are simply not AT-verified.
 - One title, one provider, one browser. Web is 3% of the launches the policy was derived from.
 - `docs/architecture.md`, `docs/impact-case.md`, `docs/dependencies.md` remain missing.
