@@ -23,6 +23,14 @@ function isCredentialLikeQueryKey(key) {
 }
 
 /**
+ * Loopback hosts, where plain HTTP carries no transport risk because the
+ * request never leaves the machine. Without this exception the local sandbox
+ * could not use the real request boundary and had to hand-roll its own, which
+ * is how `connection-prewarm.js` ended up tested but wired into nothing.
+ */
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]", "::1"]);
+
+/**
  * Reject URLs that are not suitable for credential-free speculative warming.
  * The original string is returned unchanged so browser cache keys are never
  * normalized, reconstructed, or reordered by this module.
@@ -39,8 +47,9 @@ export function requireCredentialFreeHttpsUrl(exactUrl) {
     throw new TypeError("asset URL must be absolute");
   }
 
-  if (parsed.protocol !== "https:") {
-    throw new RangeError("sandbox asset URL must use HTTPS");
+  if (parsed.protocol !== "https:"
+    && !(parsed.protocol === "http:" && LOOPBACK_HOSTS.has(parsed.hostname))) {
+    throw new RangeError("sandbox asset URL must use HTTPS outside loopback");
   }
   if (parsed.username || parsed.password) {
     throw new RangeError("sandbox asset URL must not contain credentials");

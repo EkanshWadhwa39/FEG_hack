@@ -123,14 +123,31 @@ def build_manifest(bundle: Path, resolution: str = "@1x",
             entry["critical"] = is_critical_primary(relative, size)
         entries.append(entry)
 
-    if profile == "blocking":
-        proactive = [e for e in entries if e.get("blocking") is True]
-    else:
-        proactive = [
-            e for e in entries
-            if e["stage"] in PROACTIVE_STAGES
-            and (e["stage"] != "PRIMARY" or e.get("critical") is True or profile == "all")
-        ]
+    def eligible(entry: dict) -> bool:
+        """The two invariants the browser warmer also enforces, applied here.
+
+        SECONDARY is never proactively warmed, and a PRIMARY asset is warmed
+        only when it is proven critical. `warmAssets` validates a plan
+        atomically, so a single ineligible entry does not warm fewer assets --
+        it throws and warms *none*. Emitting one here would silently disable
+        warming for the whole title, which is exactly the failure the `all`
+        profile used to produce.
+        """
+        if entry["stage"] not in PROACTIVE_STAGES:
+            return False
+        return entry["stage"] != "PRIMARY" or entry.get("critical") is True
+
+    def in_profile(entry: dict) -> bool:
+        if profile == "blocking":
+            return entry.get("blocking") is True
+        if profile == "critical":
+            # Blocking, plus the art the first screen actually shows.
+            return (entry.get("blocking") is True
+                    or entry["stage"] == "SPLASH"
+                    or entry["stage"] == "PRIMARY")
+        return True
+
+    proactive = [e for e in entries if eligible(e) and in_profile(e)]
     return {
         "profile": profile,
         "resolution": resolution,

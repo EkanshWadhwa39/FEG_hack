@@ -31,6 +31,17 @@ These are ours. Nothing here modifies certified code.
 | A9 | **Progressive tile rendering** | built | Does not reduce load time; removes the blank-rectangle wait. Perceived, not real |
 | A10 | **Exact manifest generated from the package** | built | Warming exact versioned URLs, no normalisation, so every warm request is a real cache key |
 | A11 | **Governor declines when warming is not worth it** | built | Save-Data, metered link, hidden page, budget exhausted. Declining is a correct outcome |
+| A12 | **Graduated speculation ladder** (connect -> bytes -> engine) | **MEASURED** | Replaces an all-or-nothing design where a glance bought nothing and 600 ms bought a whole engine. See `docs/SPECULATION-LADDER.md` |
+| A13 | **Touch and keyboard intent, not only hover** | built | A touch screen fires no `mouseenter`. ~72% of launches are on a mobile client, so hover-only meant no speculation for most players |
+| A14 | **Governor degrades instead of refusing on non-Chromium** | built | `navigator.connection` is Chromium-only. Refusing on its absence disabled warming on Firefox and all iOS browsers |
+| A15 | **In-flight speculation is abortable** | built | A withdrawn authorization or a hidden page now stops requests already running, not only the next one |
+
+> **Update.** The ceiling below describes byte warming only. The engine rung (A12)
+> does not lower the 6.2 s floor — it moves it off the click path. MEASURED in the
+> sandbox: click to engine-rendering falls from 542 ms to **73 ms**, and launch-phase
+> transfer from 52.2 MB to **zero**, because the work already happened during browse.
+> Full method, arms and caveats: `docs/SPECULATION-LADDER.md`.
+> Everything still unbuilt is inventoried in `docs/REMAINING-LEVERS.md`.
 
 **Ceiling of Section A:** with everything warm, ~6.2 s for this title. A2–A8 get you to that floor
 faster and more cheaply; they cannot beat it.

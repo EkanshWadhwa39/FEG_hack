@@ -54,34 +54,64 @@ not warm the others — without that, the whole demo would be a trick.
 | Step | What to do | What to point at |
 |---|---|---|
 | 1 | Load the page | Tiles appear as placeholders, then fill in. Never a blank rectangle |
-| 2 | Hover **Game 3** for ~1 second | **Engine pre-init** goes `PREPARING` → `PREPARED (g3)`. It is loading in a hidden frame while you talk |
-| 3 | Now click **Game 5** — one you did *not* hover | **~2 s.** Cold baseline, status says `cold launch` |
-| 4 | Click **Reset**, hover **Game 3** again until `PREPARED` | |
-| 5 | Click **Game 3** | **~35 ms.** Status says `revealed pre-initialised engine` |
+| 2 | Hover **Game 3** for ~0.3 s, then move away | **Rung reached** goes `CONNECT` → `WARM`. 2.8 MB of blocking assets fetched, no engine spent |
+| 3 | Hover **Game 3** again and hold ~1 s | Rung climbs to `PREINIT`; **Engine pre-init** goes `PREPARING` → `PREPARED (g3)`. It loads in a hidden frame while you talk |
+| 4 | Now click **Game 5** — one you did *not* rest on | Cold baseline. Status says `cold launch` |
+| 5 | Click **Reset**, rest on **Game 3** again until `PREPARED` | Watch **Speculative budget** climb, then watch it refund if you move to another tile |
+| 6 | Click **Game 3** | **Single-digit ms.** Status says `revealed pre-initialised engine` |
 
-Steps 3 and 5 are the whole pitch, and they happen **in the same page, seconds apart, on identical
-packages**. A judge can pick which tile to hover and which to click.
+Steps 4 and 6 are the whole pitch, and they happen **in the same page, seconds apart, on identical
+packages**. A judge can pick which tile to rest on and which to click.
+
+Then show it failing safely:
+
+| Step | What to do | What to point at |
+|---|---|---|
+| 7 | Tick **Simulate exclusion-register denial** mid-warm | Rung drops to `NONE (AUTHORIZATION)`, in-flight warming aborts, the budget is refunded, any engine is torn down |
+| 8 | Tick **Disable speculation** and launch again | The honest control arm, in the same page |
 
 Also worth showing:
 
-- **Warm now** performs byte-only warming of the 16-file blocking manifest, without pre-init.
-- The **Governor** tile shows the live decision. It fails closed when the browser reports no
-  connection information, which is normal on localhost — the clearly-labelled demo-only override
-  exists for that reason and never ships.
-- Only the first tile is the real package; the rest are marked `SIMULATED` and exist to exercise
-  intent and progressive rendering.
+- **Rung reached** is the live state of the speculation ladder: `CONNECT` (a transport hint, free),
+  `WARM` (the 16-file blocking manifest, 2.8 MB), `PREINIT` (a whole engine, ~52 MB). Each rung is
+  earned by stronger intent. See `docs/SPECULATION-LADDER.md`.
+- **Tier** is what the governor will permit on this device. `FULL` allows the engine rung; `REDUCED`
+  allows bytes only, and is what a browser with no Network Information API (Firefox, anything on
+  iOS) or a 3g link gets. The demo-only override forces `FULL` and never ships.
+- **Speculative budget** is charged for what is actually spent — the engine rung is billed the whole
+  package, not the warm profile — and refunded when intent is withdrawn.
+- `?maxrung=WARM` caps the ladder at byte warming, which is how the measurement harness isolates the
+  bytes from the engine.
+- Every tile is the real package, served under its own URL namespace (`/g1`, `/g2`, …). The tile
+  *titles* are `SIMULATED` labels; the bytes behind each are the provided bundle, cached separately.
 
 **Expect the game to render but not spin.** It has no backend. Say so before anyone clicks.
 
 ### 3. Automated measurement
 
 ```bash
-node tools/sandbox_measure.mjs --runs 2        # cold vs warm, drives the real page
-node tools/prod_provider_probe.mjs --runs 1    # live production, needs network
+node tools/sandbox_measure.mjs --runs 3         # three arms, drives the real page
+node tools/sandbox_measure.mjs --arms cold,preinit --runs 3
+node tools/prod_provider_probe.mjs --runs 1     # live production, needs network
 ```
 
-`sandbox_measure` reports bytes, time to engine-canvas, and time to assets-quiet for both arms.
-Raise `SANDBOX_SETTLE_MS` if the warmed manifest looks short under heavy throttling.
+Three arms, so the two mechanisms are never reported as one lump:
+
+- `cold` — speculation disabled. The honest baseline.
+- `warm` — the ladder capped at byte warming, so the difference is attributable to bytes alone.
+- `preinit` — the full ladder, including the engine rung.
+
+Every arm is driven through the page's own intent path: a real hover on a real tile, not a
+test-only button. `sandbox_measure` reports launch-phase bytes, time to engine-canvas, and time to
+assets-quiet. Raise `SANDBOX_SETTLE_MS` if the warmed manifest looks short under heavy throttling.
+
+Measured on this machine (40 ms per-request latency, headless Chromium, median of 3):
+
+| Arm | Launch-phase bytes | click → canvas | click → assets quiet |
+|---|---:|---:|---:|
+| cold | 52,220,191 | 542 ms | 4,881 ms |
+| warm | 49,845,707 | 459 ms | 4,816 ms |
+| preinit | **0** | **73 ms** | no further network |
 
 ### Serving the demo to another device
 

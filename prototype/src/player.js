@@ -17,6 +17,10 @@ import { DrawerView, buildDrawer, createIntentReporter } from "./drawer.js";
 import { TransitionState, createTransition } from "./transition.js";
 import { LimitState, createRgState } from "./rg-state.js";
 import { ReviewFlag, createCounterMetrics } from "./counter-metrics.js";
+import { createDwellTracker } from "./dwell.js";
+import { attachTileIntent } from "./intent-sources.js";
+import { assessPrefetch, readConnectionCapability } from "./governor.js";
+import { Rung, SpeculationAction, createByteLedger, planSpeculation } from "./speculation.js";
 
 /* -------------------------------------------------------------------------
  * Synthetic data. Titles are sample values; none of this is real player data.
@@ -79,6 +83,11 @@ const rgDuration = $("rg-duration");
 const rgNet = $("rg-net");
 const rgLimit = $("rg-limit");
 
+const specRung = $("spec-rung");
+const specTarget = $("spec-target");
+const specTier = $("spec-tier");
+const specBudget = $("spec-budget");
+
 const metricTime = $("metric-time");
 const metricVelocity = $("metric-velocity");
 const metricFlag = $("metric-flag");
@@ -89,12 +98,79 @@ const failButton = $("signal-fail");
 const readRgState = createRgState({ read: () => SYNTHETIC_RECORD });
 const readCounterMetrics = createCounterMetrics({ read: () => SYNTHETIC_RECORD });
 
-// One-way seam. A prefetch policy would consume this; nothing here reads it
-// back, and nothing about it changes what the player is shown.
-const intentLog = [];
+/* ----------------------- Speculation seam -----------------------
+ *
+ * This used to be a one-way seam into an array nobody read, which is why
+ * hovering a tile on this surface did nothing at all. It now drives the real
+ * speculation ladder. Two properties are unchanged and must stay unchanged:
+ *
+ *   - The ladder's output never reaches the player. The drawer still renders
+ *     favourites, recents and search in the player's own order, and `render()`
+ *     below reads nothing from the ladder.
+ *   - Requests are SIMULATED on this surface. There is no game origin here, so
+ *     the executor records what it would have fetched rather than fetching it.
+ *     The sandbox surface is where real bytes move.
+ */
+
+const dwell = createDwellTracker();
+const ledger = createByteLedger({ byteBudget: 32 * 1_048_576 });
+const connected = new Set();
+const warmed = new Set();
+let committed = null;
+let recents = RECENTS.map((entry) => entry.id);
+let lastLadderPlan = null;
+
+// Illustrative per-title costs. SIMULATED: no manifest is resolved here.
+const SIMULATED_WARM_BYTES = 2_901_042;
+const SIMULATED_ENGINE_BYTES = 52_220_191;
+
 const reportIntent = createIntentReporter((intent) => {
-  intentLog.push(intent.gameId);
+  dwell.enter(intent.gameId);
 });
+
+function evaluateLadder() {
+  const governor = assessPrefetch({
+    enabled: true,
+    ...readConnectionCapability(),
+    visibilityState: document.visibilityState,
+    byteBudget: ledger.byteBudget,
+    bytesUsed: ledger.bytesUsed(),
+    nextAssetBytes: SIMULATED_WARM_BYTES,
+  });
+
+  const plan = planSpeculation({
+    candidates: dwell.snapshot(),
+    committed,
+    // Mocked until staging provides a real exclusion-register response. It
+    // blocks, and it gates speculation as well as the launch itself.
+    authorization: "GRANTED",
+    governor,
+    connected: [...connected],
+    warmed: [...warmed],
+    costs: { warmBytes: SIMULATED_WARM_BYTES, engineBytes: SIMULATED_ENGINE_BYTES },
+    budget: { byteBudget: ledger.byteBudget, bytesUsed: ledger.bytesUsed() },
+  });
+
+  for (const action of plan.actions) {
+    if (action.action === SpeculationAction.PREWARM_CONNECTION) {
+      connected.add(action.gameId);
+    }
+    if (action.action === SpeculationAction.WARM_BYTES) {
+      warmed.add(action.gameId);
+      ledger.charge(action.gameId, Rung.WARM, action.estimatedBytes);
+    }
+    if (action.action === SpeculationAction.PREPARE_ENGINE) {
+      ledger.charge(action.gameId, Rung.PREINIT, action.estimatedBytes);
+    }
+    if (action.action === SpeculationAction.CANCEL_ENGINE) {
+      ledger.refund(action.gameId, Rung.PREINIT);
+    }
+  }
+
+  lastLadderPlan = plan;
+  renderSpeculationState(plan, governor);
+  return plan;
+}
 
 const transition = createTransition();
 
@@ -134,6 +210,18 @@ function renderDrawer() {
 
       button.append(title, provider);
       button.addEventListener("click", () => openTransition(item));
+
+      // Pointer, keyboard and touch all express the same intent. A touch
+      // device never fires `mouseenter`, so wiring hover alone left the
+      // majority of real players with no speculation at all.
+      attachTileIntent({
+        element: button,
+        gameId: item.id,
+        dwell,
+        onCommit: (gameId) => { committed = gameId; evaluateLadder(); },
+        onRelease: (gameId) => { if (committed === gameId) committed = null; },
+      });
+      // Kept so the drawer's own intent contract stays exercised.
       button.addEventListener("mouseenter", () => reportIntent(item.id));
       button.addEventListener("focus", () => {
         activeResultIndex = index;
@@ -250,6 +338,21 @@ function renderCounterMetrics() {
   metricFlag.dataset.flag = metrics.reviewFlag ?? ReviewFlag.UNKNOWN;
 }
 
+function renderSpeculationState(plan, governor) {
+  if (specRung == null) return;
+  specRung.textContent = plan.rung === Rung.NONE && plan.refusedBecause
+    ? `NONE (${plan.refusedBecause})`
+    : plan.rung;
+  specRung.dataset.flag = plan.rung === Rung.PREINIT ? "NORMAL"
+    : plan.rung === Rung.NONE ? "UNKNOWN" : "ELEVATED";
+  specTarget.textContent = plan.target ?? "—";
+  specTier.textContent = governor.tier;
+  specTier.dataset.flag = governor.allowed ? "NORMAL" : "UNKNOWN";
+  specBudget.textContent =
+    `${(ledger.bytesUsed() / 1_048_576).toFixed(1)} / `
+    + `${(ledger.byteBudget / 1_048_576).toFixed(0)} MiB`;
+}
+
 function setDemoControlsEnabled(enabled) {
   for (const button of [interactiveButton, paintButton, failButton]) {
     button.disabled = !enabled;
@@ -257,6 +360,8 @@ function setDemoControlsEnabled(enabled) {
 }
 
 function openTransition(item) {
+  recents = [item.id, ...recents.filter((id) => id !== item.id)];
+  committed = null;
   lastFocusedBeforeTransition = document.activeElement;
   transition.open();
   overlay.hidden = false;
@@ -368,3 +473,9 @@ if (reduced) {
 
 renderCounterMetrics();
 renderDrawer();
+
+// The ladder is re-evaluated on a timer rather than per event, because dwell
+// decays continuously: intent that has gone stale must be able to withdraw
+// speculation even when the player has stopped generating events.
+evaluateLadder();
+globalThis.setInterval(evaluateLadder, 250);

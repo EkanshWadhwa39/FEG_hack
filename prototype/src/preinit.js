@@ -47,6 +47,12 @@ export function createPreinitManager({
   host,
   documentImpl = globalThis.document,
   revealedStyle = "width:100%;height:540px;border:1px solid #64748b;border-radius:10px",
+  // Applied only on reveal, so a revealed pre-initialised frame is the same
+  // identifiable element as a cold-launched one. Without it the two launch
+  // paths produce structurally different DOM and anything observing the game
+  // frame — a measurement harness, or focus management — silently misses the
+  // fast path and reports it as a failure.
+  revealedId = "game",
 } = {}) {
   if (host == null || typeof host.append !== "function") {
     throw new TypeError("host must be an element");
@@ -145,6 +151,7 @@ export function createPreinitManager({
       frame.removeAttribute("aria-hidden");
       frame.removeAttribute("tabindex");
       frame.setAttribute("title", "Game");
+      if (revealedId) frame.setAttribute("id", revealedId);
       state = PreinitState.REVEALED;
       emit();
       return Object.freeze({ ...snapshot(), revealed: true, reason: "REVEALED" });

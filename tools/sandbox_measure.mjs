@@ -35,18 +35,43 @@ function parseArgs(argv) {
     lobby: "http://localhost:8090",
     game: "http://127.0.0.1:8091",
   };
+  let arms = null;
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === "--runs") args.runs = Number.parseInt(argv[i + 1], 10);
     if (argv[i] === "--lobby") args.lobby = argv[i + 1];
     if (argv[i] === "--game") args.game = argv[i + 1];
+    if (argv[i] === "--arms") arms = argv[i + 1]?.split(",").map((a) => a.trim());
   }
   if (!Number.isInteger(args.runs) || args.runs < 1) {
     throw new RangeError("--runs must be a positive integer");
   }
+  args.arms = arms ?? ["cold", "warm", "preinit"];
+  const known = new Set(["cold", "warm", "preinit"]);
+  for (const arm of args.arms) {
+    if (!known.has(arm)) throw new RangeError(`unknown arm: ${arm}`);
+  }
   return args;
 }
 
-async function runArm({ lobby, game, warm }) {
+/**
+ * Arms, and what each one isolates.
+ *
+ *   cold     speculation disabled entirely. The honest baseline.
+ *   warm     the ladder capped at byte warming, so the engine rung is excluded
+ *            and the measured difference is attributable to bytes alone.
+ *   preinit  the full ladder, including speculative engine initialisation.
+ *
+ * Every arm is driven through the page's own intent path — a real hover on a
+ * real tile — rather than a test-only button. A number produced by a control
+ * the product does not have is not evidence about the product.
+ */
+export const Arm = Object.freeze({
+  COLD: "cold",
+  WARM: "warm",
+  PREINIT: "preinit",
+});
+
+async function runArm({ lobby, game, arm }) {
   const browser = await chromium.launch();
   try {
     const context = await browser.newContext();
@@ -69,9 +94,13 @@ async function runArm({ lobby, game, warm }) {
       if (event.response.status === 200) discovered.add(record.url);
     });
     let lastResponseAt = null;
+    // Every game-origin response, whichever phase it belongs to. The browse
+    // phase needs this to know when a speculative engine has stopped working.
+    let lastGameResponseAt = null;
     cdp.on("Network.loadingFinished", (event) => {
       const record = requests.get(event.requestId);
       if (!record || !record.url.startsWith(game)) return;
+      lastGameResponseAt = Date.now();
       if (record.phase !== "launch") return;
       lastResponseAt = Date.now();
       if (event.encodedDataLength <= 0) return;
@@ -79,21 +108,47 @@ async function runArm({ lobby, game, warm }) {
       responses += 1;
     });
 
-    await page.goto(`${lobby}/sandbox.html?game=${encodeURIComponent(game)}`,
+    const cap = arm === Arm.WARM ? "&maxrung=WARM" : "";
+    await page.goto(`${lobby}/sandbox.html?game=${encodeURIComponent(game)}${cap}`,
       { waitUntil: "load", timeout: 30_000 });
 
-    if (warm) {
-      // Drive the page's own controls, so the measurement covers the real
-      // product path: manifest discovery, policy, governor, then warmer.
+    // The lobby only knows a title exists once its tile has rendered.
+    const tile = page.locator("#grid button[data-game-id]").first();
+    await tile.waitFor({ timeout: 30_000 });
+
+    if (arm === Arm.COLD) {
+      await page.check("#disable-spec");
+    } else {
+      // Drive the product's own intent path: rest the pointer on the tile and
+      // let the ladder climb. `#override` forces the FULL governor tier, which
+      // a headless loopback browser would otherwise deny for lack of a
+      // plausible connection.
       await page.check("#override");
-      await page.waitForSelector("#warm:not([disabled])", { timeout: 30_000 });
-      await page.click("#warm");
-      await page.waitForFunction(() => window.__WARM_DONE__ > 0, null, { timeout: 300_000 });
+      await tile.hover();
+      if (arm === Arm.WARM) {
+        await page.waitForFunction(() => window.__WARM_DONE__ > 0, null, { timeout: 300_000 });
+      } else {
+        await page.waitForFunction(
+          () => window.__SPECULATION__().preinit.state === "PREPARED",
+          null,
+          { timeout: 300_000 },
+        );
+        // The iframe `load` event is not the end of the engine's work: this
+        // package keeps streaming assets well past it. Clicking at `load`
+        // would measure a half-built engine and report the fast path as a
+        // failure. Wait for the game origin to go quiet, which is what a
+        // player who actually browsed for a few seconds would have given it.
+        const browseDeadline = Date.now() + 300_000;
+        while (Date.now() < browseDeadline) {
+          if (lastGameResponseAt != null && Date.now() - lastGameResponseAt > 2_000) break;
+          await page.waitForTimeout(250);
+        }
+      }
     }
 
     phase = "launch";
     const started = Date.now();
-    await page.click("#launch");
+    await tile.click();
 
     // The milestone is observed inside the game frame, not the lobby.
     let millis = null;
@@ -117,27 +172,21 @@ async function runArm({ lobby, game, warm }) {
   }
 }
 
-const { runs, lobby, game } = parseArgs(process.argv.slice(2));
-const controls = [];
-const treatments = [];
+
+const { runs, lobby, game, arms } = parseArgs(process.argv.slice(2));
+const results = new Map(arms.map((arm) => [arm, []]));
 
 for (let run = 1; run <= runs; run += 1) {
-  const control = await runArm({ lobby, game, warm: false });
-  controls.push(control);
-  console.log(
-    `control run ${run}    bytes=${control.bytes.toLocaleString().padStart(11)} `
-    + `responses=${String(control.responses).padStart(3)} `
-    + `canvas=${control.millis ?? "MISSED"}ms `
-    + `assets-quiet=${control.quietMillis ?? "n/a"}ms`,
-  );
-  const treatment = await runArm({ lobby, game, warm: true });
-  treatments.push(treatment);
-  console.log(
-    `treatment run ${run}  bytes=${treatment.bytes.toLocaleString().padStart(11)} `
-    + `responses=${String(treatment.responses).padStart(3)} `
-    + `canvas=${treatment.millis ?? "MISSED"}ms `
-    + `assets-quiet=${treatment.quietMillis ?? "n/a"}ms`,
-  );
+  for (const arm of arms) {
+    const result = await runArm({ lobby, game, arm });
+    results.get(arm).push(result);
+    console.log(
+      `${arm.padEnd(8)} run ${run}  bytes=${result.bytes.toLocaleString().padStart(11)} `
+      + `responses=${String(result.responses).padStart(3)} `
+      + `canvas=${result.millis ?? "MISSED"}ms `
+      + `assets-quiet=${result.quietMillis ?? "n/a"}ms`,
+    );
+  }
 }
 
 const median = (values) => {
@@ -145,19 +194,37 @@ const median = (values) => {
   return sorted.length ? sorted[Math.floor(sorted.length / 2)] : null;
 };
 
-const cb = median(controls.map((r) => r.bytes));
-const tb = median(treatments.map((r) => r.bytes));
-const cm = median(controls.map((r) => r.millis));
-const tm = median(treatments.map((r) => r.millis));
+const summary = (arm) => {
+  const armRuns = results.get(arm);
+  return {
+    bytes: median(armRuns.map((r) => r.bytes)),
+    millis: median(armRuns.map((r) => r.millis)),
+    quiet: median(armRuns.map((r) => r.quietMillis)),
+  };
+};
 
-console.log(`\n--- median of ${runs} run(s) ---`);
-console.log(`bytes   control ${cb?.toLocaleString()} -> treatment ${tb?.toLocaleString()}`
-  + (cb ? `  (${((1 - tb / cb) * 100).toFixed(1)}% less)` : ""));
-console.log(`to engine-canvas   control ${cm}ms -> treatment ${tm}ms`
-  + (cm && tm ? `  (${((1 - tm / cm) * 100).toFixed(1)}% faster)` : ""));
+const baseline = results.has(Arm.COLD) ? summary(Arm.COLD) : null;
+const relative = (value, base) =>
+  (base != null && value != null ? `  (${((1 - value / base) * 100).toFixed(1)}% less)` : "");
 
-const cq = median(controls.map((r) => r.quietMillis));
-const tq = median(treatments.map((r) => r.quietMillis));
-console.log(`to assets-quiet    control ${cq}ms -> treatment ${tq}ms`
-  + (cq && tq ? `  (${((1 - tq / cq) * 100).toFixed(1)}% faster)` : ""));
-console.log("\nMilestone is engine-canvas-present, not playable and not interactive.");
+console.log(`\n--- median of ${runs} run(s), milestone: first canvas in #gameStage ---`);
+for (const arm of arms) {
+  const stats = summary(arm);
+  console.log(
+    `${arm.padEnd(8)} launch-phase bytes=${String(stats.bytes?.toLocaleString()).padStart(11)}`
+    + `${relative(stats.bytes, baseline?.bytes)}`,
+  );
+  console.log(
+    `${"".padEnd(8)} click->canvas=${stats.millis ?? "MISSED"}ms`
+    + `${relative(stats.millis, baseline?.millis)}`
+    + `   click->assets-quiet=${stats.quiet ?? "n/a"}ms`,
+  );
+}
+
+console.log(
+  "\nMilestone is engine-canvas-present, not playable and not interactive."
+  + "\nThe `warm` arm is capped at byte warming, so the engine rung is excluded"
+  + "\nand its difference is attributable to bytes alone. `preinit` adds the"
+  + "\nengine rung: its launch-phase bytes approach zero because the transfer"
+  + "\nalready happened during browse, before the click was measured.",
+);

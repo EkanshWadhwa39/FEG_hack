@@ -307,7 +307,32 @@ test("counter-metrics stay out of the player-facing transition screen", options,
     for (const banned of ["stake velocity", "time on device", "review flag"]) {
       assert.equal(card.includes(banned), false, `"${banned}" must not be player-facing`);
     }
-    // They are present in the operator view instead.
-    assert.match(await page.textContent(".operator"), /Stake velocity/);
+    // They are present in the operator view instead. Scoped to the
+    // counter-metrics panel: the operator area holds more than one panel now.
+    assert.match(
+      await page.textContent("section.operator:has(#metric-velocity)"),
+      /Stake velocity/,
+    );
+  });
+});
+
+test("resting on a tile climbs the speculation ladder without changing the drawer", options, async () => {
+  await withPage(async (page) => {
+    await page.click("#drawer-trigger");
+    const before = await page.textContent("#drawer-results");
+
+    assert.equal((await page.textContent("#spec-rung")).startsWith("NONE"), true);
+
+    await page.hover("#drawer-results button");
+    // Long enough to pass the byte rung, short of the engine rung.
+    await page.waitForFunction(
+      () => !document.getElementById("spec-rung").textContent.startsWith("NONE"),
+      null,
+      { timeout: 5_000 },
+    );
+    assert.notEqual(await page.textContent("#spec-target"), "—");
+
+    // The whole point of the seam: speculation is invisible to the player.
+    assert.equal(await page.textContent("#drawer-results"), before);
   });
 });
