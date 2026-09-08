@@ -332,6 +332,44 @@ entire engine-initialisation cost off the click path.
 | Battery and data | Real costs on mobile, and invisible to the player unless we surface them |
 | Compliance | The instance must be muted, never visible, never able to wager, never counted as play. The exclusion-register check still gates the reveal and stays blocking |
 
+### BUILT AND MEASURED END TO END
+
+`prototype/src/preinit.js` (14 tests) is wired into the sandbox: sustained dwell over a tile
+triggers preparation, the launch button reveals, and the exclusion-register check gates the reveal.
+
+Two paired runs through the real page, measuring **click to ready** inside the game frame
+(140+ resources loaded and canvas present):
+
+| Arm | click → ready |
+|---|---:|
+| control, cold launch | 4,161 ms · 4,110 ms |
+| **treatment, pre-initialised** | **26 ms · 23 ms** |
+
+**99.4% faster.** This is a *time* result on the real launch path, not a byte result.
+
+Design points the tests pin down:
+
+- **Reveal never touches `src`.** Re-parenting or re-navigating an iframe reloads it and throws
+  away everything we paid for, so reveal is a style change only. A test asserts `src` is unchanged
+  and the node was not removed.
+- **Reveal fails closed.** DENIED, UNKNOWN, a missing value, and the lookalike string `"granted"`
+  all refuse and leave the frame hidden. Only the explicit GRANTED constant reveals.
+- **Preparing the wrong title is refused** rather than showing the player a game they did not pick;
+  the caller falls back to a cold launch.
+- **One instance at a time.** Preparing another title tears the previous one down; re-preparing the
+  same title does not restart it.
+- **A revealed frame is protected** from `cancel()` and from being prepared over.
+- **Withdrawn intent reclaims memory immediately** — dwell dropping below threshold cancels.
+- The frame is `aria-hidden` and `tabindex="-1"` while preparing, so it is unreachable by keyboard
+  or screen reader before it is a real, chosen game.
+
+### Remaining validation
+
+1. **GPU memory comparison**, to prove textures were uploaded rather than only that a canvas exists.
+2. Behaviour under **CPU throttling**, where a background engine hurts most.
+3. A **real mobile device**, for memory and battery cost.
+4. Whether a **real backend** changes the picture, since the package cannot currently reach playable.
+
 ### What else is in our hands, honestly
 
 | Idea | Verdict |
