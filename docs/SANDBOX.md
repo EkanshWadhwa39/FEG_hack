@@ -6,19 +6,90 @@ the iframe is created.
 
 ## Run it
 
+### First time — get the package out of the supplied archive
+
+The game package ships inside `assets.zip` as `assets/empireofgold.zip`. It stays
+**outside the repository**: it is a provider bundle and is never committed.
+
 ```bash
-# The package stays outside the repository. Point at wherever you extracted it.
-.venv/bin/python tools/sandbox_server.py --bundle /path/to/empireofgold
+# One-off setup.
+./scripts/bootstrap.sh
 
-#   lobby  http://127.0.0.1:8090/sandbox.html
+# Extract the package somewhere outside the repo. ~/evidence/private is gitignored.
+.venv/bin/python - <<'EOF'
+import shutil, tempfile, zipfile
+from pathlib import Path
+
+target = Path.home() / "evidence/private/bundles"
+target.mkdir(parents=True, exist_ok=True)
+if (target / "empireofgold").exists():
+    raise SystemExit(f"{target / 'empireofgold'} already exists; using it as-is")
+
+with tempfile.TemporaryDirectory() as scratch:
+    inner_zip = Path(scratch) / "empireofgold.zip"
+    with zipfile.ZipFile("assets.zip") as archive, \
+         archive.open("assets/empireofgold.zip") as inner, \
+         open(inner_zip, "wb") as handle:
+        shutil.copyfileobj(inner, handle)
+    with zipfile.ZipFile(inner_zip) as archive:
+        archive.extractall(target)
+print(target / "empireofgold")
+EOF
+```
+
+That prints the `--bundle` path to use below.
+
+**Check it before starting the server.** The directory must contain `index.html`
+and an `assets/` folder, and **must not** contain a nested `empireofgold/`.
+Extracting on top of an existing copy produces exactly that, and the manifest
+then counts the package twice — the giveaway is the server reporting ~130 MB and
+~31 warm files instead of ~65 MB and 16.
+
+```bash
+ls ~/evidence/private/bundles/empireofgold      # assets  index.html  index.html.br ...
+du -sh ~/evidence/private/bundles/empireofgold  # ~98M
+```
+
+### Every time — start the sandbox
+
+```bash
+.venv/bin/python tools/sandbox_server.py \
+  --bundle ~/evidence/private/bundles/empireofgold \
+  --latency-ms 40
+
+#   lobby  http://127.0.0.1:8090/sandbox.html   <- open this
 #   game   http://127.0.0.1:8091/
+```
 
-# With a realistic link, which is where warming actually shows:
-.venv/bin/python tools/sandbox_server.py --bundle /path/to/empireofgold --throttle-kbps 12000
+Startup takes a few seconds: it generates 24 lobby posters from the package's own
+artwork before it starts listening. It prints the two URLs when it is ready.
 
-# Automated cold/warm measurement:
+`--latency-ms 40` matters. On unthrottled loopback there is no round trip to
+remove, so warming looks far less effective than it is. Add
+`--throttle-kbps 12000` for a link closer to real mobile.
+
+Useful flags:
+
+| Flag | Default | What it does |
+|---|---|---|
+| `--bundle` | *required* | Path to the extracted package |
+| `--latency-ms` | `0` | Per-request delay standing in for RTT. Use `40` |
+| `--throttle-kbps` | `0` | Bandwidth cap on the game origin. Use `12000` for ~12 Mbps |
+| `--games` | `24` | How many lobby tiles to generate |
+| `--profile` | `blocking` | How much to warm: `blocking` / `critical` / `all` |
+| `--host` | `127.0.0.1` | `0.0.0.0` to open the demo from a phone on the same wifi |
+
+Stop it with Ctrl+C. If a port is already held, the server prints the exact
+command to free it.
+
+### Measure it
+
+```bash
 node tools/sandbox_measure.mjs --runs 3
 ```
+
+Three arms — `cold`, `warm`, `preinit` — driven through the page's own hover
+path. Details in *Automated measurement* below.
 
 ## How to test it
 

@@ -48,12 +48,18 @@ export const RAIL_TITLES = Object.freeze({
   [Rail.POPULARNO]: { hr: "Popularno", en: "Popular" },
 });
 
-/** Corner chips the production tiles carry, with their measured colours. */
+/**
+ * Corner chips the production tiles carry, with their measured colours.
+ *
+ * `original` is the Croatian text the live lobby renders; `text` is what this
+ * demo shows, because the demo is read in English. Keeping both means the
+ * colours and the chip vocabulary stay checkable against the real site.
+ */
 export const Chip = Object.freeze({
-  NOVE: { text: "NOVE", background: "#267808" },
-  JACKPOT: { text: "JACKPOT", background: "#B02A15" },
-  EKSKLUZIVNO: { text: "EKSKLUZIVNO", background: "#1752BF" },
-  IGRA_DANA: { text: "IGRA DANA", background: "#8A5A00" },
+  NOVE: { text: "NEW", original: "NOVE", background: "#267808" },
+  JACKPOT: { text: "JACKPOT", original: "JACKPOT", background: "#B02A15" },
+  EKSKLUZIVNO: { text: "EXCLUSIVE", original: "EKSKLUZIVNO", background: "#1752BF" },
+  IGRA_DANA: { text: "GAME OF THE DAY", original: "IGRA DANA", background: "#8A5A00" },
 });
 
 const PROVIDERS = Object.freeze([

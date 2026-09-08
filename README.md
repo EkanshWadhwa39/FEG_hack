@@ -22,10 +22,27 @@ A web-only, browser-native prototype and evidence toolkit for testing whether th
 ```bash
 ./scripts/bootstrap.sh
 ./scripts/check.sh
-./scripts/serve.sh
 ```
 
-Then open `http://127.0.0.1:8080` through your browser/port forwarding.
+## Run the sandbox lobby — this is the demo
+
+```bash
+# One-off: extract the provided package outside the repo (see docs/SANDBOX.md).
+.venv/bin/python tools/sandbox_server.py \
+  --bundle ~/evidence/private/bundles/empireofgold \
+  --latency-ms 40
+```
+
+Then open **http://127.0.0.1:8090/sandbox.html**. Rest the pointer on a tile for
+about a second, then click it. Click a tile you did *not* rest on for the cold
+baseline. Full extraction steps, flags and demo script: [`docs/SANDBOX.md`](docs/SANDBOX.md).
+
+```bash
+node tools/sandbox_measure.mjs --runs 3    # cold vs warm vs pre-initialised
+```
+
+The standalone scaffold pages (`index.html`, `player.html`) are served with
+`./scripts/serve.sh` on `http://127.0.0.1:8080`.
 
 The current browser page is deliberately a **SIMULATED scaffold**. It makes no provider requests and proves no production cache behavior yet. The staging URL is unavailable during the hackathon; this build remains environment-neutral so it can undergo controlled sandbox validation when staging is introduced later.
 

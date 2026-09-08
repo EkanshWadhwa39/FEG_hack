@@ -68,8 +68,13 @@ test("the lobby renders rails of square tiles with titles and providers", option
     const headings = await page.locator(".rail-head h2").allTextContents();
     // No launches yet, so there is no continue-playing rail; the seeded
     // favourites and the two editorial rails are all that can exist.
-    assert.deepEqual(headings, ["PSK Favoriti", "Nove igre", "Popularno"]);
-    assert.equal(await page.locator(".rail-head h2", { hasText: "Nastavi" }).count(), 0);
+    assert.deepEqual(headings, ["PSK favourites", "New games", "Popular"]);
+    assert.equal(await page.locator(".rail-head h2", { hasText: "Continue" }).count(), 0);
+
+    // The production heading is kept beside the English one as evidence that
+    // these rails are the site's own rather than invented for the demo.
+    assert.deepEqual(await page.locator(".rail-en").allTextContents(),
+      ["PSK Favoriti", "Nove igre", "Popularno"]);
 
     assert.ok(await page.locator(".tile").count() >= 8);
     assert.ok((await page.locator(".tile-title").first().textContent()).length > 0);

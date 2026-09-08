@@ -191,16 +191,20 @@ export function startLobby({
       head.className = "rail-head";
       const heading = documentImpl.createElement("h2");
       heading.id = `rail-${rail.rail}`;
-      heading.textContent = RAIL_TITLES[rail.rail].hr;
-      const english = documentImpl.createElement("span");
-      english.className = "rail-en";
-      english.textContent = RAIL_TITLES[rail.rail].en;
+      // The demo runs in English. The production lobby is Croatian, and the
+      // heading it actually uses is kept beside it as a small label: it is the
+      // evidence that these rails are the site's own, not invented for a demo.
+      heading.textContent = RAIL_TITLES[rail.rail].en;
+      const original = documentImpl.createElement("span");
+      original.className = "rail-en";
+      original.lang = "hr";
+      original.textContent = RAIL_TITLES[rail.rail].hr;
       const note = documentImpl.createElement("span");
       note.className = "rail-note";
       note.textContent = rail.personalised
         ? "your own history — not a recommendation"
         : "same order for every player";
-      head.append(heading, english, note);
+      head.append(heading, original, note);
 
       const track = documentImpl.createElement("div");
       track.className = "rail-track";

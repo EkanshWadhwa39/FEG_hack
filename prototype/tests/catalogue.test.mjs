@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { Rail, buildCatalogue, buildRails } from "../src/catalogue.js";
+import { Chip, Rail, buildCatalogue, buildRails } from "../src/catalogue.js";
 
 test("every tile gets its own cache namespace and its own poster", () => {
   const catalogue = buildCatalogue({ count: 5, gameOrigin: "http://game.test" });
@@ -64,4 +64,15 @@ test("unknown ids in history are dropped rather than rendered as holes", () => {
 
 test("buildRails rejects a missing catalogue", () => {
   assert.throws(() => buildRails({ catalogue: null }), TypeError);
+});
+
+test("chips carry both the displayed text and the production original", () => {
+  // The demo is read in English; the colours and vocabulary still have to be
+  // checkable against the live lobby.
+  const chips = new Set(buildCatalogue({ count: 24 })
+    .map((item) => item.chip?.text).filter(Boolean));
+  assert.ok(chips.size >= 3);
+  assert.ok([...chips].every((text) => /^[A-Z ]+$/.test(text)));
+  assert.equal(Chip.EKSKLUZIVNO.original, "EKSKLUZIVNO");
+  assert.equal(Chip.NOVE.background, "#267808");
 });
