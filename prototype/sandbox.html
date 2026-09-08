@@ -48,6 +48,7 @@
           <div><dt>Intent (dwell)</dt><dd id="m-dwell">none</dd></div>
           <div><dt>Governor</dt><dd id="m-gov" data-flag="UNKNOWN">—</dd></div>
           <div><dt>Warmed</dt><dd id="m-warm">no</dd></div>
+          <div><dt>Engine pre-init</dt><dd id="m-preinit" data-flag="UNKNOWN">IDLE</dd></div>
         </dl>
         <div class="demo-controls">
           <button id="warm" type="button">Warm now</button>
@@ -80,6 +81,7 @@
       import { planProgressiveRender, applyProgressiveRender } from "./src/progressive.js";
       import { assessPrefetch } from "./src/governor.js";
       import { warmAssets } from "./src/warmer.js";
+      import { Authorization, createPreinitManager } from "./src/preinit.js";
 
       const GAME = new URLSearchParams(location.search).get("game") ?? "http://127.0.0.1:8091";
       const $ = (id) => document.getElementById(id);
@@ -96,6 +98,10 @@
       ];
 
       const dwell = createDwellTracker();
+      // Pre-init costs a whole engine instance, so it needs a higher bar than
+      // byte warming: sustained dwell, not a passing glance.
+      const PREINIT_DWELL_MS = 600;
+      const preinit = createPreinitManager({ host: document.getElementById("frame-host") });
       let manifest = null;
       let warmed = [];
       let recents = ["empireofgold"];   // synthetic session history
@@ -170,6 +176,22 @@
         $("m-gov").textContent = governor.allowed ? "ALLOW" : governor.reason;
         $("m-gov").dataset.flag = governor.allowed ? "NORMAL" : "ELEVATED";
         $("warm").disabled = !governor.allowed || !manifest || pick.candidates.length === 0;
+
+        // Speculative engine pre-init, on sustained dwell over the real title.
+        const p = preinit.getState();
+        $("m-preinit").textContent = p.gameId ? `${p.state} (${p.gameId})` : p.state;
+        $("m-preinit").dataset.flag =
+          p.state === "PREPARED" || p.state === "REVEALED" ? "NORMAL"
+            : p.state === "PREPARING" ? "ELEVATED" : "UNKNOWN";
+
+        if (p.state === "REVEALED") return;
+        if (governor.allowed && top && top.gameId === "empireofgold"
+            && top.score >= PREINIT_DWELL_MS) {
+          preinit.prepare("empireofgold", `${GAME}/`);
+        } else if (p.state !== "IDLE" && (!top || top.score < PREINIT_DWELL_MS)) {
+          // Intent withdrawn: reclaim the engine instance immediately.
+          preinit.cancel();
+        }
       }, 300);
 
       $("warm").addEventListener("click", async () => {
@@ -198,6 +220,22 @@
       });
 
       $("launch").addEventListener("click", () => {
+        const started = performance.now();
+        // The exclusion-register check belongs here and blocks. It is granted
+        // in the sandbox only because there is no register to consult.
+        const authorization = Authorization.GRANTED;
+
+        const result = preinit.reveal({ authorization, expectGameId: "empireofgold" });
+        if (result.revealed) {
+          const ms = Math.round(performance.now() - started);
+          window.__LAUNCH_MS__ = ms;
+          window.__LAUNCH_PATH__ = "PREINIT";
+          $("status").textContent =
+            `Revealed pre-initialised engine in ${ms}ms (state was ${result.state}).`;
+          return;
+        }
+
+        // Cold path: nothing usable was prepared, so launch normally.
         const frame = document.createElement("iframe");
         frame.id = "game";
         frame.title = "Game (sandbox)";
@@ -206,10 +244,13 @@
         frame.style.cssText = "border:1px solid #64748b;border-radius:10px";
         frame.src = `${GAME}/`;
         $("frame-host").replaceChildren(frame);
-        $("status").textContent = "Launched.";
+        window.__LAUNCH_MS__ = Math.round(performance.now() - started);
+        window.__LAUNCH_PATH__ = "COLD";
+        $("status").textContent = `Cold launch (${result.reason}).`;
       });
 
       $("reset").addEventListener("click", () => {
+        preinit.reset();
         $("frame-host").replaceChildren();
         dwell.reset();
         warmed = [];
