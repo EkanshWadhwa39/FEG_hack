@@ -13,30 +13,56 @@ const WRAPPER_ASSETS = [
   ['assets/images/@1x/controlPanelPrimaryAssets.json', 'COMMON', 1633],
   ['assets/images/@1x/controlPanelPrimaryAssets.webp', 'COMMON', 26726],
 ];
+const REVIEWED_ARCHIVE_SHA256 = 'f0b4947f9d703af9c99419418293ac518189afe3c8dabfc9781f9558a9dacdba';
+const LOCAL_MODE = 'PROVIDER_EARLY_ASSETS';
+const CDN_MODE = 'PROVIDER_EARLY_ASSETS_CDN_ONE_TITLE';
+
+function exactOrigin(candidate, protocol, loopback = false) {
+  try {
+    if (typeof candidate !== 'string' || candidate.trim() !== candidate || candidate.includes('\\')) return false;
+    const url = new URL(candidate);
+    return url.origin === candidate && url.protocol === protocol && !url.username && !url.password
+      && url.pathname === '/' && !url.search && !url.hash
+      && (!loopback || (url.hostname === '127.0.0.1' && Number(url.port) >= 1024));
+  } catch { return false; }
+}
 export function validateWrapperConfiguration(value, origin) {
-  const loopback = candidate => {
-    try {
-      const url = new URL(candidate);
-      return url.origin === candidate && url.protocol === 'http:' && url.hostname === '127.0.0.1'
-        && Number(url.port) >= 1024;
-    } catch { return false; }
-  };
   const entry = value?.entries?.[0];
-  if (value?.mode !== 'PROVIDER_EARLY_ASSETS' || !Array.isArray(value.entries) || value.entries.length !== 1
-      || !loopback(origin) || entry?.origin !== origin || !loopback(value.lobbyOrigin) || value.lobbyOrigin === origin
+  const local = value?.mode === LOCAL_MODE;
+  const cdn = value?.mode === CDN_MODE;
+  const validLobby = exactOrigin(value?.lobbyOrigin, 'https:') || exactOrigin(value?.lobbyOrigin, 'http:', true);
+  if ((!local && !cdn) || !Array.isArray(value.entries) || value.entries.length !== 1
+      || !validLobby || value.lobbyOrigin === origin || entry?.origin !== origin
       || !/^title-(0[1-9]|1\d|20)$/.test(entry?.id) || !/^[a-f0-9]{64}$/.test(value.archiveSha256)
       || value.build !== `empire-${value.archiveSha256.slice(0, 16)}` || value.locale !== 'en' || value.tier !== '1x'
-      || !Array.isArray(entry.assets) || entry.assets.length !== 8
-      || !Array.from(entry.assets).every((asset, index) => asset?.url === `${origin}/${WRAPPER_ASSETS[index][0]}`
-        && asset.stage === WRAPPER_ASSETS[index][1] && asset.estimatedBytes === WRAPPER_ASSETS[index][2]
-        && /^[a-f0-9]{64}$/.test(asset.sha256) && asset.releaseBuild === value.build)) {
+      || !Array.isArray(entry.assets) || entry.assets.length !== WRAPPER_ASSETS.length) {
     throw new TypeError('Invalid wrapper configuration');
   }
-  // Retain only the validated fields; later fixture/config mutations cannot
-  // change the trusted message origin or exact observation identities.
+  let launchUrl, assetBaseUrl, wrapperUrl;
+  if (local) {
+    if (!exactOrigin(origin, 'http:', true) || !exactOrigin(value.lobbyOrigin, 'http:', true)) throw new TypeError('Invalid wrapper configuration');
+    launchUrl = `${origin}/?language=en`; assetBaseUrl = `${origin}/`; wrapperUrl = `${origin}/__vault/player.html`;
+  } else {
+    if (!exactOrigin(origin, 'https:') || value.archiveSha256 !== REVIEWED_ARCHIVE_SHA256
+        || value.delivery !== 'CDN' || entry.delivery !== 'CDN'
+        || value.cachePolicy !== 'public, max-age=31536000, immutable') throw new TypeError('Invalid wrapper configuration');
+    assetBaseUrl = `${origin}/releases/${value.archiveSha256}/`;
+    launchUrl = `${assetBaseUrl}index.html?language=en`;
+    wrapperUrl = `${origin}/__vault/player.html`;
+    if (entry.assetBaseUrl !== assetBaseUrl || entry.launchUrl !== launchUrl || entry.wrapperUrl !== wrapperUrl) {
+      throw new TypeError('Invalid wrapper configuration');
+    }
+  }
+  if (!Array.from(entry.assets).every((asset, index) => asset?.url === `${assetBaseUrl}${WRAPPER_ASSETS[index][0]}`
+      && asset.stage === WRAPPER_ASSETS[index][1] && asset.estimatedBytes === WRAPPER_ASSETS[index][2]
+      && /^[a-f0-9]{64}$/.test(asset.sha256) && asset.releaseBuild === value.build)) {
+    throw new TypeError('Invalid wrapper configuration');
+  }
+  // Retain only validated fields; later config mutations cannot change trusted
+  // message origins, navigation identities, or observed resource identities.
   return Object.freeze({ mode: value.mode, lobbyOrigin: value.lobbyOrigin,
     archiveSha256: value.archiveSha256, build: value.build, locale: value.locale, tier: value.tier,
-    entries: Object.freeze([Object.freeze({ id: entry.id, origin: entry.origin,
+    entries: Object.freeze([Object.freeze({ id: entry.id, origin: entry.origin, wrapperUrl, launchUrl, assetBaseUrl,
       assets: Object.freeze(entry.assets.map(asset => Object.freeze({ url: asset.url,
         stage: asset.stage, estimatedBytes: asset.estimatedBytes }))) })]) });
 }
@@ -151,10 +177,10 @@ export async function startEmpirePlayer({ window: win = globalThis.window, docum
     current = { id: data.launchId, started: clock.now(), complete: false, canvas: false, failed: 0,
       observeEarlyBatch: data.observeEarlyBatch };
     state.textContent = data.observeEarlyBatch
-      ? 'SIMULATED authorization granted · loading the unchanged local provider game. Readiness: UNKNOWN.'
+      ? 'SIMULATED authorization granted · loading the unchanged provider game. Readiness: UNKNOWN.'
       : 'SIMULATED authorization granted · normal launch only. Actual provider tier and gameplay readiness: UNKNOWN. Desktop early-batch milestone not applicable.';
-    // Exact audited locale; provider still chooses its own actual device tier.
-    try { frame.src = '/?language=en'; } catch {
+    // Use the validated exact launch URL verbatim. Provider still chooses its own actual device tier.
+    try { frame.src = config.entries[0].launchUrl; } catch {
       failStartup('PROVIDER_MOUNT_FAILED'); return;
     }
     try {

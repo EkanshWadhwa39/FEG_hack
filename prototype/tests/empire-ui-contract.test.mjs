@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
-import { EARLY_ASSETS, createEmpireSource } from '../src/empire-catalogue.js';
+import { CDN_MODE, EARLY_ASSETS, REVIEWED_EMPIRE_ARCHIVE_SHA256, createEmpireSource } from '../src/empire-catalogue.js';
 import { empireVariantMetadata, validateEarlyBatch, validateEmpireLaunchGrant } from '../src/empire-milestone.js';
 import { startEmpirePlayer, loadWrapperConfiguration, validateWrapperConfiguration } from '../src/empire-player.js';
 import { createSyntheticAuthorization } from '../src/content-adapters.js';
@@ -49,8 +49,19 @@ function eventPort() {
     },
   };
 }
+function cdnConfig() {
+  const value = config(), archiveSha256 = REVIEWED_EMPIRE_ARCHIVE_SHA256;
+  const origin = 'https://empire.example.test', assetBaseUrl = `${origin}/releases/${archiveSha256}/`;
+  value.mode = CDN_MODE; value.delivery = 'CDN'; value.cachePolicy = 'public, max-age=31536000, immutable';
+  value.archiveSha256 = archiveSha256; value.build = `empire-${archiveSha256.slice(0, 16)}`;
+  value.entries = [{ id: 'title-01', delivery: 'CDN', origin, wrapperUrl: `${origin}/__vault/player.html`,
+    launchUrl: `${assetBaseUrl}index.html?language=en`, assetBaseUrl,
+    assets: EARLY_ASSETS.map(([path, stage, estimatedBytes]) => ({ url: `${assetBaseUrl}${path}`, stage, estimatedBytes,
+      sha256: 'b'.repeat(64), releaseBuild: value.build })) }];
+  return value;
+}
 function wrapperFixture(options = {}) {
-  const value = config(); value.entries = value.entries.slice(0, 1);
+  const value = options.value ?? config(); value.entries = value.entries.slice(0, 1);
   const timers = fakeTimers(), sent = [], state = { textContent: '' };
   const frame = { src: '', removeAttribute() { this.src = ''; },
     contentDocument: { querySelector: () => null },
@@ -122,7 +133,7 @@ test('wrapper preserves source/origin/title/build/launch validation and acknowle
   for (const patch of [{ titleId: 'title-02' }, { build: 'other' }, { launchId: 'bad' }, { observeEarlyBatch: undefined }]) f.send({ ...f.launch, ...patch });
   assert.equal(f.frame.src, '');
   f.send(f.launch); f.send(f.launch);
-  assert.equal(f.frame.src, '/?language=en');
+  assert.equal(f.frame.src, 'http://127.0.0.1:8101/?language=en');
   assert.deepEqual(f.sent.at(-1), { origin: f.value.lobbyOrigin,
     data: { type: 'EMPIRE_PROVIDER_MOUNTED', titleId: 'title-01', launchId: 'launch-1' } });
   assert.equal(f.sent.filter(e => e.data.type === 'EMPIRE_PROVIDER_MOUNTED').length, 1);
@@ -131,6 +142,23 @@ test('wrapper preserves source/origin/title/build/launch validation and acknowle
   f.send({ type: 'EMPIRE_ABORT', launchId: 'launch-1' }); assert.equal(f.frame.src, '');
   assert.equal(f.timers.timeouts.size, 0); assert.equal(f.timers.intervals.size, 0);
   f.send(f.launch); assert.equal(f.frame.src, '');
+});
+
+test('CDN wrapper accepts only the pinned same-origin release and launches its exact URL verbatim', async () => {
+  const value = cdnConfig(), f = wrapperFixture({ value }); await f.boot;
+  assert.equal(f.sent[0].data.type, 'EMPIRE_READY');
+  f.send({ ...f.launch, build: value.build });
+  assert.equal(f.frame.src, value.entries[0].launchUrl);
+  const trusted = validateWrapperConfiguration(value, value.entries[0].origin);
+  assert.equal(trusted.entries[0].wrapperUrl, value.entries[0].wrapperUrl);
+  assert.equal(trusted.entries[0].launchUrl, value.entries[0].launchUrl);
+  for (const mutate of [v => { v.archiveSha256 = 'a'.repeat(64); v.build = `empire-${v.archiveSha256.slice(0, 16)}`; },
+    v => { v.entries[0].launchUrl += '#changed'; }, v => { v.entries[0].assetBaseUrl += 'other/'; },
+    v => { v.entries[0].origin = 'https://other.example.test'; }, v => { v.entries[0].wrapperUrl += '?v=1'; },
+    v => { v.cachePolicy = 'no-store'; }]) {
+    const changed = cdnConfig(); mutate(changed);
+    assert.throws(() => validateWrapperConfiguration(changed, value.entries[0].origin));
+  }
 });
 
 test('wrapper polling ends even when provider navigation stays blank or throws', async () => {
@@ -182,12 +210,14 @@ function element() {
   };
 }
 async function lobbyFixture(desktop = true, options = {}) {
-  const value = config(), timers = fakeTimers(), elements = new Map(), win = eventPort();
+  const value = options.value ?? config(), timers = fakeTimers(), elements = new Map(), win = eventPort();
   const get = id => { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); };
   const doc = { ...eventPort(), getElementById: get, visibilityState: 'visible', createElement: element,
-    createDocumentFragment: element, querySelectorAll: () => [...elements.values()] };
+    createDocumentFragment: element, querySelectorAll: () => [...elements.values()],
+    querySelector: selector => selector === 'meta[name="empire-config-url"]' && options.configUrl
+      ? { content: options.configUrl } : null };
   for (const [id, v] of Object.entries({ mode: 'TOP3', policy: 'POPULAR_UNPLAYED', locale: 'en', tier: '1x' })) get(id).value = v;
-  let grantController, auth, onIntent, reloadCount = 0;
+  let grantController, auth, onIntent, reloadCount = 0, sandboxRequesterCalls = 0, cdnRequesterCalls = 0, configFetchUrl;
   const grants = [];
   const makeGrant = (gameId = 'title-01') => {
     grantController = new AbortController(); grants.push(grantController);
@@ -201,16 +231,17 @@ async function lobbyFixture(desktop = true, options = {}) {
     cancelLaunch() { this.cancelled++; grantController?.abort(); },
     resumeBrowsing() { this.resumed++; this.foreground = false; }, dispose() { this.disposed++; },
     async beginLaunch({ gameId }) { this.foreground = true; return auth.isGranted() ? makeGrant(gameId) : { status: 'AUTHORIZATION_BLOCKED' }; } };
-  const context = { window: win, document: doc, location: { origin: value.lobbyOrigin, reload() { reloadCount++; } }, AbortController,
+  const context = { window: win, document: doc, location: { origin: value.lobbyOrigin, href: `${value.lobbyOrigin}/empire-demo.html`, reload() { reloadCount++; } }, URL, AbortController,
     performance: { timeOrigin: 1000, now: () => 100 },
-    fetch: options.fetchImpl ?? (async () => ({ ok: true, json: async () => value })),
+    fetch: options.fetchImpl ?? (async url => { configFetchUrl = url; return { ok: true, redirected: false, json: async () => value }; }),
     setTimeout: timers.setTimeoutImpl, clearTimeout: timers.clearTimeoutImpl,
     CustomEvent: class { constructor(type, { detail }) { this.type = type; this.detail = detail; } },
     createEmpireSource, supportsAuditedDesktop: () => desktop, validateEarlyBatch, empireVariantMetadata, validateEmpireLaunchGrant,
     createPopularityPrior: () => ({}), createSyntheticSession: () => ({ snapshot: () => ({}) }),
     createSyntheticAuthorization: initial => { auth = createSyntheticAuthorization(initial); return auth; },
     createBrowserEnvironment: () => ({ read: () => ({}), subscribe: () => () => {}, dispose() {} }),
-    createSandboxCatalogueRequester: () => () => {}, createContentLoader: () => loader,
+    createSandboxCatalogueRequester: () => { sandboxRequesterCalls++; return () => {}; },
+    createCredentialFreeBrowserRequester: () => { cdnRequesterCalls++; return () => {}; }, createContentLoader: () => loader,
     bindCatalogueIntent: ({ onIntent: handler }) => { onIntent = handler; return { dispose() {}, cancelPending() {} }; },
     bindThumbnailFallback: () => ({ dispose() {} }), topPreparationCandidates: () => [],
     createPreparationScheduler: () => ({ stop() {}, dispose() {}, startBackground() {}, leaveHover() {} }),
@@ -237,8 +268,25 @@ async function lobbyFixture(desktop = true, options = {}) {
     encodedBodySize: a.estimatedBytes, transferSize: 0, responseEndEpochMs: 1100 }));
   return { win, doc, get, timers, value, send, ready, mount, measurements, resources, loader, click, authorize, makeGrant, grants,
     get frame() { return get('frame-host').children[0]; }, get grantController() { return grantController; },
-    get reloadCount() { return reloadCount; } };
+    get reloadCount() { return reloadCount; }, get sandboxRequesterCalls() { return sandboxRequesterCalls; },
+    get cdnRequesterCalls() { return cdnRequesterCalls; }, get configFetchUrl() { return configFetchUrl; } };
 }
+
+test('CDN lobby selects the HTTPS requester and mounts the validated wrapper URL verbatim', async () => {
+  const value = cdnConfig(), f = await lobbyFixture(true, { value, configUrl: `${value.entries[0].origin}/__vault/config.json` });
+  assert.equal(f.configFetchUrl, `${value.entries[0].origin}/__vault/config.json`);
+  assert.equal(f.cdnRequesterCalls, 1); assert.equal(f.sandboxRequesterCalls, 0);
+  assert.equal(f.frame.src, value.entries[0].wrapperUrl);
+});
+
+test('lobby rejects credentialed, queried and insecure remote configuration URLs before fetch', async () => {
+  for (const configUrl of ['http://remote.example/__vault/config.json', 'https://user@cdn.example/__vault/config.json',
+    'https://cdn.example/__vault/config.json?v=1']) {
+    const f = await lobbyFixture(true, { autoLaunch: false, configUrl });
+    assert.equal(f.configFetchUrl, undefined);
+    assert.match(f.get('preparation-status').textContent, /failed closed/);
+  }
+});
 
 test('parent startup timeout is truthful, removes the wrapper, and ignores late handshake events', async () => {
   const f = await lobbyFixture();

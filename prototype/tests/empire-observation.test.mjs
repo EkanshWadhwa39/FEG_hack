@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { EARLY_ASSETS, createEmpireSource, supportsAuditedDesktop } from '../src/empire-catalogue.js';
+import { CDN_MODE, EARLY_ASSETS, REVIEWED_EMPIRE_ARCHIVE_SHA256, createEmpireSource, supportsAuditedDesktop } from '../src/empire-catalogue.js';
 import { validateEarlyBatch, empireVariantMetadata } from '../src/empire-milestone.js';
 
 function config() {
@@ -14,6 +14,18 @@ function config() {
       })) })) };
 }
 const create = value => createEmpireSource(value, { lobbyOrigin: 'http://127.0.0.1:8100' });
+function cdnConfig() {
+  const archiveSha256 = REVIEWED_EMPIRE_ARCHIVE_SHA256;
+  const build = `empire-${archiveSha256.slice(0, 16)}`;
+  const origin = 'https://empire.example.test';
+  const assetBaseUrl = `${origin}/releases/${archiveSha256}/`;
+  return { mode: CDN_MODE, delivery: 'CDN', cachePolicy: 'public, max-age=31536000, immutable',
+    lobbyOrigin: 'http://127.0.0.1:8100', archiveSha256, build, locale: 'en', tier: '1x', byteBudget: 10485760,
+    entries: [{ id: 'title-01', delivery: 'CDN', origin, wrapperUrl: `${origin}/__vault/player.html`,
+      launchUrl: `${assetBaseUrl}index.html?language=en`, assetBaseUrl,
+      assets: EARLY_ASSETS.map(([path, stage, estimatedBytes]) => ({ url: `${assetBaseUrl}${path}`, stage,
+        estimatedBytes, sha256: 'b'.repeat(64), releaseBuild: build })) }] };
+}
 
 test('audited eight-object subset is partial COMMON, no PRIMARY/SECONDARY/bootstrap relabelling', () => {
   assert.equal(EARLY_ASSETS.length, 8);
@@ -46,6 +58,29 @@ test('release validation cannot cross synthetic titles and configuration is snap
   value.entries[0].assets[0].estimatedBytes = 1;
   assert.equal(asset.estimatedBytes, 3997);
   await assert.rejects(source.manifestSource.resolve({ ...target, tier: '0.5x' }));
+});
+
+test('one-title CDN mode binds the pinned release, exact wrapper, launch and asset URLs', async () => {
+  const value = cdnConfig(), source = create(value), entry = source.catalogue[0];
+  assert.equal(source.deployment, 'CDN_ONE_TITLE');
+  assert.equal(source.catalogue.length, 1);
+  assert.equal(entry.wrapperUrl, value.entries[0].wrapperUrl);
+  assert.equal(entry.launchUrl, value.entries[0].launchUrl);
+  assert.equal(source.allowedAssetUrls.length, EARLY_ASSETS.length);
+  const target = { id: 'title-01', build: value.build, locale: 'en', tier: '1x' };
+  assert.equal(source.manifestSource.validateReleaseAsset(entry.locales.en.tiers['1x'].assets[0], target), true);
+});
+
+test('CDN mode rejects unpinned, non-HTTPS, cross-prefix and reconstructed launch identities', () => {
+  for (const mutate of [
+    c => { c.archiveSha256 = 'a'.repeat(64); c.build = `empire-${c.archiveSha256.slice(0, 16)}`; },
+    c => { c.entries[0].origin = 'http://empire.example.test'; },
+    c => { c.entries[0].assetBaseUrl += 'other/'; },
+    c => { c.entries[0].launchUrl = c.entries[0].launchUrl.replace('index.html', ''); },
+    c => { c.entries[0].wrapperUrl += '?v=1'; },
+    c => { c.entries[0].assets[0].url = c.entries[0].assets[0].url.replace('/releases/', '/other/'); },
+    c => { c.entries.push(structuredClone(c.entries[0])); },
+  ]) { const value = cdnConfig(); mutate(value); assert.throws(() => create(value)); }
 });
 
 function observation() {

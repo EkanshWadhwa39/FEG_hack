@@ -2,13 +2,21 @@ import { createEmpireSource, supportsAuditedDesktop } from './empire-catalogue.j
 import { validateEarlyBatch, empireVariantMetadata, validateEmpireLaunchGrant } from './empire-milestone.js';
 import { createPopularityPrior, createSyntheticSession } from './candidate-policy.js';
 import { createSyntheticAuthorization, createBrowserEnvironment } from './content-adapters.js';
-import { createSandboxCatalogueRequester } from './bounded-browser-requester.js';
+import { createCredentialFreeBrowserRequester, createSandboxCatalogueRequester } from './bounded-browser-requester.js';
 import { createContentLoader } from './content-loader.js';
 import { bindCatalogueIntent, bindThumbnailFallback } from './catalogue-bindings.js';
 import { topPreparationCandidates } from './content-demo-policy.js';
 import { createPreparationScheduler } from './content-demo-scheduler.js';
 
 const $ = id => document.getElementById(id);
+function resolveEmpireConfigUrl(value, lobbyUrl = location.href) {
+  const url = new URL(value || '/__vault/config.json', lobbyUrl);
+  if (url.username || url.password || url.search || url.hash || url.pathname !== '/__vault/config.json')
+    throw new Error('Invalid Empire configuration URL');
+  const loopback = url.protocol === 'http:' && ['127.0.0.1', '[::1]'].includes(url.hostname);
+  if (url.protocol !== 'https:' && !loopback) throw new Error('Invalid Empire configuration URL');
+  return url.href;
+}
 async function boot() {
 const controller = new AbortController();
 let stopped = false;
@@ -40,7 +48,9 @@ try {
     }, 10000);
   });
   config = await Promise.race([deadline, cancelled, (async () => {
-    const response = await fetch('/__vault/config.json', { cache: 'no-store', credentials: 'omit', redirect: 'error', signal: controller.signal });
+    const configured = document.querySelector?.('meta[name="empire-config-url"]')?.content;
+    const configurationUrl = resolveEmpireConfigUrl(configured, location.href);
+    const response = await fetch(configurationUrl, { cache: 'no-store', credentials: 'omit', redirect: 'error', signal: controller.signal });
     if (controller.signal.aborted || !response.ok || response.redirected) throw new Error('configuration');
     const value = await response.json();
     if (controller.signal.aborted) throw new Error('configuration');
@@ -67,9 +77,12 @@ const names = ['Amber Arcade', 'Moonlit Garden', 'Sapphire Steps', 'Cedar Vault'
 const symbols = ['✦', '☾', '◆', '❖', '☀', '✧', '✿', '♧', '◈', '◇'];
 const titleNames = new Map(catalogue.map((entry, index) => [entry.id, names[index]]));
 const thumbnailUrls = new Map(catalogue.map(entry => [entry.id, entry.thumbnailUrl]));
+const requesterOptions = { allowedOrigins: source.origins, allowedAssetUrls: source.allowedAssetUrls, priority: 'low' };
+const requestAsset = source.deployment === 'CDN_ONE_TITLE'
+  ? createCredentialFreeBrowserRequester(requesterOptions)
+  : createSandboxCatalogueRequester({ origins: source.origins, allowedAssetUrls: source.allowedAssetUrls, priority: 'low' });
 const loader = createContentLoader({ catalogue, prior, session, authorization, environment,
-  manifestSource: source.manifestSource,
-  requestAsset: createSandboxCatalogueRequester({ origins: source.origins, allowedAssetUrls: source.allowedAssetUrls, priority: 'low' }),
+  manifestSource: source.manifestSource, requestAsset,
   byteBudget: config.byteBudget, policy: 'POPULAR_UNPLAYED' });
 disposers.push(() => loader.dispose());
 let activeLaunch = null;
@@ -274,19 +287,21 @@ async function launch(gameId) {
         : 'Launch blocked. A valid current synthetic authorization and exact launch grant are required. Please retry from the lobby.';
     stopLaunch(message); return;
   }
+  const selectedEntry = catalogue.find(entry => entry.id === gameId);
   const current = { id: `launch-${sequence}`, sequence, gameId, selected, grant, clickedAt,
-    origin: catalogue.find(entry => entry.id === gameId).origin, inputAccepted: false, assetsComplete: false,
-    measurement: { classification: 'MEASURED — this local provider-bundle visit', titleId: gameId,
+    origin: selectedEntry.origin, wrapperUrl: selectedEntry.wrapperUrl, inputAccepted: false, assetsComplete: false,
+    measurement: { classification: source.deployment === 'CDN_ONE_TITLE'
+      ? 'MEASURED — this configured CDN provider-bundle visit' : 'MEASURED — this local provider-bundle visit', titleId: gameId,
       ...empireVariantMetadata(selected, desktopSupported), preparationMode: before.enabled ? $('mode').value : 'OFF',
       preparationBodyBytesBeforeClick: before.observedBodyBytes,
       providerPlayable: 'UNKNOWN — no authoritative provider input-accepted signal',
       inputAccepted: false } };
   activeLaunch = current;
   const frame = document.createElement('iframe'); current.frame = frame;
-  frame.title = `${titleNames.get(gameId)} — unchanged Empire of Gold in a confined local sandbox`;
+  frame.title = `${titleNames.get(gameId)} — unchanged Empire of Gold in the configured sandbox`;
   frame.referrerPolicy = 'no-referrer';
   frame.setAttribute('sandbox', 'allow-scripts allow-same-origin');
-  frame.src = `${current.origin}/__vault/player.html`;
+  frame.src = current.wrapperUrl;
   current.onAbort = () => {
     if (activeLaunch === current) stopLaunch('Sandbox authorization or launch grant was withdrawn. Game stopped.');
   };

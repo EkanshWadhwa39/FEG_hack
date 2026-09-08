@@ -15,7 +15,7 @@
 
 Players may wait for static resources after selecting a game. Vault explores moving a bounded part of that work into authorised lobby browsing, without changing player choices or certified game files. The innovation is **cache-only prediction plus explicit cost and failure accounting**, not a new game engine or a recommendation feed.
 
-This private integration presents **20 SIMULATED, stable catalogue identities of one unchanged supplied Empire of Gold build**, served directly from a private ZIP. It warms **eight real PRELOADER / partial COMMON resources, totalling 523,940 decoded bytes per identity (STATICALLY-INFERRED)**. Those bytes are a manifest size, not a measured saving. No SPLASH, PRIMARY or SECONDARY resources are proactively warmed by this integration.
+The reproducible local mode presents **20 SIMULATED, stable catalogue identities of one unchanged supplied Empire of Gold build**, served directly from a private ZIP. The optional CDN mode presents **one** pinned synthetic identity at a digest-addressed HTTPS release. Both warm the same **eight real PRELOADER / partial COMMON resources, totalling 523,940 decoded bytes (STATICALLY-INFERRED)**. Those bytes are a manifest size, not a measured saving. No SPLASH, PRIMARY or SECONDARY resources are proactively warmed by this integration.
 
 **Current acceptance:** Earlier working-tree checks and automated headed reviewer QA passed under the former Linux-isolated runner. The retained ten-pair report completed all pairs but has overall verdict **FAIL** because its five required diagnostics ended in errors. It predates the direct-host change and must not be represented as validation of this version. Human visual/screen-reader acceptance and provider gameplay readiness remain **UNKNOWN**. See the [Empire measurement report](docs/EMPIRE-MEASUREMENT.md). This is **not submission approval**.
 
@@ -28,6 +28,7 @@ Judges evaluate **our sandbox only**. Staging is not a judging dependency. Neith
 | `npm run demo:empire -- --zip /private/path/empireofgold.zip` | Graphical Vault + unchanged Empire launcher | macOS or Linux; approved private archive and local graphical display required |
 | `npm run verify:empire -- --zip /private/path/empireofgold.zip` | Headless, serial CONTROL/TREATMENT verification | macOS or Linux; no graphical display required |
 | `npm run test:empire:visual -- --zip /private/path/empireofgold.zip --runs 5` | Direct unchanged-ZIP Play-button visibility timing | Human-marked fresh graphical runs; no Vault/prefetch; not an input-ready result |
+| [CDN deployment runbook](docs/EMPIRE-CDN-DEPLOYMENT.md) | Package and verify the optional one-title HTTPS experiment | Separate origins and fresh browser profiles; not production or staging proof |
 | `npm run demo` | Separate original **Vault Match** reference scene | No provider archive; normal localhost browser; **not an Empire substitute, provider-readiness result or Empire benchmark** |
 
 The supported launchers now use ordinary host networking and bind the local server to `127.0.0.1`. They do not create a network namespace, change firewall rules, require `sudo`, restrict provider egress or attest process namespaces. This follows the team's confirmation that those controls are not required. The private archive is still not bundled or published.

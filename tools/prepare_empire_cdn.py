@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import ipaddress
 import json
 import os
 import shutil
@@ -84,16 +85,29 @@ def _exact_origin(value: str, *, https_only: bool) -> str:
     except ValueError:
         raise PreparationError("An exact origin is required") from None
     schemes = {"https"} if https_only else {"http", "https"}
+    if parsed.hostname is None:
+        raise PreparationError("An exact origin is required")
+    try:
+        parsed.hostname.encode("ascii")
+        canonical_host = ipaddress.ip_address(parsed.hostname).compressed
+    except ValueError:
+        canonical_host = parsed.hostname.lower()
+    except UnicodeEncodeError:
+        raise PreparationError("An exact origin is required") from None
+    if ":" in canonical_host:
+        canonical_host = f"[{canonical_host}]"
+    default_port = (parsed.scheme == "https" and port == 443) or (parsed.scheme == "http" and port == 80)
+    canonical_port = f":{port}" if port is not None and not default_port else ""
+    canonical = f"{parsed.scheme}://{canonical_host}{canonical_port}"
     if (
         parsed.scheme not in schemes
         or not parsed.netloc
-        or parsed.hostname is None
         or parsed.username is not None
         or parsed.password is not None
         or parsed.path
         or parsed.query
         or parsed.fragment
-        or value != f"{parsed.scheme}://{parsed.netloc}"
+        or value != canonical
         or (port is not None and not 1 <= port <= 65535)
     ):
         raise PreparationError("An exact origin is required")
@@ -310,6 +324,9 @@ def _headers(lobby_origin: str, archive_sha256: str) -> bytes:
         "  X-Content-Type-Options: nosniff\n"
         "  Referrer-Policy: no-referrer\n"
         "\n"
+        "/__vault/config.json\n"
+        f"  Access-Control-Allow-Origin: {lobby_origin}\n"
+        "\n"
         f"/releases/{archive_sha256}/assets/*\n"
         "  Cache-Control: public, max-age=31536000, immutable\n"
         f"  Access-Control-Allow-Origin: {lobby_origin}\n"
@@ -328,6 +345,9 @@ def prepare(
     """Prepare a deployment atomically and return its sanitized manifest."""
     cdn_origin = _exact_origin(cdn_origin, https_only=True)
     lobby_origin = _exact_origin(lobby_origin, https_only=False)
+    parsed_lobby = urlsplit(lobby_origin)
+    if parsed_lobby.scheme != "https" and parsed_lobby.hostname not in {"127.0.0.1", "::1"}:
+        raise PreparationError("An exact origin is required (HTTPS or literal loopback HTTP)")
     if cdn_origin == lobby_origin:
         raise PreparationError("CDN and lobby origins must be distinct")
     output = _output_path(output_dir)

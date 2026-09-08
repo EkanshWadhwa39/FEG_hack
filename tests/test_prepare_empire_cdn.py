@@ -111,6 +111,7 @@ def test_prepares_unchanged_provider_tree_wrappers_headers_config_and_manifest(s
     assert "Access-Control-Allow-Origin: http://127.0.0.1:8100" in headers
     assert "Timing-Allow-Origin: http://127.0.0.1:8100" in headers
     assert "/__vault/*\n  Cache-Control: no-store" in headers
+    assert "/__vault/config.json\n  Access-Control-Allow-Origin: http://127.0.0.1:8100" in headers
 
     persisted = json.loads((output / "deployment-manifest.json").read_text())
     assert persisted == returned
@@ -165,6 +166,8 @@ def test_main_uses_default_lobby_and_prints_only_fixed_public_outputs(synthetic,
         "https://cdn.example.test#fragment",
         "https://user@cdn.example.test",
         "https://cdn.example.test:99999",
+        "https://CDN.example.test",
+        "https://cdn.example.test:443",
         "https://cdn.example.test\\evil",
         " https://cdn.example.test",
         "",
@@ -181,6 +184,7 @@ def test_rejects_non_exact_https_cdn_origins_without_output(synthetic, tmp_path,
     "origin",
     [
         "ftp://lobby.example.test",
+        "http://lobby.example.test",
         "http://lobby.example.test/",
         "http://user@lobby.example.test",
         "http://lobby.example.test\r\nInjected: yes",
