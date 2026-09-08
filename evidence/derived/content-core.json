@@ -1,0 +1,242 @@
+{
+  "label": "MEASURED",
+  "experimentId": "2026-09-08T10-30-03-817Z",
+  "workloadLabel": "SIMULATED",
+  "scope": {
+    "browser": "136.0.7103.25",
+    "runsPerArm": 3,
+    "benchmarkTitles": 1,
+    "catalogueVerificationTitles": 20,
+    "providerGamesBenchmarked": 0,
+    "originTopology": "same-loopback-origin parent and iframe",
+    "serviceWorkers": "blocked",
+    "routing": "not installed",
+    "throttle": "none",
+    "browseIntervalMs": 1000
+  },
+  "milestone": "click event to original synthetic iframe asset bodies consumed (includes runner orchestration); NOT interactive or provider gameplay",
+  "conditions": [
+    "Fresh browser process/context per arm, cache enabled; only policy preparation differs",
+    "Static original generated fixture bytes, immutable exact URLs",
+    "SIMULATED authorization, fast-network governor inputs and catalogue",
+    "No store/redirect and distinct-title exact-key negative controls",
+    "Reserved/readable body bytes are not wire bytes; no game CPU/readiness claim",
+    "Raw HARs stay ignored; this report contains only safe aggregates"
+  ],
+  "verification": {
+    "thumbnails": {
+      "total": 20,
+      "loaded": 19,
+      "isolatedFallbacks": 1
+    },
+    "allTwentyPrepareAndAuthorizeClick": true,
+    "preparation": {
+      "label": "SIMULATED",
+      "status": "STATE",
+      "policy": "POPULAR_UNPLAYED",
+      "enabled": true,
+      "foreground": true,
+      "disposed": false,
+      "reservedBodyBytes": 2293760,
+      "observedBodyBytes": 2293760,
+      "byteBudget": 3000000,
+      "bodyBoundExceeded": false,
+      "completedObjects": 60
+    },
+    "policyDoesNotReorderDOM": true,
+    "denialBlocksLaunchAndSpeculation": true
+  },
+  "negativeControls": {
+    "exactDifferentTitleMiss": true,
+    "noStoreRepeatedTransfers": true,
+    "redirectRejected": true
+  },
+  "results": [
+    {
+      "label": "MEASURED",
+      "run": 1,
+      "arm": "CONTROL",
+      "title": "title-01",
+      "build": "synthetic-v1",
+      "locale": "hr-HR",
+      "tier": "1x",
+      "preparationServerRequests": 0,
+      "preparationReservedBodyBytes": 0,
+      "launchServerRequests": 3,
+      "totalSessionAssetServerRequests": 3,
+      "clickToBodiesCompleteMs": 73.5,
+      "bodyFetchIntervalMs": 12.099999994039536,
+      "bodyBytes": 114688,
+      "resources": [
+        {
+          "transferSize": 16684,
+          "encodedBodySize": 16384
+        },
+        {
+          "transferSize": 33068,
+          "encodedBodySize": 32768
+        },
+        {
+          "transferSize": 65836,
+          "encodedBodySize": 65536
+        }
+      ],
+      "authoritativeInputAcceptedMs": null
+    },
+    {
+      "label": "MEASURED",
+      "run": 1,
+      "arm": "TREATMENT",
+      "title": "title-01",
+      "build": "synthetic-v1",
+      "locale": "hr-HR",
+      "tier": "1x",
+      "preparationServerRequests": 3,
+      "preparationReservedBodyBytes": 114688,
+      "launchServerRequests": 0,
+      "totalSessionAssetServerRequests": 3,
+      "clickToBodiesCompleteMs": 62.899999998509884,
+      "bodyFetchIntervalMs": 7.199999995529652,
+      "bodyBytes": 114688,
+      "resources": [
+        {
+          "transferSize": 0,
+          "encodedBodySize": 16384
+        },
+        {
+          "transferSize": 0,
+          "encodedBodySize": 32768
+        },
+        {
+          "transferSize": 0,
+          "encodedBodySize": 65536
+        }
+      ],
+      "authoritativeInputAcceptedMs": null
+    },
+    {
+      "label": "MEASURED",
+      "run": 2,
+      "arm": "TREATMENT",
+      "title": "title-01",
+      "build": "synthetic-v1",
+      "locale": "hr-HR",
+      "tier": "1x",
+      "preparationServerRequests": 3,
+      "preparationReservedBodyBytes": 114688,
+      "launchServerRequests": 0,
+      "totalSessionAssetServerRequests": 3,
+      "clickToBodiesCompleteMs": 64.29999999701977,
+      "bodyFetchIntervalMs": 7.5,
+      "bodyBytes": 114688,
+      "resources": [
+        {
+          "transferSize": 0,
+          "encodedBodySize": 16384
+        },
+        {
+          "transferSize": 0,
+          "encodedBodySize": 32768
+        },
+        {
+          "transferSize": 0,
+          "encodedBodySize": 65536
+        }
+      ],
+      "authoritativeInputAcceptedMs": null
+    },
+    {
+      "label": "MEASURED",
+      "run": 2,
+      "arm": "CONTROL",
+      "title": "title-01",
+      "build": "synthetic-v1",
+      "locale": "hr-HR",
+      "tier": "1x",
+      "preparationServerRequests": 0,
+      "preparationReservedBodyBytes": 0,
+      "launchServerRequests": 3,
+      "totalSessionAssetServerRequests": 3,
+      "clickToBodiesCompleteMs": 75.60000000149012,
+      "bodyFetchIntervalMs": 14.400000005960464,
+      "bodyBytes": 114688,
+      "resources": [
+        {
+          "transferSize": 16684,
+          "encodedBodySize": 16384
+        },
+        {
+          "transferSize": 33068,
+          "encodedBodySize": 32768
+        },
+        {
+          "transferSize": 65836,
+          "encodedBodySize": 65536
+        }
+      ],
+      "authoritativeInputAcceptedMs": null
+    },
+    {
+      "label": "MEASURED",
+      "run": 3,
+      "arm": "CONTROL",
+      "title": "title-01",
+      "build": "synthetic-v1",
+      "locale": "hr-HR",
+      "tier": "1x",
+      "preparationServerRequests": 0,
+      "preparationReservedBodyBytes": 0,
+      "launchServerRequests": 3,
+      "totalSessionAssetServerRequests": 3,
+      "clickToBodiesCompleteMs": 72.79999999701977,
+      "bodyFetchIntervalMs": 11.899999998509884,
+      "bodyBytes": 114688,
+      "resources": [
+        {
+          "transferSize": 16684,
+          "encodedBodySize": 16384
+        },
+        {
+          "transferSize": 33068,
+          "encodedBodySize": 32768
+        },
+        {
+          "transferSize": 65836,
+          "encodedBodySize": 65536
+        }
+      ],
+      "authoritativeInputAcceptedMs": null
+    },
+    {
+      "label": "MEASURED",
+      "run": 3,
+      "arm": "TREATMENT",
+      "title": "title-01",
+      "build": "synthetic-v1",
+      "locale": "hr-HR",
+      "tier": "1x",
+      "preparationServerRequests": 3,
+      "preparationReservedBodyBytes": 114688,
+      "launchServerRequests": 0,
+      "totalSessionAssetServerRequests": 3,
+      "clickToBodiesCompleteMs": 64.69999999552965,
+      "bodyFetchIntervalMs": 7.399999998509884,
+      "bodyBytes": 114688,
+      "resources": [
+        {
+          "transferSize": 0,
+          "encodedBodySize": 16384
+        },
+        {
+          "transferSize": 0,
+          "encodedBodySize": 32768
+        },
+        {
+          "transferSize": 0,
+          "encodedBodySize": 65536
+        }
+      ],
+      "authoritativeInputAcceptedMs": null
+    }
+  ]
+}

@@ -166,3 +166,31 @@ provide a live subscription/unsubscribe interface; pending/unknown/denied/error
 transitions must notify. These paths have regression tests. Caller implementations
 must still honor the returned launch AbortSignal; an adapter cannot revoke UI code
 that ignores it. No new browser/security claim is based solely on interface shape.
+
+## Increment 4: measured verification / final checks
+
+Files: `tools/verify_content_core.mjs`, `package.json` (scripts only),
+`evidence/derived/content-core.json`, `docs/CONTENT-CORE-MEASUREMENT.md` and this
+handoff. Runner uses serial fresh Chromium contexts/processes, original fixtures,
+unchanged CSP and no cache-disabling routing. Raw HARs stay ignored, in distinct
+per-experiment directories; only a safe aggregate is committed.
+
+**MEASURED final checks:**
+
+- `./scripts/check.sh`: **193 Python tests, 152 JavaScript tests**, lint and syntax
+  checks passed.
+- `node tools/verify_content_core.mjs --runs 3`: passed three isolated pairs,
+  twenty-title preparation/authorized-click checks, thumbnail failure isolation,
+  policy DOM stability, denial, distinct-title miss, no-store and redirect controls.
+- `PORT=18184 ./scripts/serve.sh`: HTTP 200 with curl; stopped owned server afterward.
+- `.venv/bin/python tools/measure_har.py --help`: passed.
+- `node tools/verify_content_core.mjs --help` and `git diff --check`: passed.
+
+See the measurement document for exact byte/timing/cost results and limitations.
+These checks used this host's pre-existing dependency environment, temporarily
+linked into the isolated worktree. The two lead-created dependency symlinks were
+removed afterward (targets untouched), leaving standard bootstrap instructions.
+A clean-clone install/reviewer rehearsal is still a final merged-release gate.
+No raw evidence, provider bundles, media, credentials or original user edits were
+staged. No push/merge or submission was performed. No source-only integration result
+should be described as a finished playable UI or a production performance proof.

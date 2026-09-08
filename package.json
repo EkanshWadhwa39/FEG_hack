@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "test": "node --test prototype/tests/*.test.mjs",
-    "check:js": "find prototype -type f \\( -name '*.js' -o -name '*.mjs' \\) -print0 | xargs -0 -r -n1 node --check && node --check tools/run_cache_reuse.mjs",
+    "check:js": "find prototype -type f \\( -name '*.js' -o -name '*.mjs' \\) -print0 | xargs -0 -r -n1 node --check && node --check tools/run_cache_reuse.mjs && node --check tools/verify_content_core.mjs",
+    "verify:content": "node tools/verify_content_core.mjs --runs 3",
+    "serve:content": "python3 tools/content_server.py --port 8090",
     "experiment:cache-reuse": "node tools/run_cache_reuse.mjs --runs 2",
     "serve": "python3 -m http.server 8080 --directory prototype --bind 0.0.0.0"
   },
