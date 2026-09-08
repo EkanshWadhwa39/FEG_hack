@@ -12,6 +12,7 @@
 | Exclusion-register latency | UNKNOWN | Never invent; mandatory fail-closed integration gate. |
 | Cross-provider generalization | UNKNOWN beyond tested captures/static inspection | Report provider/title separately. |
 | Native/WebView transfer | UNVERIFIED and out of scope | Future test only. |
+| Empire of Gold archive structure/load stages | STATICALLY-INFERRED from supplied provider bundle | Use only as title/build-scoped development input; see `docs/BUNDLE-DEVELOPMENT-INPUTS.md`. Do not publish the archive or extracted assets. |
 
 ## Required causal-proof artifacts
 
