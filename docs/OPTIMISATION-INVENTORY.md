@@ -258,3 +258,78 @@ Two honest routes to a defensible claim:
    screen* is reachable now and gets more reachable with items 2–5. 500 ms to *all assets resident*
    is not reachable for this class of title. These are different promises and should not be
    conflated in the pitch.
+
+---
+
+## Addendum 2 — can we improve the 6.2 s with what is in our hands?
+
+**We cannot reduce it. We can move it before the click.** That distinction is the whole answer.
+
+The 6,226 ms is decode, GPU texture upload and script execution inside certified code, with the
+network already removed. Nothing outside the package changes that work. But nothing says it has to
+happen *after* the player clicks.
+
+### The one remaining lever: speculative engine initialisation
+
+Today we prefetch **bytes** during browse. The proposal is to prefetch **engine state**: for the
+single predicted title, create the game iframe hidden and offscreen while the player is still
+browsing, let it do its 6.2 s of work, and on click reveal the already-initialised instance.
+
+```
+today      [browse] ──click──> [ 6.2 s decode + GPU ] ──> ready
+proposed   [browse ── 6.2 s decode + GPU in hidden iframe ──] ──click──> reveal ──> ready
+```
+
+Perceived click-to-ready approaches the cost of revealing an existing frame. The 6.2 s does not
+shrink; it stops being on the player's critical path.
+
+### Why this is not free, and might not work at all
+
+**UNTESTED.** It could not be validated on this machine: a Chromium run loading a 50 MB WebGL title
+needs more memory than was available, and an earlier profiling attempt was already killed by the
+operating system. Everything below is reasoning, not measurement.
+
+| Risk | Detail |
+|---|---|
+| **Browsers throttle invisible frames** | This is the one that could sink it. `display:none` frames generally do no rendering work at all, so no GPU upload happens and the benefit vanishes. Offscreen or occluded frames get rAF and rendering throttled by the compositor. The technique may deliver far less than the arithmetic suggests, or nothing. **This must be measured before it is claimed** |
+| **Waste is far more expensive than before** | Getting a prefetch wrong wastes bytes. Getting *this* wrong spins up an entire game engine, holds ~30 MB of GPU textures, and burns CPU and battery. At the measured 13.4% hit@1 on the addressable set, that is wasted roughly 87% of the time |
+| **Memory and GPU pressure** | A second live engine instance on a mid-range phone is a real cost, and could make the lobby itself worse. Governor limits must be stricter than for byte prefetch, not looser |
+| **Compliance handling required** | The instance must be muted, never visible, never able to place a bet, and never counted as play. The exclusion-register check still gates the *reveal* and remains blocking — pre-initialisation must never become a way to be mid-game before authorisation returns |
+
+### Scope conditions if it is built
+
+1. **k = 1 only.** Never speculatively initialise more than one title.
+2. **Dwell-triggered, not prediction-triggered.** History tops out at 13.4%; only direct intent
+   justifies this cost. Fire on sustained dwell, cancel the instant the pointer or focus leaves.
+3. **Stricter governor than byte prefetch:** never on Save-Data, metered links, low-power or
+   low-memory conditions, or when the page is hidden.
+4. **Muted and inert.** No audio, no visible surface, no wagering capability.
+5. **Authorisation unchanged.** The exclusion check blocks the reveal. Nothing about
+   pre-initialisation touches it.
+6. **Tear down aggressively** on navigation, cancel, or budget exhaustion.
+
+### How to validate it, when a machine has the memory
+
+1. Warm arm: hidden iframe created on dwell, then revealed on click. Measure reveal-to-ready.
+2. Control arm: iframe created on click. Measure click-to-ready.
+3. Critically, verify the hidden frame **actually did the work**: compare GPU memory and confirm
+   ready-time after reveal is far below 6.2 s. If it is still ~6.2 s, the browser throttled the
+   hidden frame and the technique does not work.
+4. Repeat under CPU throttling, which is where a background engine hurts most.
+
+### What else is in our hands, honestly
+
+| Idea | Verdict |
+|---|---|
+| Prime the *decoded* image cache from the parent | Very unlikely to help. Decoded-image caches are per-renderer, and a cross-origin game frame is a separate process under site isolation |
+| Get assets into memory cache rather than disk cache | **Evidence against.** The 6,226 ms measurement was a reload immediately after a priming load, so assets were as hot as they get. Disk read is not the bottleneck |
+| `fetchpriority` on warm requests | Marginal. Affects how fast warming completes, not the floor |
+| Reduce contention by warming during browse | **Already the design.** Warming never competes with the launch it is preparing |
+| Blocking or delaying the game's audio requests | Rejected. That alters certified code's behaviour, and it is why service workers are excluded from this architecture |
+
+### An important caveat on the 6.2 s itself
+
+It was measured in a sandbox where `offline-data-*.js` is **absent from the package as supplied**
+and `api.spiniq.io` is unreachable. Failed calls, retries or timeouts may be inflating it. The
+figure is honest for our environment but **may not be the figure in a complete one**, and it should
+be re-measured the moment a working backend is available.
