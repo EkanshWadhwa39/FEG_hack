@@ -1659,7 +1659,6 @@ function launchGame(game) {
     }
   };
 
-  frameHost.appendChild(frame);
 }
 
 function closeGame() {
@@ -1690,10 +1689,18 @@ prefetchToggle.addEventListener('change', (e) => {
     toggleBadge.className = 'state-badge warm-state';
     toggleBadge.textContent = 'WARM TREATMENT';
     manifestMsg.textContent = 'Prefetch enabled. Hover any card to warm on demand.';
+    // Re-trigger auto-warm for top-N games that didn't finish warming
+    autoWarmTopGames();
   } else {
     toggleBadge.className = 'state-badge cold-state';
     toggleBadge.textContent = 'COLD BASELINE';
     manifestMsg.textContent = 'Prefetch disabled. Hovering makes 0 requests; all launches run cold.';
+
+    // Cancel in-flight auto-warm
+    if (currentPrefetchCtrl) {
+      currentPrefetchCtrl.abort();
+      currentPrefetchCtrl = null;
+    }
 
     // Cancel in-flight hover prefetches
     for (const [id, ctrl] of hoverControllers.entries()) {
@@ -1724,13 +1731,14 @@ prewarmConnection();
 buildGrid();
 updateTelemetry();
 
-// Auto-warm top 1 slot sequentially on boot (unless ?nowarm=1 or prefetch disabled)
-const noWarm = searchParams.get('nowarm') === '1' || searchParams.get('prefetch') === '0';
-if (!noWarm && prefetchToggle.checked) {
+// Auto-warm top-N slots (called on boot and when prefetch is re-enabled)
+function autoWarmTopGames() {
+  if (!prefetchToggle.checked) return;
   const topGames = GAMES.slice(0, TOP_N);
   (async () => {
     for (const g of topGames) {
-      if (ledgers.get(g.id)?.size === BASE_MANIFEST.length) continue;
+      if (ledgers.get(g.id)?.size >= BASE_MANIFEST.length) continue;
+      if (document.querySelector(`[data-game-id="${g.id}"]`)?.dataset.state === 'warm') continue;
       const gov = evaluateGovernor(BASE_MANIFEST[0]?.estimatedBytes || 0);
       if (!gov.allowed) {
         if (manifestMsg) manifestMsg.textContent = `Auto-warm for card ${g.id} halted by Governor: ${gov.reason}`;
@@ -1743,9 +1751,16 @@ if (!noWarm && prefetchToggle.checked) {
         currentPrefetchCtrl = null;
       }
     }
-    manifestMsg.textContent = `${BASE_MANIFEST.length} assets · Game 1 warm · hover cards 2–20 to prefetch.`;
+    if (prefetchToggle.checked) {
+      manifestMsg.textContent = `${BASE_MANIFEST.length} assets · Game 1 warm · hover cards 2–20 to prefetch.`;
+    }
     updateTelemetry();
   })();
+}
+
+const noWarm = searchParams.get('nowarm') === '1' || searchParams.get('prefetch') === '0';
+if (!noWarm && prefetchToggle.checked) {
+  autoWarmTopGames();
 } else {
   manifestMsg.textContent = 'Prefetch idle (Cold baseline mode active). Click any slot to launch cold.';
 }
