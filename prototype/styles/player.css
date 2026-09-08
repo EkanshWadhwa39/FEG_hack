@@ -341,3 +341,33 @@ footer { margin-top: 30px; color: var(--text-muted); font-size: 0.82rem; }
 }
 .demo-controls .empty-state { padding: 0 0 12px; font-size: 0.85rem; }
 .demo-controls button { margin: 0 8px 8px 0; font-size: 0.85rem; }
+
+/* ---------- Progressive tile placeholders ---------- */
+
+/* A placeholder shows that something is coming. It never shows a value. */
+.tile-placeholder {
+  min-height: 58px;
+  border: 1px solid var(--border-decorative);
+  border-radius: 9px;
+  background: linear-gradient(
+    90deg,
+    var(--surface-inset) 0%,
+    var(--surface-raised) 50%,
+    var(--surface-inset) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Reduced motion: keep the placeholder visible, drop the movement. */
+@media (prefers-reduced-motion: reduce) {
+  .tile-placeholder {
+    animation: none;
+    background: var(--surface-inset);
+  }
+}
