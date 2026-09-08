@@ -47,16 +47,20 @@ warming looks far less effective than it is. 12 Mbps with 40 ms RTT is closer to
 
 **The comparison to demonstrate, in this order:**
 
+The lobby shows six numbered tiles. Each is the **same provided package served under its own URL
+namespace** (`/g1`, `/g2`, …), so every tile has separate browser cache entries. Warming one does
+not warm the others — without that, the whole demo would be a trick.
+
 | Step | What to do | What to point at |
 |---|---|---|
-| 1 | Load the page | Tiles appear immediately as placeholders, then fill in — the grid is never a blank rectangle |
-| 2 | **Cold baseline:** click **Launch game** straight away | ~4 s before the game renders. This is today's experience |
-| 3 | Click **Reset** | |
-| 4 | Hover *Empire of Gold* for ~1 second | **Engine pre-init** goes `PREPARING` → `PREPARED`. The game is loading in a hidden frame while you talk |
-| 5 | Click **Launch game** | Appears effectively instantly. Status reads `Revealed pre-initialised engine` |
-| 6 | Move the pointer away before launching | Pre-init returns to `IDLE` — withdrawn intent reclaims the engine immediately |
+| 1 | Load the page | Tiles appear as placeholders, then fill in. Never a blank rectangle |
+| 2 | Hover **Game 3** for ~1 second | **Engine pre-init** goes `PREPARING` → `PREPARED (g3)`. It is loading in a hidden frame while you talk |
+| 3 | Now click **Game 5** — one you did *not* hover | **~2 s.** Cold baseline, status says `cold launch` |
+| 4 | Click **Reset**, hover **Game 3** again until `PREPARED` | |
+| 5 | Click **Game 3** | **~35 ms.** Status says `revealed pre-initialised engine` |
 
-Steps 2 and 5 are the whole pitch: **~4 s versus ~25 ms**, same package, same machine.
+Steps 3 and 5 are the whole pitch, and they happen **in the same page, seconds apart, on identical
+packages**. A judge can pick which tile to hover and which to click.
 
 Also worth showing:
 

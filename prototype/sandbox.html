@@ -32,8 +32,10 @@
           <span class="label simulated">SIMULATED TILES</span>
         </div>
         <p class="empty-state">
-          Tiles render immediately and fill in as content arrives. Hover or tab
-          onto one for 150&nbsp;ms to express intent.
+          Every tile is the same provided package served under its own URL
+          namespace, so each has separate cache entries. Hover or tab onto one
+          for ~0.6&nbsp;s to prepare it, then click it. Click a tile you did
+          <em>not</em> hover to see the cold baseline.
         </p>
         <ul id="grid" class="results" role="list" aria-busy="true"></ul>
         <p id="grid-status" class="visually-hidden" role="status" aria-live="polite"></p>
@@ -52,7 +54,7 @@
         </dl>
         <div class="demo-controls">
           <button id="warm" type="button">Warm now</button>
-          <button id="launch" type="button" class="primary">Launch game</button>
+          <button id="launch" type="button" class="primary">Launch hovered game</button>
           <button id="reset" type="button">Reset</button>
         </div>
         <div class="pref-row" style="margin-top:14px">
@@ -84,27 +86,29 @@
       import { Authorization, createPreinitManager } from "./src/preinit.js";
 
       const GAME = new URLSearchParams(location.search).get("game") ?? "http://127.0.0.1:8091";
+      const COUNT = Number(new URLSearchParams(location.search).get("games") ?? 6);
       const $ = (id) => document.getElementById(id);
       const grid = $("grid");
 
-      // One real package, presented as a small catalogue. Only the first tile
-      // maps to the served bundle; the rest exist to exercise intent and
-      // progressive rendering, and are labelled as simulated in the UI.
-      const CATALOGUE = [
-        { id: "empireofgold", title: "Empire of Gold", provider: "Provider A", real: true },
-        { id: "savanna", title: "Savanna Sunrise Deluxe", provider: "Provider A" },
-        { id: "zezelj", title: "Žeželj Gold", provider: "Provider B" },
-        { id: "sunset", title: "Sunset Reels", provider: "Provider B" },
-      ];
+      // Every tile is the SAME provided package served under a distinct URL
+      // namespace (/g1, /g2, ...), so each has its own browser cache entries.
+      // Warming one tile therefore does not warm the others, which is what
+      // makes the hit-rate story honest rather than a demo trick.
+      const CATALOGUE = Array.from({ length: COUNT }, (_, i) => ({
+        id: `g${i + 1}`,
+        title: `Game ${i + 1}`,
+        provider: `Provider ${String.fromCharCode(65 + (i % 3))}`,
+        url: `${GAME}/g${i + 1}/`,
+      }));
 
-      const dwell = createDwellTracker();
-      // Pre-init costs a whole engine instance, so it needs a higher bar than
-      // byte warming: sustained dwell, not a passing glance.
       const PREINIT_DWELL_MS = 600;
-      const preinit = createPreinitManager({ host: document.getElementById("frame-host") });
-      let manifest = null;
+      const dwell = createDwellTracker();
+      const preinit = createPreinitManager({ host: $("frame-host") });
+      const manifests = new Map();
       let warmed = [];
-      let recents = ["empireofgold"];   // synthetic session history
+      let recents = [];
+
+      /* ---------- progressive tile rendering ---------- */
 
       function renderTile(item) {
         const li = document.createElement("li");
@@ -113,7 +117,7 @@
         button.dataset.gameId = item.id;
         const title = document.createElement("span");
         title.className = "game-title";
-        title.textContent = item.real ? item.title : `${item.title} (SIMULATED)`;
+        title.textContent = item.title;
         const provider = document.createElement("span");
         provider.className = "game-provider";
         provider.textContent = item.provider;
@@ -124,60 +128,64 @@
         button.addEventListener("mouseleave", () => dwell.leave(item.id));
         button.addEventListener("focus", () => dwell.enter(item.id));
         button.addEventListener("blur", () => dwell.leave(item.id));
+        button.addEventListener("click", () => launch(item));
         li.append(button);
         return li;
       }
 
-      // Progressive rendering: shell first, tiles fill in.
       let loaded = [];
-      function paint(settled) {
-        const plan = planProgressiveRender({
-          expectedCount: CATALOGUE.length, items: loaded, settled,
-        });
+      const paint = (settled) => {
+        const plan = planProgressiveRender({ expectedCount: COUNT, items: loaded, settled });
         applyProgressiveRender(grid, plan, renderTile);
         if (plan.announcement) $("grid-status").textContent = plan.announcement;
-      }
+      };
       paint(false);
-      CATALOGUE.forEach((item, index) => setTimeout(() => {
-        loaded = CATALOGUE.slice(0, index + 1);
-        paint(index === CATALOGUE.length - 1);
-      }, 250 * (index + 1)));
+      CATALOGUE.forEach((item, i) => setTimeout(() => {
+        loaded = CATALOGUE.slice(0, i + 1);
+        paint(i === COUNT - 1);
+      }, 180 * (i + 1)));
 
-      fetch(`${GAME}/warm-manifest.json`).then((r) => r.json()).then((data) => {
-        manifest = data;
-        $("m-manifest").textContent =
-          `${data.warmFiles} files · ${(data.warmBytes / 1048576).toFixed(1)} MB`;
-      }).catch(() => { $("m-manifest").textContent = "unavailable"; });
+      /* ---------- manifests ---------- */
 
-      function currentDecision() {
+      for (const item of CATALOGUE) {
+        fetch(`${item.url}warm-manifest.json`).then((r) => r.json())
+          .then((m) => { manifests.set(item.id, m); refreshManifestLabel(); })
+          .catch(() => {});
+      }
+      function refreshManifestLabel() {
+        const any = manifests.values().next().value;
+        $("m-manifest").textContent = any
+          ? `${manifests.size}/${COUNT} loaded · ${any.warmFiles} files, ${(any.warmBytes / 1048576).toFixed(1)} MB each`
+          : "unavailable";
+      }
+
+      /* ---------- policy + governor ---------- */
+
+      function decide() {
         const connection = navigator.connection ?? {};
         const pick = selectWarmCandidates({
           dwellCandidates: dwell.snapshot(), recents, alreadyWarm: warmed,
         });
-        const bytes = manifest?.warmBytes ?? 0;
+        const bytes = manifests.values().next().value?.warmBytes ?? 0;
         const governor = $("override").checked
           ? { allowed: true, reason: "OVERRIDDEN_FOR_DEMO" }
           : assessPrefetch({
-              enabled: true,
-              saveData: connection.saveData,
+              enabled: true, saveData: connection.saveData,
               effectiveType: connection.effectiveType,
               visibilityState: document.visibilityState,
-              byteBudget: 32 * 1048576,
-              bytesUsed: 0,
-              nextAssetBytes: bytes,
+              byteBudget: 32 * 1048576, bytesUsed: 0, nextAssetBytes: bytes,
             });
         return { pick, governor };
       }
 
       setInterval(() => {
-        const { pick, governor } = currentDecision();
+        const { pick, governor } = decide();
         const top = dwell.strongest();
         $("m-dwell").textContent = top ? `${top.gameId} (${top.score}ms)` : "none";
         $("m-gov").textContent = governor.allowed ? "ALLOW" : governor.reason;
         $("m-gov").dataset.flag = governor.allowed ? "NORMAL" : "ELEVATED";
-        $("warm").disabled = !governor.allowed || !manifest || pick.candidates.length === 0;
+        $("warm").disabled = !governor.allowed || pick.candidates.length === 0;
 
-        // Speculative engine pre-init, on sustained dwell over the real title.
         const p = preinit.getState();
         $("m-preinit").textContent = p.gameId ? `${p.state} (${p.gameId})` : p.state;
         $("m-preinit").dataset.flag =
@@ -185,68 +193,77 @@
             : p.state === "PREPARING" ? "ELEVATED" : "UNKNOWN";
 
         if (p.state === "REVEALED") return;
-        if (governor.allowed && top && top.gameId === "empireofgold"
-            && top.score >= PREINIT_DWELL_MS) {
-          preinit.prepare("empireofgold", `${GAME}/`);
+        const target = CATALOGUE.find((g) => g.id === top?.gameId);
+        if (governor.allowed && target && top.score >= PREINIT_DWELL_MS) {
+          preinit.prepare(target.id, target.url);
         } else if (p.state !== "IDLE" && (!top || top.score < PREINIT_DWELL_MS)) {
-          // Intent withdrawn: reclaim the engine instance immediately.
-          preinit.cancel();
+          preinit.cancel();   // intent withdrawn: reclaim the engine now
         }
-      }, 300);
+      }, 250);
+
+      /* ---------- launch ---------- */
+
+      function launch(item) {
+        const started = performance.now();
+        // The exclusion-register check belongs here and blocks. Granted in the
+        // sandbox only because there is no register to consult.
+        const authorization = Authorization.GRANTED;
+
+        const revealed = preinit.reveal({ authorization, expectGameId: item.id });
+        if (revealed.revealed) {
+          const ms = Math.round(performance.now() - started);
+          window.__LAUNCH_MS__ = ms; window.__LAUNCH_PATH__ = "PREINIT";
+          $("status").textContent =
+            `${item.title}: revealed pre-initialised engine in ${ms}ms. It was prepared while you hovered.`;
+          recents = [item.id, ...recents.filter((r) => r !== item.id)];
+          return;
+        }
+
+        // Cold path. The frame is attached immediately rather than after any
+        // wait, so the player sees the game's own preloader straight away
+        // instead of a blank panel. Nothing here claims the game is ready.
+        const frame = document.createElement("iframe");
+        frame.id = "game";
+        frame.title = `${item.title} (sandbox)`;
+        frame.setAttribute("style", "width:100%;height:540px;border:1px solid #64748b;border-radius:10px");
+        frame.src = item.url;
+        $("frame-host").replaceChildren(frame);
+        window.__LAUNCH_MS__ = Math.round(performance.now() - started);
+        window.__LAUNCH_PATH__ = "COLD";
+        $("status").textContent =
+          `${item.title}: cold launch (${revealed.reason}). Loading — this is the baseline.`;
+        recents = [item.id, ...recents.filter((r) => r !== item.id)];
+      }
+
+      /* ---------- byte-only warming ---------- */
 
       $("warm").addEventListener("click", async () => {
-        const { pick, governor } = currentDecision();
-        if (!governor.allowed || !manifest) return;
-        const target = pick.candidates[0];
-        $("status").textContent =
-          `Warming ${manifest.warmFiles} assets for "${target}" (${pick.reason})…`;
-        const started = performance.now();
+        const { pick, governor } = decide();
+        const id = pick.candidates[0];
+        const item = CATALOGUE.find((g) => g.id === id);
+        const manifest = manifests.get(id);
+        if (!governor.allowed || !item || !manifest) return;
+        $("status").textContent = `Warming ${manifest.warmFiles} assets for ${item.title}…`;
+        const t = performance.now();
         const summary = await warmAssets({
           plan: {
             locale: "hr-HR", tier: "1x",
-            assets: manifest.assets.map((a) => ({ ...a, url: `${GAME}/${a.url}` })),
+            assets: manifest.assets.map((a) => ({ ...a, url: `${item.url}${a.url}` })),
           },
           target: { locale: "hr-HR", tier: "1x" },
           concurrency: 2,
           requestAsset: (url) => fetch(url, { mode: "no-cors", credentials: "omit" }),
         });
-        warmed = [...warmed, target];
-        // Completion signal for tools/sandbox_measure.mjs.
+        warmed = [...warmed, id];
         window.__WARM_DONE__ = summary.requested;
-        const elapsed = Math.round(performance.now() - started);
-        $("m-warm").textContent = `${summary.requested} assets`;
+        $("m-warm").textContent = `${summary.requested} assets (${item.title})`;
         $("status").textContent =
-          `Warmed ${summary.requested}/${summary.attempted} in ${elapsed}ms. Now launch.`;
+          `Warmed ${summary.requested}/${summary.attempted} for ${item.title} in ${Math.round(performance.now() - t)}ms.`;
       });
 
       $("launch").addEventListener("click", () => {
-        const started = performance.now();
-        // The exclusion-register check belongs here and blocks. It is granted
-        // in the sandbox only because there is no register to consult.
-        const authorization = Authorization.GRANTED;
-
-        const result = preinit.reveal({ authorization, expectGameId: "empireofgold" });
-        if (result.revealed) {
-          const ms = Math.round(performance.now() - started);
-          window.__LAUNCH_MS__ = ms;
-          window.__LAUNCH_PATH__ = "PREINIT";
-          $("status").textContent =
-            `Revealed pre-initialised engine in ${ms}ms (state was ${result.state}).`;
-          return;
-        }
-
-        // Cold path: nothing usable was prepared, so launch normally.
-        const frame = document.createElement("iframe");
-        frame.id = "game";
-        frame.title = "Game (sandbox)";
-        frame.width = "100%";
-        frame.height = "540";
-        frame.style.cssText = "border:1px solid #64748b;border-radius:10px";
-        frame.src = `${GAME}/`;
-        $("frame-host").replaceChildren(frame);
-        window.__LAUNCH_MS__ = Math.round(performance.now() - started);
-        window.__LAUNCH_PATH__ = "COLD";
-        $("status").textContent = `Cold launch (${result.reason}).`;
+        const top = dwell.strongest();
+        launch(CATALOGUE.find((g) => g.id === top?.gameId) ?? CATALOGUE[0]);
       });
 
       $("reset").addEventListener("click", () => {
@@ -255,7 +272,7 @@
         dwell.reset();
         warmed = [];
         $("m-warm").textContent = "no";
-        $("status").textContent = "Idle. Cache still holds anything already warmed.";
+        $("status").textContent = "Idle. Anything already cached stays cached.";
       });
     </script>
   </body>

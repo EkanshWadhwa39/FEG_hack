@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import errno
 import os
+import re
 import posixpath
 import threading
 import time
@@ -48,6 +49,12 @@ NO_STORE = "no-cache, no-store, must-revalidate"
 #: Path the game origin serves its generated warm manifest from.
 MANIFEST_PATH = "/warm-manifest.json"
 
+#: Virtual game prefix. /g1/..., /g2/... all serve the same provided package,
+#: but under distinct URLs so each is a separate browser cache namespace.
+#: Without this, warming one tile would warm every tile and the hit-rate story
+#: would be a lie.
+GAME_PREFIX = re.compile(r"^/g(\d+)(/.*)?$")
+
 
 class SandboxHandler(SimpleHTTPRequestHandler):
     """Static handler with production-like caching and CORS headers."""
@@ -68,14 +75,20 @@ class SandboxHandler(SimpleHTTPRequestHandler):
         super().handle_one_request()
 
     def do_GET(self):  # noqa: N802 - BaseHTTPRequestHandler naming
-        if self._manifest is not None and urlparse(self.path).path == MANIFEST_PATH:
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(self._manifest)))
-            self.end_headers()
-            self.wfile.write(self._manifest)
-            return
+        path = urlparse(self.path).path
+        match = GAME_PREFIX.match(path)
+        if self._manifest is not None and match and (match.group(2) or "/") == MANIFEST_PATH:
+            return self._send_manifest()
+        if self._manifest is not None and path == MANIFEST_PATH:
+            return self._send_manifest()
         super().do_GET()
+
+    def _send_manifest(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(self._manifest)))
+        self.end_headers()
+        self.wfile.write(self._manifest)
 
     def log_message(self, fmt, *args):  # noqa: A003 - quiet by default
         if os.environ.get("SANDBOX_VERBOSE"):
@@ -116,6 +129,12 @@ class SandboxHandler(SimpleHTTPRequestHandler):
         # Strip query strings (the bundle versions CSS with ?v=...) before
         # resolving, so those requests hit the real file.
         path = urlparse(path).path
+        # Map /gN/... onto the single package on disk. The URLs stay distinct,
+        # so the browser caches each virtual game separately, but only one copy
+        # of the package is ever stored.
+        match = GAME_PREFIX.match(path)
+        if match:
+            path = match.group(2) or "/"
         path = posixpath.normpath(unquote(path))
         parts = [p for p in path.split("/") if p and p not in (os.curdir, os.pardir)]
         resolved = Path(self.directory).joinpath(*parts)
