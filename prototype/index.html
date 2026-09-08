@@ -12,6 +12,11 @@
       <header class="hero">
         <div class="hero-meta">
           <p class="eyebrow">Browser prototype · no build step</p>
+          <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
+            <button class="overlay-toggle" id="overlay-toggle" type="button" aria-pressed="false" aria-controls="live-overlay">
+              ◉ Live overlay
+            </button>
+          </div>
           <div class="ist-clock">
             <span>India Standard Time · <span class="label measured">MEASURED</span></span>
             <time id="ist-clock" aria-label="Current India Standard Time">Loading IST…</time>
@@ -86,6 +91,24 @@
         </article>
       </section>
 
+      <!-- Baseline arm comparison — cold reference vs warm reference (MEASURED from HAR evidence) -->
+      <section class="panel" aria-labelledby="comparison-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Cold vs warm — honest comparison</p>
+            <h2 id="comparison-title">Baseline arm · treatment arm</h2>
+          </div>
+          <span class="label measured">MEASURED</span>
+        </div>
+        <p class="supporting-copy">
+          Control arm has <strong>no prefetch, no prewarming, no cache warming</strong>.
+          Numbers are from real HAR captures, not this simulation.
+        </p>
+        <div class="comparison-grid" id="comparison-grid">
+          <!-- populated by main.js -->
+        </div>
+      </section>
+
       <section class="panel" aria-labelledby="plan-title">
         <div class="section-heading">
           <div>
@@ -106,6 +129,14 @@
         Production provider behavior and exclusion latency remain <span class="label unknown">UNKNOWN</span>.
       </footer>
     </main>
+    <!-- Live instrumentation overlay — toggled by header button -->
+    <div class="live-overlay" id="live-overlay" role="status" aria-live="polite" aria-atomic="true" hidden>
+      <div class="ov-heading">
+        <span>Live instrumentation <span class="label simulated">SIMULATED</span></span>
+      </div>
+      <div id="overlay-body">Warming not running</div>
+    </div>
+
     <script type="module" src="./src/main.js"></script>
   </body>
 </html>
