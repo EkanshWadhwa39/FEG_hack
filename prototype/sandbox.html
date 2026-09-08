@@ -132,6 +132,82 @@
         <button id="exit" type="button" hidden>← Back to lobby</button>
       </div>
 
+      <section class="operator" aria-labelledby="kpi-title">
+        <h2 id="kpi-title">Challenge metrics — live, this session</h2>
+        <p>
+          The five metrics the brief names, computed in the page as you use it.
+          Perceived and real are kept apart on purpose: the brief asks which
+          gains are raw speed and which are perceived, and merging them into one
+          headline is how that question gets dodged.
+        </p>
+        <dl class="metrics">
+          <div>
+            <dt>Load p50 <small>click → frame load event · target &lt; 500 ms</small></dt>
+            <dd id="k-p50" data-flag="UNKNOWN">—</dd>
+          </div>
+          <div>
+            <dt>Load p95 <small>click → frame load event</small></dt>
+            <dd id="k-p95" data-flag="UNKNOWN">—</dd>
+          </div>
+          <div>
+            <dt>Perceived p50 / p95 <small>click to branded screen</small></dt>
+            <dd id="k-perceived" data-flag="UNKNOWN">—</dd>
+          </div>
+          <div>
+            <dt>Baseline path p50 <small>no speculation</small></dt>
+            <dd id="k-cold">—</dd>
+          </div>
+          <div>
+            <dt>Pre-initialised path p50</dt>
+            <dd id="k-preinit" data-flag="UNKNOWN">—</dd>
+          </div>
+          <div>
+            <dt>Games sampled this session</dt>
+            <dd id="k-sampled">0</dd>
+          </div>
+          <div>
+            <dt>Prefetch accuracy <small>bets that were launched</small></dt>
+            <dd id="k-accuracy">—</dd>
+          </div>
+          <div>
+            <dt>Launches served from speculation</dt>
+            <dd id="k-hitrate">—</dd>
+          </div>
+          <div>
+            <dt>Blocked by the guardrail</dt>
+            <dd id="k-blocked" data-flag="NORMAL">0</dd>
+          </div>
+          <div>
+            <dt>Launch-to-play conversion</dt>
+            <dd data-flag="UNKNOWN">UNKNOWN</dd>
+          </div>
+        </dl>
+        <p>
+          <strong>What "load" means here, precisely.</strong> Click to the game
+          frame's <code>load</code> event, with the blocking authorization check
+          inside it. That is the furthest a lobby can honestly measure: the
+          parent cannot see inside a cross-origin game frame, so it observes
+          that one event and nothing more.
+        </p>
+        <p>
+          <strong>And what it does not mean.</strong> For this package the
+          engine keeps streaming assets well past its own <code>load</code>
+          event — measured from outside the page, the cold path is quiet at
+          about 4.8 s, not 0.6 s. So treat the figure above as a floor on the
+          baseline, not a full account of it. The pre-initialised path has no
+          such gap: its frame finished loading during browse, which is why it
+          reports single-digit milliseconds and issues no further requests.
+          <code>tools/sandbox_measure.mjs</code> measures both from outside.
+        </p>
+        <p style="margin-bottom:0">
+          <strong>Not playable.</strong> None of these is click-to-playable.
+          This sandbox has no provider backend, so no input-accepted signal
+          exists and none is claimed. Launch-to-play conversion needs that
+          backend and is reported as UNKNOWN rather than approximated with
+          something that merely sounds similar.
+        </p>
+      </section>
+
       <section class="operator" aria-labelledby="op-title">
         <h2 id="op-title">Operator view — speculation ladder</h2>
         <p>
@@ -197,6 +273,19 @@
               <small>The honest control, in the same page.</small>
             </span>
           </label>
+          <label for="auth-latency">
+            <span>
+              <strong>Exclusion-register latency</strong>
+              <small>
+                Its real cost is UNKNOWN until staging. Every millisecond set
+                here lands inside the reported launch time — the check is never
+                raced, cached, or rendered past.
+              </small>
+              <input id="auth-latency" type="range" min="0" max="1500" step="50"
+                     value="0" style="width:100%">
+              <output id="auth-latency-out">0 ms</output>
+            </span>
+          </label>
         </div>
 
         <p id="status" role="status" aria-live="polite">Idle.</p>
@@ -212,6 +301,28 @@
         <ul id="runs"></ul>
       </section>
     </main>
+
+    <div id="transition" class="transition" hidden role="dialog" aria-modal="true"
+         aria-labelledby="transition-title" aria-describedby="transition-status">
+      <div class="transition-card">
+        <p class="eyebrow">Launching</p>
+        <h2 id="transition-title">Opening game</h2>
+        <p id="transition-status" role="status" aria-live="polite" aria-atomic="true">
+          Preparing your game.
+        </p>
+        <dl class="rg-state">
+          <div><dt>Session length</dt><dd id="rg-duration">0:00:00</dd></div>
+          <div><dt>Net position this session</dt><dd id="rg-net">—</dd></div>
+          <div><dt>Deposit limit remaining</dt><dd id="rg-limit" data-limit="OK">—</dd></div>
+        </dl>
+        <p class="empty-state">
+          <span class="sim-badge">SIMULATED</span>
+          Responsible-gambling figures are synthetic sample values. This screen
+          shows real state and is never a manufactured checkpoint: it exists
+          because the player is owed the information, not to fill a wait.
+        </p>
+      </div>
+    </div>
 
     <script type="module">
       import { startLobby } from "./src/lobby.js";

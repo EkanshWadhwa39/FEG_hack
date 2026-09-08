@@ -8,14 +8,15 @@ A web-only, browser-native prototype and evidence toolkit for testing whether th
 2. Read [`Context/BUILD-PLAN.md`](Context/BUILD-PLAN.md) — current state, ownership split, and the plan of record.
 3. Read [`docs/PRODUCTION-CACHE-REUSE.md`](docs/PRODUCTION-CACHE-REUSE.md) — the production proof: 11.25 MB to 35 KB.
 4. Read [`docs/SANDBOX.md`](docs/SANDBOX.md) — cold vs warm launch of the provided game package.
-5. Read [`docs/SPECULATION-LADDER.md`](docs/SPECULATION-LADDER.md) — how intent turns into speculation, and the three-arm measured result.
-6. Read [`docs/REMAINING-LEVERS.md`](docs/REMAINING-LEVERS.md) — every optimisation not built yet, with verdicts.
-7. Read [`AGENTS.md`](AGENTS.md) — coding and multi-agent contract.
-8. Read [`docs/AGENT-TEAM.md`](docs/AGENT-TEAM.md) — model routing and delegation prompts.
-9. Read [`docs/HACKATHON-RUNBOOK.md`](docs/HACKATHON-RUNBOOK.md) — build/demo sequence.
-10. Read [`docs/SUBMISSION-GUIDELINES.md`](docs/SUBMISSION-GUIDELINES.md) — organiser requirements.
-11. Read [`docs/STAGING-SANDBOX.md`](docs/STAGING-SANDBOX.md) — later staging integration contract and evidence gates.
-12. Before submission, complete [`docs/PRE-SUBMISSION-AUDIT.md`](docs/PRE-SUBMISSION-AUDIT.md) — blocking security, documentation, access, and freeze checks.
+5. Read [`docs/CHALLENGE-3-SCORECARD.md`](docs/CHALLENGE-3-SCORECARD.md) — where the build stands against the brief, metric by metric.
+6. Read [`docs/SPECULATION-LADDER.md`](docs/SPECULATION-LADDER.md) — how intent turns into speculation, and the three-arm measured result.
+7. Read [`docs/REMAINING-LEVERS.md`](docs/REMAINING-LEVERS.md) — every optimisation not built yet, with verdicts.
+8. Read [`AGENTS.md`](AGENTS.md) — coding and multi-agent contract.
+9. Read [`docs/AGENT-TEAM.md`](docs/AGENT-TEAM.md) — model routing and delegation prompts.
+10. Read [`docs/HACKATHON-RUNBOOK.md`](docs/HACKATHON-RUNBOOK.md) — build/demo sequence.
+11. Read [`docs/SUBMISSION-GUIDELINES.md`](docs/SUBMISSION-GUIDELINES.md) — organiser requirements.
+12. Read [`docs/STAGING-SANDBOX.md`](docs/STAGING-SANDBOX.md) — later staging integration contract and evidence gates.
+13. Before submission, complete [`docs/PRE-SUBMISSION-AUDIT.md`](docs/PRE-SUBMISSION-AUDIT.md) — blocking security, documentation, access, and freeze checks.
 
 ## Setup
 

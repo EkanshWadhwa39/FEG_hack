@@ -94,6 +94,19 @@ Useful flags:
 | `--games` | `24` | How many lobby tiles to generate |
 | `--profile` | `blocking` | How much to warm: `blocking` / `critical` / `all` |
 | `--host` | `127.0.0.1` | `0.0.0.0` to open the demo from a phone on the same wifi |
+| `--lobby-port` / `--game-port` | `8090` / `8091` | Run a second sandbox alongside one already up |
+
+To run a second instance beside one already going:
+
+```bash
+.venv/bin/python tools/sandbox_server.py \
+  --bundle ~/evidence/private/bundles/empireofgold \
+  --latency-ms 40 --lobby-port 9090 --game-port 9091
+```
+
+Open the `:9090` URL it prints. The lobby reads the game origin from the URL, so
+pass it explicitly when the ports are not the defaults:
+`http://127.0.0.1:9090/sandbox.html?game=http://127.0.0.1:9091`.
 
 Stop it with Ctrl+C. If a port is already held, the server prints the exact
 command to free it.

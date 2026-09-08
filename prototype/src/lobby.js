@@ -47,6 +47,8 @@ import {
 import { applyPosterFallback } from "./poster-fallback.js";
 import { createTrajectoryTracker } from "./trajectory.js";
 import { createWarmMemory, selectLobbyLoadWarmSet } from "./warm-memory.js";
+import { LaunchPath, createLaunchMetrics } from "./launch-metrics.js";
+import { createRgState } from "./rg-state.js";
 import { warmAssets } from "./warmer.js";
 import { createBrowserConnectionPrewarmer } from "./connection-prewarm.js";
 import { Authorization, createPreinitManager } from "./preinit.js";
@@ -113,6 +115,18 @@ export function startLobby({
   const prewarmConnection = createBrowserConnectionPrewarmer();
   const ledger = createByteLedger({ byteBudget: 96 * 1_048_576 });
   const warmMemory = createWarmMemory();
+  const metrics = createLaunchMetrics();
+  // A session already in progress, so the responsible-gambling figures on the
+  // transition screen are non-trivial. SIMULATED, and labelled as such.
+  const sessionStartedAt = Date.now() - 22 * 60_000;
+  const readRgState = createRgState({
+    read: () => ({
+      sessionStartedAt,
+      stakedMinorUnits: 4_250,
+      returnedMinorUnits: 3_100,
+      limitMinorUnits: 5_000,
+    }),
+  });
 
   const manifests = new Map();
   const connected = new Set();
@@ -409,9 +423,14 @@ export function startLobby({
         prewarmConnection(item.url).catch(() => connected.delete(action.gameId));
         break;
       case SpeculationAction.WARM_BYTES:
+        // Only real spending is a bet on the player's next move. The free rung
+        // is not recorded, or accuracy would be diluted by things that cost
+        // nothing to get wrong.
+        metrics.noteSpeculation(action.gameId, Rung.WARM);
         warmBytes(action.gameId, action.estimatedBytes);
         break;
       case SpeculationAction.PREPARE_ENGINE:
+        metrics.noteSpeculation(action.gameId, Rung.PREINIT);
         ledger.charge(action.gameId, Rung.PREINIT, action.estimatedBytes);
         preinit.prepare(action.gameId, item.url);
         break;
@@ -555,6 +574,49 @@ export function startLobby({
 
   /* -------------------------------- launch ------------------------------ */
 
+  const ms = (value) => (value == null ? "—" : `${Math.round(value)} ms`);
+  const pct = (value) => (value == null ? "—" : `${Math.round(value * 100)}%`);
+
+  /**
+   * The brief's five metrics, computed live.
+   *
+   * Two rules the panel follows. Perceived and real are never merged into one
+   * headline, because the brief asks which gains are which. And a metric that
+   * cannot be computed honestly here says UNKNOWN rather than showing a proxy
+   * that looks like an answer.
+   */
+  function renderMetrics() {
+    const summary = metrics.summary();
+    const target = summary.loaded.p50 != null && summary.loaded.p50 <= 500;
+
+    $("k-p50").textContent = ms(summary.loaded.p50);
+    $("k-p50").dataset.flag = summary.loaded.p50 == null ? "UNKNOWN"
+      : target ? "NORMAL" : "ELEVATED";
+    $("k-p95").textContent = ms(summary.loaded.p95);
+    $("k-p95").dataset.flag = summary.loaded.p95 == null ? "UNKNOWN"
+      : summary.loaded.p95 <= 500 ? "NORMAL" : "ELEVATED";
+    $("k-perceived").textContent =
+      `${ms(summary.perceived.p50)} / ${ms(summary.perceived.p95)}`;
+    $("k-perceived").dataset.flag = summary.perceived.p50 == null ? "UNKNOWN" : "NORMAL";
+
+    $("k-cold").textContent = summary.byPath.COLD.count === 0 ? "—"
+      : `${ms(summary.byPath.COLD.p50)} (n=${summary.byPath.COLD.count})`;
+    $("k-preinit").textContent = summary.byPath.PREINIT.count === 0 ? "—"
+      : `${ms(summary.byPath.PREINIT.p50)} (n=${summary.byPath.PREINIT.count})`;
+    $("k-preinit").dataset.flag = summary.byPath.PREINIT.count === 0 ? "UNKNOWN" : "NORMAL";
+
+    $("k-sampled").textContent = `${summary.gamesSampled} of ${gameCount}`;
+    $("k-accuracy").textContent = summary.prefetch.accuracy == null
+      ? "—"
+      : `${pct(summary.prefetch.accuracy)} `
+        + `(${summary.prefetch.titlesLaunched}/${summary.prefetch.titlesSpeculated})`;
+    $("k-hitrate").textContent = summary.prefetch.hitRate == null
+      ? "—"
+      : `${pct(summary.prefetch.hitRate)} of ${summary.launches - summary.blocked}`;
+    $("k-blocked").textContent = String(summary.blocked);
+    $("k-blocked").dataset.flag = summary.blocked > 0 ? "ELEVATED" : "NORMAL";
+  }
+
   function logRun(item, ms, path, detail) {
     const li = documentImpl.createElement("li");
     const label = documentImpl.createElement("span");
@@ -566,51 +628,133 @@ export function startLobby({
     $("runs").prepend(li);
   }
 
-  function launch(item) {
-    const started = performance.now();
-    // Authorization blocks. It is never raced, cached, or rendered past.
+  /**
+   * Paint the transition screen.
+   *
+   * This is the perceived-load milestone and it is deliberately the very first
+   * thing a click does. A correct, branded, honest screen — the title being
+   * opened and the player's live responsible-gambling state — can be up in a
+   * few milliseconds on any path, cold or warm.
+   *
+   * It shows real state and never a manufactured checkpoint. `CODE.md` forbids
+   * inventing a reality check or an age prompt to fill loading time, and the
+   * distinction matters: this screen exists because the player is owed the
+   * information, not because we need somewhere to hide a wait.
+   */
+  function paintTransition(item) {
+    const overlay = $("transition");
+    const state = readRgState();
+    $("transition-title").textContent = `Opening ${item.title}`;
+    $("transition-status").textContent =
+      `Checking your account, then opening ${item.title}.`;
+    $("rg-duration").textContent = state.sessionDuration;
+    $("rg-net").textContent = state.available ? state.netPosition : "UNKNOWN";
+    $("rg-limit").textContent = state.available ? state.limitRemaining : "UNKNOWN";
+    $("rg-limit").dataset.limit = state.available ? state.limitState : "OK";
+    overlay.hidden = false;
+    return performance.now();
+  }
+
+  function clearTransition() {
+    $("transition").hidden = true;
+  }
+
+  /**
+   * The exclusion-register check.
+   *
+   * It BLOCKS. Nothing is revealed, attached, or optimistically rendered until
+   * it returns, and its latency is inside every number this page reports —
+   * which is the point. A launch path that got fast by racing this check would
+   * be worthless, and the demo slider exists to show that the cost is carried
+   * honestly rather than optimised away.
+   */
+  function checkAuthorization() {
     const decision = authorization();
+    const latency = Number($("auth-latency")?.value ?? 0);
+    return latency > 0
+      ? new Promise((resolve) => globalThis.setTimeout(() => resolve(decision), latency))
+      : Promise.resolve(decision);
+  }
+
+  async function launch(item) {
+    const started = performance.now();
+    // Perceived first: a correct screen before any decision is made.
+    paintTransition(item);
+    const perceivedMs = Math.round(performance.now() - started);
+    globalThis.__PERCEIVED_MS__ = perceivedMs;
 
     if (retentionTimer != null) {
       globalThis.clearTimeout(retentionTimer);
       retentionTimer = null;
     }
 
+    const decision = await checkAuthorization();
+
     const revealed = preinit.reveal({ authorization: decision, expectGameId: item.id });
     if (revealed.revealed) {
       const ms = Math.round(performance.now() - started);
+      clearTransition();
       globalThis.__LAUNCH_MS__ = ms;
       globalThis.__LAUNCH_PATH__ = "PREINIT";
+      // A pre-initialised frame finished loading during browse, so the launch
+      // is complete the moment it is revealed.
+      metrics.settle(
+        metrics.record({ gameId: item.id, path: LaunchPath.PREINIT, perceivedMs }),
+        ms,
+      );
       $("status").textContent =
         `${item.title}: revealed a pre-initialised engine in ${ms} ms. `
         + "It was built while you were browsing.";
       logRun(item, ms, "PRE-INITIALISED",
-        "engine built during browse; reveal is a style change");
+        `perceived ${perceivedMs} ms; engine built during browse, reveal is a style change`);
       afterLaunch(item);
       return;
     }
 
     if (decision !== Authorization.GRANTED) {
+      // Fail closed, and say so on the screen the player is already looking at.
+      $("transition-status").textContent =
+        `${item.title} was not opened. The exclusion-register check did not `
+        + "grant authorization, so nothing was started.";
       globalThis.__LAUNCH_PATH__ = "BLOCKED";
-      $("status").textContent =
-        `${item.title}: blocked. The exclusion-register check did not grant `
-        + "authorization, so nothing was started.";
+      metrics.record({ gameId: item.id, path: LaunchPath.BLOCKED, perceivedMs });
+      $("status").textContent = `${item.title}: blocked by the authorization check.`;
+      renderMetrics();
       return;
     }
 
     // Cold path. The frame is attached immediately rather than after a wait, so
     // the player sees the game's own preloader instead of a blank panel.
+    const wasWarm = warmed.has(item.id);
+    const path = wasWarm ? LaunchPath.WARM : LaunchPath.COLD;
+    const launchId = metrics.record({ gameId: item.id, path, perceivedMs });
+
     const frame = documentImpl.createElement("iframe");
     frame.id = "game";
     frame.title = `${item.title} (sandbox)`;
+    // The launch is not finished when the frame is attached — that takes about
+    // three milliseconds and the engine then loads for seconds. It is finished
+    // when the frame says so.
+    frame.addEventListener("load", () => {
+      const loadedMs = Math.round(performance.now() - started);
+      if (!metrics.settle(launchId, loadedMs)) return;
+      globalThis.__LAUNCH_MS__ = loadedMs;
+      logRun(item, loadedMs, wasWarm ? "WARM BYTES" : "COLD",
+        `perceived ${perceivedMs} ms; frame loaded, engine started on the click`);
+      $("status").textContent =
+        `${item.title}: ${wasWarm ? "warmed" : "cold"} launch, frame loaded in `
+        + `${loadedMs} ms. This is the baseline the ladder has to beat.`;
+      renderMetrics();
+    }, { once: true });
     frame.src = item.url;
     $("frame-host").replaceChildren(frame);
-    const ms = Math.round(performance.now() - started);
-    globalThis.__LAUNCH_MS__ = ms;
-    globalThis.__LAUNCH_PATH__ = "COLD";
+
+    const attachedMs = Math.round(performance.now() - started);
+    clearTransition();
+    globalThis.__LAUNCH_PATH__ = path;
     $("status").textContent =
-      `${item.title}: cold launch (${revealed.reason}). Loading — this is the baseline.`;
-    logRun(item, ms, "COLD", `${revealed.reason}; the engine starts now, on the click`);
+      `${item.title}: ${wasWarm ? "warmed" : "cold"} launch (${revealed.reason}). `
+      + `Frame attached in ${attachedMs} ms; the engine is loading now.`;
     afterLaunch(item);
   }
 
@@ -619,6 +763,7 @@ export function startLobby({
     committed = null;
     predicted = null;
     $("exit").hidden = false;
+    renderMetrics();
     renderRails();
   }
 
@@ -754,6 +899,7 @@ export function startLobby({
   }
 
   renderRails();
+  renderMetrics();
   preconnectAtPaint();
   attachTrajectory();
   attachViewportDwell();
@@ -773,12 +919,24 @@ export function startLobby({
     committed = null;
     predicted = null;
     ledger.reset();
+    metrics.reset();
+    $("runs").replaceChildren();
+    renderMetrics();
+    clearTransition();
     $("status").textContent = "Reset. Anything already in the browser cache stays cached.";
     tick();
   });
   $("overlay").addEventListener("change", (event) => {
     documentImpl.body.dataset.overlay = event.target.checked ? "on" : "off";
   });
+  const latencyControl = $("auth-latency");
+  if (latencyControl != null) {
+    const showLatency = () => {
+      $("auth-latency-out").textContent = `${latencyControl.value} ms`;
+    };
+    latencyControl.addEventListener("input", showLatency);
+    showLatency();
+  }
 
   documentImpl.addEventListener("visibilitychange", () => {
     if (documentImpl.visibilityState !== "visible") abortAllWarming("the page was hidden");
@@ -808,6 +966,7 @@ export function startLobby({
     bytesUsed: ledger.bytesUsed(),
     preinit: preinit.getState(),
     device,
+    metrics: metrics.summary(),
   });
 
   return Object.freeze({ tick, launch, catalogue });

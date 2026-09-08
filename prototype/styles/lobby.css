@@ -426,3 +426,62 @@ details.operator p { margin: 8px 0; }
 /* Not an error: the lobby is fine, there is simply no package behind it. */
 .boot-warning { border-color: #7a5c14; background: #1e1a10; }
 .boot-warning strong { color: #ffd479; }
+
+/* ------------------------------ transition ------------------------------ */
+
+.transition {
+  position: fixed; inset: 0; z-index: 90;
+  display: grid; place-items: center;
+  padding: 20px;
+  background: rgb(8 8 12 / 88%);
+  backdrop-filter: blur(3px);
+}
+
+.transition[hidden] { display: none; }
+
+.transition-card {
+  width: min(460px, 100%);
+  padding: 22px 24px;
+  border: 1px solid var(--surface-panel);
+  border-radius: 14px;
+  background: var(--surface-primary);
+}
+
+.transition-card .eyebrow {
+  margin: 0; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--content-tertiary);
+}
+
+.transition-card h2 { margin: 4px 0 8px; font-size: 20px; }
+
+.transition-card #transition-status {
+  margin: 0 0 16px; font-size: 13px; color: var(--content-secondary);
+}
+
+.rg-state { display: grid; gap: 8px; margin: 0 0 14px; }
+
+.rg-state > div {
+  display: flex; justify-content: space-between; gap: 12px;
+  padding: 8px 10px; border-radius: 8px; background: var(--surface-secondary);
+  font-size: 13px;
+}
+
+.rg-state dt { color: var(--content-tertiary); }
+.rg-state dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.rg-state dd[data-limit="NEAR_LIMIT"] { color: #ffd479; }
+.rg-state dd[data-limit="REACHED"] { color: #ff9d8a; }
+
+.transition-card .empty-state {
+  margin: 0; font-size: 11px; line-height: 1.5; color: var(--content-tertiary);
+}
+
+.metrics dt small {
+  display: block; font-weight: 400; text-transform: none; letter-spacing: 0;
+  color: var(--content-tertiary); font-size: 10px;
+}
+
+.toggles output { font-size: 11px; color: var(--content-tertiary); }
+
+@media (prefers-reduced-motion: reduce) {
+  .transition { backdrop-filter: none; }
+}
