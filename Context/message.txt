@@ -9,17 +9,17 @@
 
 We didn't start by designing a caching system. We started by measuring what already happens when a player loads the same game twice.
 
-Same title, same session, cold versus warm, captured as HAR:
+Same title, historical cold versus repeat state, captured in independent HARs:
 
 | | Cold | Warm |
 |---|---|---|
 | Final exact 16-request asset-batch completion from capture start | 35.568s | **6.714s** |
-| Bytes transferred | 16.6 MB | **12 KB** |
-| Requests served from cache | 15 / 150 | **139 / 149** |
+| Full-capture wire bytes | 16.6 MB | **12 KB** |
+| Parser cache classification | 27 confirmed hits / 148 misses / 2 unknown (177 requests) | **140 confirmed hits / 14 misses / 1 unknown (155 requests)** |
 
 The warm capture shows a large repeat-state opportunity using the browser's own HTTP cache. The timing above is an exact HAR asset-batch completion milestone, not click-to-interactive: neither capture contains an authoritative input-accepted signal. Our proposal is to create eligible warm state *before* the player clicks, then prove causality in an isolated staging control/treatment run when staging becomes available.
 
-We're not guessing at the size of the problem, either. FEG's own web-platform telemetry shows **25–31 seconds** as the average time to first game launched, consistently across 12 months — not the 6–8s the brief opens with. Our own HAR capture (29–35s) and a static analysis of a real certified bundle both independently land in the same range. Three sources agree the real number is worse than the stated baseline. We'll show all of this and ask which number we're being judged against.
+We're not guessing at the size of the problem, either. FEG's own web-platform telemetry shows **25–31 seconds** as the average time to first game launched, consistently across 12 months — not the 6–8s the brief opens with. Our historical HAR's exact final asset-batch milestone was 35.568s from capture start, while static bundle inspection shows a large staged asset surface. These observations are directionally consistent with the telemetry but do not share an authoritative click-to-interactive definition. We'll show all of this and ask which number we're being judged against.
 
 ---
 
@@ -36,7 +36,7 @@ We captured the full request waterfall for a real game launch (SavannaSunriseDel
 | Static asset burst (textures, audio, fonts) | ~15–20s | Yes — this is 60%+ of the total |
 | Exclusion/age verification | **unmeasured** — every capture so far is anonymous demo mode | Partially — see §3 |
 
-The asset burst is the dominant cost, and it's the most cacheable part of the whole path. A separate static analysis of a certified SDK bundle (Empire of Gold, provider Spiniq) confirms why: **zero anti-tamper, zero automation detection, content-hashed and stable JS filenames, standard cache-friendly headers.** Nothing about this bundle resists caching. The game loads in five staged tiers — PRELOADER → COMMON → SPLASH → PRIMARY (the ~15–20MB wall) → SECONDARY (lazy, backgroundable) — which gives us a concrete priority order to warm rather than one undifferentiated blob.
+The historical asset burst is the largest observed launch-network phase. Separate static inspection of the supplied Empire of Gold bundle found content-hashed JavaScript, ordinary browser loading, and five staged tiers—PRELOADER → COMMON → SPLASH → PRIMARY → SECONDARY. Those **STATICALLY-INFERRED** findings define candidate priority, but they do not establish production cacheability, CORS, response headers, or a critical PRIMARY subset. SECONDARY is never proactively warmed.
 
 ---
 
@@ -45,6 +45,10 @@ The asset burst is the dominant cost, and it's the most cacheable part of the wh
 The platform here is web, on every device including mobile — we have no native app in scope, and no access to build one even if we wanted to. That simplifies the mechanism considerably compared to a native interception layer: there's no `WebViewClient` to hook, no VRAM/GL-context invariant to enforce at the OS level. The browser's own HTTP cache is the entire caching primitive, and our job is triggering it early.
 
 ```
+       [ Exclusion authorization has succeeded ]
+                          |
+       denial / timeout / malformed / unknown => no warming
+                          |
         [ Player browsing lobby / has game open ]
                           |
               Resource Governor (JS, browser-native)
@@ -52,27 +56,25 @@ The platform here is web, on every device including mobile — we have no native
                           |
         Prefetch trigger: hover/dwell (150ms+) or drawer-open
                           |
-     fetch(url, {mode:'no-cors'}) / <link rel="prefetch">
-     against the target game's PRELOADER + COMMON + PRIMARY assets
+     credential-free fetch of exact PRELOADER + COMMON + SPLASH URLs
+     plus only a proven critical PRIMARY subset; never SECONDARY
                           |
      Resolution & locale resolved BEFORE prefetch fires — not after
                           |
               [ Player taps to switch/launch ]
                           |
-     preconnect/dns-prefetch already warmed the session endpoint
-                          |
      Neutral transition screen, carrying live RG state
                           |
-     Game iframe loads — requests same URLs already in HTTP cache
+     Game iframe requests exact URLs; actual reuse is measured later
                           |
-     Screen clears only when the spin control accepts input
+     Screen clears as interactive only on an authoritative signal
 ```
 
 **The load-bearing browser mechanism is parent-to-iframe HTTP-cache reuse.** We verified it locally in Chromium with an exact synthetic URL and one private-bundle fixture: the parent fetched first, the iframe later received the object with zero origin response-body bytes and a browser cache marker. Exact staging behavior remains **UNKNOWN** because response policy, request semantics, redirects, and browser cache partitioning can differ. A mapped `.test` top-level partition diagnostic in the local Chromium build still reused the entry, so no universal partition claim is made.
 
 ### 2.1 Prefetch target: the game the player hasn't opened, not their favourite
 
-Prefetching a player's favourite title is nearly free to predict and nearly worthless to do — that title's assets are already warm from repeat play. We prefetch the highest-ranked title the player has **not** launched recently, because that's the expensive cold start, and it's exactly the discovery problem the brief names directly.
+**HYPOTHESIS:** an unplayed-title policy may save more transfer per successful prediction than a favourite-title policy because favourites may already be warm. The predictor affects speculative requests only; it never changes the player-visible catalogue. During the outage, this comparison is synthetic and labelled `SIMULATED`.
 
 We don't have to guess at the shape of this distribution. Two independent real sources agree:
 
@@ -81,11 +83,11 @@ We don't have to guess at the shape of this distribution. Two independent real s
 
 And provider concentration answers the "is 5-provider integration realistic" question directly: **top 5 providers = 69.8% of stake, top 10 = 90.9%.** Five providers is a tractable integration surface, not a guess.
 
-**One number we report knowing it looks worse, on purpose — and we demo it live, not just claim it.** We implement both policies, not just the one we recommend: favourite-title prefetch and unplayed-title prefetch run side by side behind a toggle in the demo. Prefetching a favourite gets a high hit rate and saves almost no time, because the asset was already warm. Prefetching the top unplayed title gets a lower hit rate and saves several times more time per hit, because that's the genuinely cold path. A judge can flip the toggle and watch both run against the same catalogue in real time — the comparison table below isn't an argument, it's what the toggle shows.
+The local demo may expose an operator-only toggle between favourite-title and unplayed-title speculative policies. Its outcomes remain `SIMULATED`; no real hit-rate or time-saved comparison is claimed until isolated approved-environment runs exist. The toggle never changes catalogue order, styling, focus, or recommendations.
 
-### 2.2 Timing anchor: the login window, not a manufactured pause
+### 2.2 Timing anchor: authorized lobby idle time, not a manufactured pause
 
-The first prefetch fires during login/verification — several seconds of mandated, unavoidable dead time where the network is idle anyway. We overlay onto checkpoints that already exist. We do not invent a checkpoint to fill time — see §3 for exactly where we drew that line and why.
+No asset warming runs during or before exclusion authorization. Only after authorization has succeeded may an eligible hover/dwell or drawer-open trigger begin bounded speculative requests. Denial, timeout, malformed response, or unknown state fails closed. We do not invent a checkpoint to fill time.
 
 ### 2.3 Resolution and locale — the two failure modes the bundle analysis actually found
 
@@ -128,25 +130,25 @@ Session-to-game conversion on web sits at 42–54% — nearly half of sessions e
 
 ## 5. Scope note: web is what we have access to, not the whole picture
 
-Real usage telemetry we've seen shows the large majority of actual game launches happen on a platform we don't have access to build for or test against in this challenge. Our solution targets the web/mobile-web surface, because that's what the provided SDK and staging environment support. The underlying mechanism — warming the browser's own HTTP cache against stable, content-hashed asset URLs — is standard HTTP behavior, not something bespoke to a browser tab, so it should carry over cleanly to any client built as a WebView around the same web content. Where that's not the architecture, it doesn't transfer, and we'd rather say that plainly than imply a claim we haven't verified.
+Real usage telemetry shows that many launches occur on a native-labelled platform we cannot build for or test in this challenge. This solution is strictly web/mobile-web. Transfer to WebViews or native clients is **UNKNOWN** and out of scope, regardless of whether they render similar web content.
 
 ---
 
 ## 6. Failure modes
 
-**Same-title, different-provider generalization is unverified beyond one provider.** The zero-anti-tamper finding is confirmed for one SDK bundle (Spiniq/Empire of Gold). We do not yet know if this holds across the other 41 providers in the catalogue. We're capturing cold/warm pairs against titles from the top three providers by stake volume tonight, using the same public demo mechanism that produced the SavannaSunriseDeluxe result, to turn "verified on one" into a real small sample before we ever reach staging.
+**Same-title, different-provider generalization is unverified beyond one provider.** Static findings are scoped to the supplied Spiniq/Empire of Gold build. Additional provider capture is deferred until an organiser-approved environment is available; production traffic is not an outage substitute.
 
 **Coverage is per-provider, not platform-wide.** Expect high hit rates on the providers we've actually tested and unknown behavior elsewhere. Any catalogue-wide number we show will be scoped to what we've verified, not extrapolated.
 
 **Orphaned sessions and timeout handling.** If the session handshake succeeds server-side but the client never receives it, we need an explicit close-on-abort and idempotency keys so a retry can't double-open a session. If a switch attempt times out, the transition screen degrades to a truthful progress state, and past a hard limit, rolls back to the previous game — never a "ready" state before input is actually live.
 
-**Poor network conditions.** Static assets are protected by the cache; the session handshake is not. Connection pre-warming, request hedging, and a defined degradation ladder (extend the honest progress state rather than fake instant) cover this.
+**Poor network conditions.** Eligible static assets may benefit from the cache; the session handshake is not cached. Conservative connection hints are separately gated and their causal benefit is `UNKNOWN`. The degradation ladder extends an honest progress state and then rolls back; it never races or hedges mandatory authorization/session calls.
 
 ---
 
 ## 7. What we'll show
 
-Two arms, side by side, on real devices: our mechanism versus the same experience with prefetching disabled. Cold run and warm run, both measured to the same definition — the moment the spin control accepts input, not first paint. A live overlay of the network waterfall and cache-hit status, because "instrumented, not slideware" is the brief's own phrase and we intend to earn it. A live toggle between favourite-prefetch and unplayed-prefetch policies, so the hit-rate/seconds-saved trade-off in §2.1 is something a judge watches happen, not a table they take on faith. One deliberate failure — a network cut mid-switch — showing clean rollback rather than a frozen or dead UI.
+During the outage, we show a clearly `SIMULATED` local control/treatment flow, truthful state transitions, an operator-only policy toggle, and a deliberate failure with clean rollback. Separately, we show the measured historical HAR opportunity and measured local one-object cache-reuse diagnostic without presenting either as prototype-caused launch improvement. Real-device control/treatment runs to an authoritative input-accepted signal remain a later staging gate.
 
 Every number on screen will be labelled as measured, simulated, or provided-by-FEG. Where we don't know something — the exclusion-register latency, cross-provider generalization — we'll say so rather than paper over it.
 
@@ -167,4 +169,4 @@ Modifying provider code is out of scope, and that's where this stops. The static
 
 ---
 
-*Every figure in this document is either independently measured (cited to its source above), drawn from FEG-provided data, or explicitly labelled as a target pending further verification. Nothing here is presented as measured unless it was.*
+*Figures must retain their evidence labels: `MEASURED`, `FEG-PROVIDED`, `STATICALLY-INFERRED`, `SIMULATED`, or `UNKNOWN`. Historical HAR milestones, local diagnostics, and future causal targets are not interchangeable.*

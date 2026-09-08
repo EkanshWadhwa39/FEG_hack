@@ -100,7 +100,7 @@ The staging URL is unavailable because of a technical issue and will not be acce
 | Business impact | 30% | 12 months of PSK telemetry, 4.2M stake rows, 13,682 launch events — the discovery-suppression story is **measured**, not assumed. Session-to-game conversion 42–54% → targeting +15–25 pp. Cost: zero server-side changes, no CDN reconfiguration. |
 | Customer experience | 20% | Switch = neutral transition, not white-flash page load. Splash appears instantly from cache. GPU upload continues in background while user sees animated splash. |
 | Originality | 15% | "Warm state before click, not after" — not in the brief's suggested list. Unplayed-title prefetch vs favourite — the counterintuitive demo is a live toggle, not a slide. |
-| Technical feasibility | 15% | Browser-native. ~900 LOC. No server. No native app required. Same-site cache partitioning verified. |
+| Technical feasibility | 15% | Browser-native and dependency-light. No native app required. Parent-to-iframe reuse is measured only in the local diagnostic; target-environment cache/CORS/partition behavior remains UNKNOWN. |
 | Product thinking | 10% | Single JS module the platform team drops into the lobby page. Manifest auto-generation from any bundle (bundles already analysed). 5 providers = 69.8% of stake — tractable integration surface. |
 | Compliance by design | 10% | Croatian law, not generic EU baseline. RG-interstitial-as-mask explicitly rejected with rationale. Exclusion register committed in writing to never optimize. Predictor never reaches UI. Counter-metrics + kill criterion. |
 
