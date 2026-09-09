@@ -33,6 +33,7 @@ import time
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import ClassVar
 from urllib.parse import unquote, urlparse
 
 # Matches /game/{slot-tag} at the start of a URL path.  The slot tag may
@@ -57,7 +58,7 @@ class SandboxHandler(SimpleHTTPRequestHandler):
     # URLs that were speculatively prefetched this session.  Iframe requests
     # for these paths skip throttle so warm launches stay at ~0.5s while cold
     # launches (never prefetched) remain throttled at the configured rate.
-    _warmed_urls: set[str] = set()
+    _warmed_urls: ClassVar[set[str]] = set()
 
     def __init__(self, *args, directory: str, throttle_kbps: int = 0,
                  game_directory: str | None = None, **kwargs):
@@ -113,9 +114,8 @@ class SandboxHandler(SimpleHTTPRequestHandler):
             except (BrokenPipeError, ConnectionResetError):
                 return
         else:
-            # Cold game: browser opens ~6 connections vs prefetch's 2, so
-            # divide by 3 to land at ~8-9s for 29 MB cold launch
-            rate_kbps = max(1, self._throttle_kbps // 3)
+            # Cold game: slight reduction from prefetch rate for ~3-4s cold
+            rate_kbps = max(1, int(self._throttle_kbps / 1.2))
 
         chunk = 16 * 1024
         per_chunk = chunk / (rate_kbps * 1024 / 8)

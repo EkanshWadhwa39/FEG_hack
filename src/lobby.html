@@ -890,7 +890,7 @@
       <label class="toggle-wrap" for="prefetch-toggle">
         <input type="checkbox" id="prefetch-toggle" checked aria-describedby="toggle-desc">
         <span class="toggle-label-text">
-          <span><strong>Prefetch Mode</strong>: <span id="toggle-state-badge" class="state-badge warm-state">WARM TREATMENT</span></span>
+          <span><strong>Prefetch Mode</strong>: <span id="toggle-state-badge" class="state-badge warm-state">PRIME TREATMENT</span></span>
           <small id="toggle-desc">Uncheck for Cold Baseline (0 speculative requests; clicks launch cold)</small>
         </span>
       </label>
@@ -907,7 +907,7 @@
 
       <div class="toolbar-chips">
         <div class="metric-chip">
-          <span class="chip-label">Warmed:</span>
+          <span class="chip-label">Primed:</span>
           <span><strong id="stat-warm">0</strong>/20</span>
           <span class="label measured">MEASURED</span>
         </div>
@@ -967,7 +967,7 @@
     <div class="toolbar-subline">
       <span class="status-indicator-dot"></span>
       <span id="manifest-msg" class="manifest-msg-text">
-        Ready. Auto-warming Game 1… Hover cards 2–20 to prefetch on demand.
+        Ready. Auto-priming Game 1… Hover cards 2–20 to prefetch on demand.
       </span>
     </div>
   </section>
@@ -1003,7 +1003,7 @@
         <div class="launch-title-block">
           <span class="launch-spinner" id="launch-spinner" aria-hidden="true"></span>
           <strong id="launch-status-title">Launching game viewport…</strong>
-          <span id="launch-arm-badge" class="badge-arm warm">WARM TREATMENT</span>
+          <span id="launch-arm-badge" class="badge-arm warm">PRIME TREATMENT</span>
         </div>
         <div class="launch-clock-block">
           <span class="clock-label">Elapsed:</span>
@@ -1018,7 +1018,7 @@
       </p>
 
       <div class="launch-meta-row">
-        <span class="stat-pill">Cache state: <strong id="launch-cache-state">WARM (Cache primed)</strong></span>
+        <span class="stat-pill">Cache state: <strong id="launch-cache-state">PRIMED (Cache primed)</strong></span>
         <span class="stat-pill">Measured load: <strong id="launch-timing-precise">0 ms</strong></span>
         <span class="stat-pill">Readiness: <strong id="launch-readiness-label">IFRAME MOUNTING</strong></span>
       </div>
@@ -1073,20 +1073,20 @@ const GAMES = [
   { id:  3, name: 'Empire of Gold: Platinum', emoji: '⚡', motif: 'platinum',  blurb: 'Platinum skin on the same engine. Locale and resolution are resolved before any speculative cache request.' },
   { id:  4, name: 'Crown & Fortune',           emoji: '👑', motif: 'crown',     blurb: 'Crown-table slot. Common panel CSS and bitmap fonts sit in the shared startup manifest.' },
   { id:  5, name: 'Aztec Riches',              emoji: '🌞', motif: 'aztec',     blurb: 'Sun-temple five-reel game. Hover dwell streams preloader, common, and splash only — never secondary bonus scenes.' },
-  { id:  6, name: 'Golden Pharaoh',            emoji: '🔱', motif: 'pharaoh',   blurb: 'Nile-court slot. Startup stops at the green play button; later spine scenes stay off the warm list.' },
+  { id:  6, name: 'Golden Pharaoh',            emoji: '🔱', motif: 'pharaoh',   blurb: 'Nile-court slot. Startup stops at the green play button; later spine scenes stay off the prime list.' },
   { id:  7, name: 'Dynasty of Wealth',         emoji: '🐉', motif: 'dynasty',   blurb: 'East-court reel game. Pixi vendor plus core-engine are the heavy preloader pair on a cold launch.' },
   { id:  8, name: 'El Dorado Quest',           emoji: '🗺️', motif: 'quest',     blurb: 'Map-trail slot. Critical primary textures are the proven subset; scatter and chest packs are excluded.' },
   { id:  9, name: 'Treasure Kingdom',          emoji: '💎', motif: 'treasure',  blurb: 'Vault-theme five-reeler. Isolated cache namespace per slot so a cold title cannot reuse another card’s keys.' },
   { id: 10, name: 'Gold Rush Fever',           emoji: '⛏️', motif: 'rush',      blurb: 'Prospecting reel set. Reading this blurb is perceived wait; the wire transfer is a separate MEASURED path.' },
   { id: 11, name: 'King Midas Touch',          emoji: '🤴', motif: 'midas',     blurb: 'Midas-court slot. King character and reel-frame spines sit in the critical primary subset.' },
-  { id: 12, name: 'Royal Vault',               emoji: '🏦', motif: 'vault',     blurb: 'Lock-and-reel game. Control-panel and symbol atlases are warmed; runtime big-win movies are not.' },
+  { id: 12, name: 'Royal Vault',               emoji: '🏦', motif: 'vault',     blurb: 'Lock-and-reel game. Control-panel and symbol atlases are primed; runtime big-win movies are not.' },
   { id: 13, name: "Fortune's Empire",          emoji: '🎰', motif: 'fortune',   blurb: 'Classic reel layout. Sound beds in the primary set include the generic button cue and base-game music file.' },
   { id: 14, name: 'Golden Dragon Rise',        emoji: '🐲', motif: 'dragon',    blurb: 'Dragon-rise five-reeler. Same 58-asset critical list as the other slots in this sandbox catalogue.' },
   { id: 15, name: 'Colosseum of Gold',         emoji: '🏟️', motif: 'colosseum', blurb: 'Arena-theme slot. Splash background and loader animation are the first painted frames after iframe mount.' },
   { id: 16, name: 'Ancient Treasures',         emoji: '🏺', motif: 'ancient',   blurb: 'Relic-trail game. English locale packs are fixed before prefetch so the wrong language set is never cached.' },
-  { id: 17, name: 'Jewels of the Nile',        emoji: '💍', motif: 'nile',      blurb: 'Jewel-grid slot. @1x texture tier is selected from the lobby viewport before any warm request fires.' },
+  { id: 17, name: 'Jewels of the Nile',        emoji: '💍', motif: 'nile',      blurb: 'Jewel-grid slot. @1x texture tier is selected from the lobby viewport before any prime request fires.' },
   { id: 18, name: 'Pyramid of Riches',         emoji: '🔺', motif: 'pyramid',   blurb: 'Pyramid five-reeler. Prefetch concurrency stays at two so the lobby thread is not crowded.' },
-  { id: 19, name: 'Sultans of Slots',          emoji: '🕌', motif: 'sultan',    blurb: 'Court-and-dome reel game. Hover starts the warm after 150 ms; leaving the tile cancels in-flight work.' },
+  { id: 19, name: 'Sultans of Slots',          emoji: '🕌', motif: 'sultan',    blurb: 'Court-and-dome reel game. Hover starts the prime after 150 ms; leaving the tile cancels in-flight work.' },
   { id: 20, name: 'Empire Strike Gold',        emoji: '⭐', motif: 'strike',    blurb: 'Strike variant of the empire set. Cold baseline is the unprimed 28.9 MB startup batch on this title.' },
 ];
 
@@ -1392,7 +1392,7 @@ async function requestSlotAsset(slotId, url, opts = {}) {
 async function warmCard(id, signal) {
   const initialGov = evaluateGovernor(0);
   if (!initialGov.allowed) {
-    if (manifestMsg) manifestMsg.textContent = `Warming card ${id} blocked by Governor: ${initialGov.reason}`;
+    if (manifestMsg) manifestMsg.textContent = `Priming card ${id} blocked by Governor: ${initialGov.reason}`;
     setCardState(id, 'cold');
     updateTelemetry();
     return;
@@ -1467,7 +1467,7 @@ function setCardState(id, state, meta, pct) {
   switch (state) {
     case 'warm':
       badge.className = 'card-badge badge-warm';
-      badge.textContent = 'WARM';
+      badge.textContent = 'PRIMED';
       if (bar) bar.style.width = '100%';
       if (timing) {
         timing.className = 'card-time warm-time';
@@ -1667,14 +1667,14 @@ function launchGame(game) {
 
   if (p >= 0.95) {
     armBadge.className = 'badge-arm warm';
-    armBadge.textContent = 'WARM TREATMENT (100% CACHED)';
-    cacheStateEl.innerHTML = '<span style="color:var(--ok)">WARM</span> (100% Primed)';
+    armBadge.textContent = 'PRIME TREATMENT (100% CACHED)';
+    cacheStateEl.innerHTML = '<span style="color:var(--ok)">PRIMED</span> (100% Primed)';
     readinessLabel.textContent = `EST. ~${WARM_ETA_S.toFixed(1)} s TO PLAY (MEASURED)`;
     readinessLabel.style.color = 'var(--ok)';
     statusMsg.innerHTML = 'Mounting game viewport — streaming all 58 startup assets from browser disk cache (0 wire transfer). Green "Play game" button ready in <strong>~3.5s</strong>.';
   } else if (p >= 0.05) {
     armBadge.className = 'badge-arm partial';
-    armBadge.textContent = `PARTIALLY WARMED (${pct}% CACHED)`;
+    armBadge.textContent = `PARTIALLY PRIMED (${pct}% CACHED)`;
     cacheStateEl.innerHTML = `<span style="color:var(--warn)">PARTIAL (${pct}% Primed)</span>`;
     readinessLabel.textContent = `EST. ~${eta.toFixed(1)} s TO PLAY (DESCENDED)`;
     readinessLabel.style.color = 'var(--warn)';
@@ -1912,8 +1912,8 @@ prefetchToggle.addEventListener('change', (e) => {
   const enabled = e.target.checked;
   if (enabled) {
     toggleBadge.className = 'state-badge warm-state';
-    toggleBadge.textContent = 'WARM TREATMENT';
-    manifestMsg.textContent = 'Prefetch enabled. Hover any card to warm on demand.';
+    toggleBadge.textContent = 'PRIME TREATMENT';
+    manifestMsg.textContent = 'Prefetch enabled. Hover any card to prime on demand.';
     // Re-trigger auto-warm for top-N games that didn't finish warming
     autoWarmTopGames();
   } else {
@@ -1966,7 +1966,7 @@ function autoWarmTopGames() {
       if (document.querySelector(`[data-game-id="${g.id}"]`)?.dataset.state === 'warm') continue;
       const gov = evaluateGovernor(BASE_MANIFEST[0]?.estimatedBytes || 0);
       if (!gov.allowed) {
-        if (manifestMsg) manifestMsg.textContent = `Auto-warm for card ${g.id} halted by Governor: ${gov.reason}`;
+        if (manifestMsg) manifestMsg.textContent = `Auto-prime for card ${g.id} halted by Governor: ${gov.reason}`;
         break;
       }
       currentPrefetchCtrl = new AbortController();
@@ -1977,7 +1977,7 @@ function autoWarmTopGames() {
       }
     }
     if (prefetchToggle.checked) {
-      manifestMsg.textContent = `${BASE_MANIFEST.length} assets · Game 1 warm · hover cards 2–20 to prefetch.`;
+      manifestMsg.textContent = `${BASE_MANIFEST.length} assets · Game 1 primed · hover cards 2–20 to prefetch.`;
     }
     updateTelemetry();
   })();
