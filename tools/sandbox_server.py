@@ -187,7 +187,7 @@ def main() -> None:
     args = parser.parse_args()
 
     root = Path(__file__).resolve().parent.parent
-    lobby_dir = root / "src"
+    lobby_dir = (root / "src") if (root / "src" / "lobby.html").exists() else (root / "prototype")
     game_dir = resolve_bundle(args.bundle.expanduser().resolve())
 
     serve(lobby_dir, args.lobby_port, args.throttle_kbps, args.host, game_dir)
