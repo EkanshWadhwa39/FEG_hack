@@ -42,6 +42,24 @@ The lobby serves 20 catalogue slots from one supplied game bundle under distinct
 
 ---
 
+## Technology Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | Vanilla ES modules (zero build step, zero framework) |
+| Sandbox server | Python 3.11+ (`http.server`, threading) |
+| Tests | Python `pytest` (50 tests), browser-native `assert` (136 tests) |
+| Linting | `ruff` (Python), `eslint` (JS) |
+| Runtime dependencies | **None** — no npm packages, no pip packages in production |
+
+## Environment Variables
+
+This project requires **no secrets, API keys, or environment variables**. All configuration is passed via CLI flags to the sandbox server. See `.env.example` for details.
+
+The only optional env var is `SANDBOX_VERBOSE=1` to enable request logging on the sandbox server.
+
+---
+
 ## Quick Start
 
 ### Prerequisites
@@ -130,6 +148,18 @@ tools/                       Sandbox server + evidence utilities
 2. **Production on localhost.** The sandbox server replicates the real two-origin topology, CDN headers, and network conditions entirely on one machine. Anyone can see — and measure — the cold-vs-warm contrast without staging access.
 
 3. **Zero runtime dependencies.** Vanilla ES modules, no framework, no build step, no service worker. Nothing to break, nothing to maintain, nothing to update.
+
+---
+
+## Known Limitations & Future Improvements
+
+| Limitation | Reason | Path Forward |
+|---|---|---|
+| Single game bundle | Only one bundle was provided for the hackathon | Manifest generation from asset pipeline for all games |
+| Hardcoded locale/tier (`en`/`@1x`) | Demo scope — manifest structure supports dynamic resolution | Integrate with real locale/tier detection |
+| No real authorization gate | `sandbox.js` is an integration seam, not a real auth check | Connect to production exclusion-register |
+| No CDN edge caching | Cannot simulate edge nodes on localhost | Staging validation with real CDN |
+| Conversion/revenue uplift not claimed | Requires production A/B testing | Deploy and measure with real player traffic |
 
 ---
 

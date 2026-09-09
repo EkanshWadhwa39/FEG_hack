@@ -61,5 +61,8 @@ CLAUDE.md
 # Bulk hackathon asset bundle (3.9GB uncompressed) — never commit
 /assets.zip
 /assets/
+/empireofgold/
 *.zip
 *.png
+# Allow demo screenshots
+!demo/screenshots/*.png
