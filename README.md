@@ -17,17 +17,81 @@ A web-only, browser-native prototype and evidence toolkit for testing whether th
 
 ## Setup
 
+### Prerequisites (all platforms)
+
+- **Python 3.11+** (3.13 recommended). The throttled sandbox server relies on a
+  high-resolution `time.sleep`, which CPython ships on Windows only from 3.11.
+- **Node.js 18+**.
+- For the cold-vs-warm demo: a **Chromium-based browser** (Chrome, Edge, Brave).
+  Firefox and Safari partition the HTTP cache per top-level origin, so the
+  parent-origin warm is not visible to the cross-origin game iframe there.
+
+### macOS / Linux
+
 ```bash
-./scripts/bootstrap.sh
-./scripts/check.sh
-./scripts/serve.sh
+./scripts/bootstrap.sh    # .venv + Python deps + npm ci
+./scripts/check.sh        # tests + lint  (needs shellcheck: brew install shellcheck | apt install shellcheck)
+./scripts/serve.sh        # plain scaffold on http://127.0.0.1:8090
 ```
 
-Then open `http://127.0.0.1:8080` through your browser/port forwarding.
+### Windows
 
-The current browser page is deliberately a **SIMULATED scaffold**. It makes no provider requests and proves no production cache behavior yet. The staging URL is unavailable during the hackathon; this build remains environment-neutral so it can undergo controlled sandbox validation when staging is introduced later.
+`scripts/*.sh` are bash-only and assume a POSIX venv layout (`.venv/bin`,
+`python3`, `shellcheck`). Either run them from **Git Bash / WSL** unchanged, or
+set up natively in PowerShell:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python -m pip install --upgrade pip
+.\.venv\Scripts\python -m pip install -r requirements-dev.txt
+npm ci
+
+# checks
+.\.venv\Scripts\python -m pytest -q
+.\.venv\Scripts\python -m ruff check tools tests
+npm test
+
+# plain scaffold on http://127.0.0.1:8090
+.\.venv\Scripts\python -m http.server 8090 --directory prototype --bind 127.0.0.1
+```
+
+The plain scaffold page is a **SIMULATED** decision dashboard: it issues no
+provider requests and proves no production cache behavior. The real cold-vs-warm
+launch is the sandbox demo below.
+
+## Cold vs warm lobby demo
+
+Serves the lobby on `:8090` and the provided game bundle on `:8091` (separate
+origins, like production), with a production-like throttle so a cold launch is
+slow and a warmed launch is fast. Point `--bundle` at wherever the package is
+extracted; it stays outside the repo.
+
+```bash
+# macOS / Linux
+.venv/bin/python tools/sandbox_server.py \
+  --bundle evidence/private/bundles/empireofgold --throttle-kbps 12000
+```
+
+```powershell
+# Windows — wrapper clears any stale server first, then starts the throttled host
+./scripts/serve-sandbox.ps1
+./scripts/serve-sandbox.ps1 -ThrottleKbps 8000 -Bundle C:\path\to\empireofgold
+```
+
+Open `http://127.0.0.1:8090/lobby.html`. **Wait for Game 1's card to turn green
+and read `3.5s WARM (Ready)` before launching it** — auto-warm takes a few
+seconds and a launch during that window loads partly-cold. Then compare
+launching Game 1 (warm) against Game 5 (cold). Automated:
+`node tools/sandbox_measure.mjs --runs 3` (needs `npx playwright install chromium`).
+
+> **Only one sandbox server at a time.** On Windows a leftover instance can keep
+> answering on the same port and silently serve every launch cold; the wrapper
+> script and the server's own startup check now guard against this, but if in
+> doubt run `Get-Process python | Stop-Process -Force` first.
 
 ## HAR comparison
+
+The `.venv/bin/python` in the snippets below is `.venv\Scripts\python` on Windows.
 
 ```bash
 .venv/bin/python tools/measure_har.py \
