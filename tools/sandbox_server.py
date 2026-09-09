@@ -4,7 +4,7 @@
 Serves two DIFFERENT origins on two ports, mirroring the production topology
 where the lobby and the game container are separate hosts:
 
-    http://127.0.0.1:8090/   lobby   (prototype/, our code)
+    http://127.0.0.1:8090/   lobby   (src/, our code)
     http://127.0.0.1:8091/   game    (the provided bundle, served unmodified)
 
 The bundle is read from an ignored path supplied by --bundle. It is never
@@ -187,7 +187,7 @@ def main() -> None:
     args = parser.parse_args()
 
     root = Path(__file__).resolve().parent.parent
-    lobby_dir = root / "prototype"
+    lobby_dir = root / "src"
     game_dir = resolve_bundle(args.bundle.expanduser().resolve())
 
     serve(lobby_dir, args.lobby_port, args.throttle_kbps, args.host, game_dir)

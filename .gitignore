@@ -1,10 +1,26 @@
-# cptr: keep reusable workspace skills, ignore ephemeral chats/task logs
-/.cptr/*
-!/.cptr/skills/
-!/.cptr/skills/**
-
-# Local cptr runtime output (skills above remain shareable)
+# Private working material is not part of the submission tree.
+# Ignore rules do not remove files from existing commits or Git history.
+/.submission-staging/
+/.cptr/
+/.claude/
+/.agents/
+/agents/
+/skills/
+/AGENTS.md
+/agents.md
+/CODE.md
+/code.md
+/CLAUDE.md
+/Context/
+/.vscode/
 /cptr.log
+
+# The reviewer documentation set is intentionally limited to these four files.
+/docs/*
+!/docs/impact-case.md
+!/docs/compliance-note.md
+!/docs/architecture.md
+!/docs/dependencies.md
 
 # Raw hackathon inputs and evidence (large and/or potentially sensitive)
 /FEG Innovation Hackathon 2026/

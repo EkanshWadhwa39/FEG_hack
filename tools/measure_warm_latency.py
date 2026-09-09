@@ -2,7 +2,7 @@
 """Compute T_ready and U(t) from a warm-telemetry run record.
 
 The input is the flat JSON shape produced by
-``prototype/src/warm-telemetry.js``'s ``getRun()``::
+``src/src/warm-telemetry.js``'s ``getRun()``::
 
     {
       "assets": [

@@ -1,125 +1,207 @@
-# FEG Challenge 3 — PSK browser cache warming
+# PSK browser-cache sandbox — FEG Challenge 3
 
-A web-only, browser-native prototype and evidence toolkit for testing whether the PSK lobby can warm exact static game assets before launch.
+**Status: beta packaging snapshot, not a frozen or submission-ready release.**
+This tree packages the selected `feat/optimized-lobby-cache` implementation
+(baseline `979aceb`). Packaging does not resolve the runtime and evidence
+limitations below.
 
-## Start here
+- **Challenge:** Challenge 3 — Game Load Time.
+- **Solution:** prepare eligible supplied resources in the browser HTTP cache
+  while browsing, then observe the subsequent game launch.
+- **Members:** Ekansh, Hansika, Parth and Shaurya.
+- **Team name, Team Lead and team-controlled repository ownership:** confirmation
+  required before submission. Do not infer the Team Lead from repository ownership.
 
-1. Read [`CODE.md`](CODE.md) — authoritative constraints and measured facts.
-2. Read [`Context/BUILD-PLAN.md`](Context/BUILD-PLAN.md) — current state, ownership split, and the plan of record.
-3. Read [`docs/PRODUCTION-CACHE-REUSE.md`](docs/PRODUCTION-CACHE-REUSE.md) — the production proof: 11.25 MB to 35 KB.
-4. Read [`docs/SANDBOX.md`](docs/SANDBOX.md) — cold vs warm launch of the provided game package.
-5. Read [`AGENTS.md`](AGENTS.md) — coding and multi-agent contract.
-6. Read [`docs/AGENT-TEAM.md`](docs/AGENT-TEAM.md) — model routing and delegation prompts.
-7. Read [`docs/HACKATHON-RUNBOOK.md`](docs/HACKATHON-RUNBOOK.md) — build/demo sequence.
-8. Read [`docs/SUBMISSION-GUIDELINES.md`](docs/SUBMISSION-GUIDELINES.md) — organiser requirements.
-9. Read [`docs/STAGING-SANDBOX.md`](docs/STAGING-SANDBOX.md) — later staging integration contract and evidence gates.
-10. Before submission, complete [`docs/PRE-SUBMISSION-AUDIT.md`](docs/PRE-SUBMISSION-AUDIT.md) — blocking security, documentation, access, and freeze checks.
+## Problem and solution
 
-## Setup
+A game launch can wait on static-resource transfer as well as engine execution.
+This sandbox explores moving eligible transfer before the click, without changing
+the supplied game code. Cache reuse and launch benefit are outcomes to measure,
+not guarantees of a completed fetch.
 
-### Prerequisites (all platforms)
+We use **our own web lobby/sandbox and the supplied assets unchanged**. There is
+**no prediction model or training, new game content, substitute/reference game,
+native SDK, service worker, custom asset cache or application database**. These
+are scope constraints, not missing deliverables. Existing deterministic rules
+schedule cache requests only. Judges evaluate this sandbox, not staging.
 
-- **Python 3.11+** (3.13 recommended). The throttled sandbox server relies on a
-  high-resolution `time.sleep`, which CPython ships on Windows only from 3.11.
-- **Node.js 18+**.
-- For the cold-vs-warm demo: a **Chromium-based browser** (Chrome, Edge, Brave).
-  Firefox and Safari partition the HTTP cache per top-level origin, so the
-  parent-origin warm is not visible to the cross-origin game iframe there.
+The current PSK-style lobby has twenty synthetic catalogue slots, hover/focus
+blurbs, preparation controls, diagnostics and an iframe launch view. The slots
+serve one supplied source build under distinct URL paths; they are not twenty
+independently implemented or validated games. CSS card motifs are lobby styling,
+not additional supplied game assets.
 
-### macOS / Linux
+## Repository map
 
-```bash
-./scripts/bootstrap.sh    # .venv + Python deps + npm ci
-./scripts/check.sh        # tests + lint  (needs shellcheck: brew install shellcheck | apt install shellcheck)
-./scripts/serve.sh        # plain scaffold on http://127.0.0.1:8090
+```text
+README.md                    Reviewer guide and demo flow
+src/                         Browser application (formerly prototype/)
+  lobby.html                 Selected real-request lobby
+  index.html                 Simulated decision dashboard
+  player.html, sandbox.html  Supporting demonstration surfaces
+  src/                       Existing ES modules; relative imports preserved
+  styles/                    Existing application CSS
+  tests/                     JavaScript and supporting-player browser tests
+docs/
+  impact-case.md             D3: benefit, cost and evidence boundaries
+  compliance-note.md         D4: requirements, implementation and release gates
+  architecture.md            Components, flows and deployment assumptions
+  dependencies.md            Software, resources, permissions and AI disclosure
+tests/                       Python and repository-layout validation
+scripts/                     Bootstrap, checks and static serving
+tools/                       Sandbox serving and evidence/diagnostic utilities
+package.json, package-lock.json, requirements-dev.txt
 ```
 
-### Windows
+`demo/` will contain only approved presentation material if required; none is
+claimed complete in this snapshot. No extra `assets/` or `config/` directory is
+needed now: existing UI files are under `src/`, and configuration is documented
+below. The provider bundle is a private external prerequisite, not a Git asset.
 
-`scripts/*.sh` are bash-only and assume a POSIX venv layout (`.venv/bin`,
-`python3`, `shellcheck`). Either run them from **Git Bash / WSL** unchanged, or
-set up natively in PowerShell:
+## Requirements and setup
+
+- Python **3.11+** with `venv` and pip; Node **22 LTS** and npm are recommended.
+  The locked Playwright package requires Node 20 or newer; Node 18 is insufficient.
+- Chromium installed by the locked Playwright release for browser tests.
+- Bash and ShellCheck for the complete shell-based check on Linux/macOS/WSL.
+- An organiser-approved local copy of the unchanged supplied game bundle for
+  the game demo. It must contain its entry `index.html` and required resources.
+  Missing resources must be reported; do not generate replacements.
+- Dependency installation and the current lobby's Google Fonts request need
+  network access. Font failure falls back to system fonts; see dependencies.
+
+### Linux/macOS/WSL
+
+```bash
+# Set PYTHON_BIN to the installed Python 3.11+ executable if necessary.
+PYTHON_BIN="$(command -v python3)" ./scripts/bootstrap.sh
+npx playwright install chromium
+# On a minimal Linux host, install Playwright OS prerequisites if requested.
+./scripts/check.sh
+.venv/bin/python tools/measure_har.py --help
+```
+
+Install ShellCheck using the host's package manager before `check.sh`. A missing
+browser can cause browser tests to skip; check the totals rather than treating a
+skipped run as full validation. Linux is the checked environment; native Windows
+and macOS execution remain unverified for this packaging snapshot.
+
+### Native Windows PowerShell (manual alternative)
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python -m pip install --upgrade pip
 .\.venv\Scripts\python -m pip install -r requirements-dev.txt
 npm ci
-
-# checks
+npx playwright install chromium
 .\.venv\Scripts\python -m pytest -q
 .\.venv\Scripts\python -m ruff check tools tests
 npm test
-
-# plain scaffold on http://127.0.0.1:8090
-.\.venv\Scripts\python -m http.server 8090 --directory prototype --bind 127.0.0.1
 ```
 
-The plain scaffold page is a **SIMULATED** decision dashboard: it issues no
-provider requests and proves no production cache behavior. The real cold-vs-warm
-launch is the sandbox demo below.
+The shell lint/syntax command uses POSIX tooling; use WSL for the full check.
+No additional PowerShell wrapper is supplied.
 
-## Cold vs warm lobby demo
+## Configuration and startup
 
-Serves the lobby on `:8090` and the provided game bundle on `:8091` (separate
-origins, like production), with a production-like throttle so a cold launch is
-slow and a warmed launch is fast. Point `--bundle` at wherever the package is
-extracted; it stays outside the repo.
+No API key, login, production endpoint or secret environment file is needed.
+Never point this prototype at a live gambling/authorization service.
+
+### Supporting scaffold only — no bundle required
 
 ```bash
-# macOS / Linux
+./scripts/serve.sh
+# Open http://127.0.0.1:8090/index.html
+```
+
+`PORT` (default `8090`) and `BIND` (default `127.0.0.1`) configure this static
+server. It does **not** implement the `/game/{slot}/` bundle mapping. `npm run
+serve` is a separate static alternative; set `BIND=127.0.0.1` to restrict it to
+loopback. Do not serve the repository root or private working folders.
+
+### Supplied-bundle lobby
+
+```bash
 .venv/bin/python tools/sandbox_server.py \
-  --bundle evidence/private/bundles/empireofgold --throttle-kbps 12000
+  --bundle /absolute/path/to/approved/empireofgold \
+  --host 127.0.0.1 --lobby-port 8090 --game-port 8091 --throttle-kbps 0
+# Open http://127.0.0.1:8090/lobby.html (not the server's printed sandbox.html link)
 ```
 
-```powershell
-# Windows — wrapper clears any stale server first, then starts the throttled host
-./scripts/serve-sandbox.ps1
-./scripts/serve-sandbox.ps1 -ThrottleKbps 8000 -Bundle C:\path\to\empireofgold
-```
+On PowerShell, substitute `.\.venv\Scripts\python` for `.venv/bin/python`.
+Only the provider bundle directory—not the raw hackathon data directory—should
+be supplied to `--bundle`. Reviewer access to this bundle requires an approved
+secure handoff. A clone alone does not include it; that handoff remains a release gate.
 
-Open `http://127.0.0.1:8090/lobby.html`. **Wait for Game 1's card to turn green
-and read `3.5s WARM (Ready)` before launching it** — auto-warm takes a few
-seconds and a launch during that window loads partly-cold. Then compare
-launching Game 1 (warm) against Game 5 (cold). Automated:
-`node tools/sandbox_measure.mjs --runs 3` (needs `npx playwright install chromium`).
+The default lobby requests `/game/{slot}/...` on **its own origin**; the server
+also provides a second origin on port 8091. Two listening ports do not make the
+default flow cross-origin. Do not use the currently unvalidated `?game=` override
+with untrusted or external destinations. Keep the server local.
 
-> **Only one sandbox server at a time.** On Windows a leftover instance can keep
-> answering on the same port and silently serve every launch cold; the wrapper
-> script and the server's own startup check now guard against this, but if in
-> doubt run `Get-Process python | Stop-Process -Force` first.
+`--throttle-kbps 0` disables synthetic throttling. Nonzero values currently apply
+per-response throttling and a **3.2× rate multiplier** to qualifying speculative
+requests. They are not one uniform network condition and cannot support an
+unqualified fair-network comparison. `SANDBOX_VERBOSE=1` enables request logs;
+keep logs private and do not use credential-bearing URLs. Stop only the server
+you started with Ctrl+C; do not kill unrelated Python processes.
 
-## HAR comparison
+## Demo flow and interpretation
 
-The `.venv/bin/python` in the snippets below is `.venv\Scripts\python` on Windows.
+1. Start the supplied-bundle server locally and open `lobby.html`.
+2. Inspect the fixed catalogue and hover/focus overlays. The current page starts
+   automatic preparation immediately; its authorization gate is **not integrated**.
+3. Observe preparation diagnostics, then select the prepared slot. Record what
+   actually loads and any missing dependency or rollback. Card labels are not
+   proof of cache admission or accepted game input.
+4. For a functional comparison, inspect an unprepared slot or disable speculation.
+   Disabling it does not empty the browser cache. Different-slot comparisons and
+   fresh randomized URL namespaces are not a matched causal control/treatment pair.
+5. Exercise the visible interruption/close flow as a diagnostic, not evidence of
+   a real exclusion-register decision or comprehensive failure recovery.
+6. Before claiming benefit, run isolated **serial** arms of the same title/build,
+   variant, exact URLs and milestone with comparable network conditions. Preparation
+   by the actual lobby must be the only treatment difference. This evidence gate
+   is not complete in the current package.
 
-```bash
-.venv/bin/python tools/measure_har.py \
-  Devtools_games/casino.psk.hr_cold.har \
-  Devtools_games/casino.psk.hr_warm.har
-```
+Do not run simultaneous browser experiments. `npm run benchmark:cold-vs-warm`
+and the older diagnostic tools are not acceptance proof: the benchmark uses a
+separate preparation path/manifest. Production-probe tools are historical and
+must not be run as a substitute for sandbox evaluation.
 
-The tool emits aggregate metrics only and does not print URLs, query strings, headers, or cookies. Cache hits are classified conservatively; exporter-specific unknowns remain `UNKNOWN`.
+## Validation and known limitations
 
-## Large data
+`./scripts/check.sh` runs Python tests, Ruff, JS tests/syntax and ShellCheck.
+`tests/test_submission_layout.py` additionally checks required paths, the four-doc
+limit, local documentation links and exclusion of internal agent material.
+**MEASURED packaging checks:** 50 Python tests and 136 JS tests passed, with no
+skips, using Node 22.23.2, npm 9.2.0, Python 3.12.3, Playwright 1.63.0 and Chromium
+153.0.8010.12. Ruff, JS syntax, ShellCheck and the HAR CLI help check passed.
+All 42 browser files moved byte-for-byte; no UI or game-loading logic was changed.
+Checks also passed in a clean candidate copy after fresh dependency installation
+(using the installed Playwright browser cache). Local startup/HTTP route checks
+passed for both static servers and the supplied-bundle server; no game launch or
+provider-asset request was made. This was an uncommitted candidate copy, not a
+clone or security audit of the eventual frozen commit and its history.
+These checks are **not** an end-to-end validation of the active lobby's safety or
+cache-effect claims. Final clean-clone, supplied-bundle demo and matched evidence
+must be checked against the eventual final commit.
 
-Use DuckDB or Polars lazy scans rather than loading multi-GB CSVs into pandas:
+Open issues include the active authorization boundary, launch timeout cleanup,
+readiness heuristics, global concurrency/budget enforcement, browser-condition
+gating, destination validation, fixed locale/tier, unsupported cache/ETA copy and
+biased/mismatched benchmark paths. No authoritative accepted-input result,
+catalogue-wide coverage, production improvement or revenue uplift is claimed.
+See the four documents for the detailed boundaries and release gates.
 
-```bash
-.venv/bin/python - <<'PY'
-import duckdb
-path = 'FEG Innovation Hackathon 2026/CA_MOM.csv'
-print(duckdb.sql(f"SELECT * FROM read_csv_auto('{path}', sample_size=100000) LIMIT 5"))
-PY
-```
+## Submission documents and disclosure
 
-Never output pseudonymized player IDs. Keep only aggregate, non-identifying results in `evidence/derived/`.
+- [Architecture](docs/architecture.md)
+- [Impact case — D3](docs/impact-case.md)
+- [Compliance note — D4](docs/compliance-note.md)
+- [Dependencies, permissions and AI assistance](docs/dependencies.md)
 
-## Scope
-
-- Web/mobile web only.
-- No certified game code changes.
-- No native app, service worker, or custom cache.
-- Mandatory authorization remains fail-closed and blocking.
-- Results must be scoped and labeled by evidence type.
-- Staging validation is a later gate, not a hackathon claim; do not substitute production traffic during the staging outage.
+Computer/cptr assisted with audit, planning, documentation and repository
+packaging. The team must confirm the complete assistance record and any required
+written permissions. Removing internal agent instructions does not remove this
+disclosure obligation. Keep the repository private, verify designated reviewer
+read access, resolve permission/security/history gates, and record the final
+commit only when the package is approved for freeze.

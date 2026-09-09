@@ -7,7 +7,7 @@
  *
  * Method, per arm, in a fresh browser process:
  *   1. Open the production lobby (top-level site psk.hr).
- *   2. Treatment only: execute prototype/src/warmer.js inside that page against
+ *   2. Treatment only: execute src/src/warmer.js inside that page against
  *      an exact, query-free, content-hashed asset list.
  *   3. Launch a public demo game (no login, no player data).
  *   4. Read Resource Timing from inside the game container frame.
@@ -72,7 +72,7 @@ async function runArm(mode) {
       // Execute the shipped warmer, not a reimplementation of it, so the
       // evidence is about our code rather than about a bespoke test script.
       const warmerSource = await readFile(
-        new URL("../prototype/src/warmer.js", import.meta.url),
+        new URL("../src/src/warmer.js", import.meta.url),
         "utf8",
       );
       warmSummary = await page.evaluate(async ({ source, targets }) => {
