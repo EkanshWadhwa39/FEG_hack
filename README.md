@@ -121,9 +121,15 @@ loopback. Do not serve the repository root or private working folders.
 ### Supplied-bundle lobby
 
 ```bash
+# without throttle (instant warm — default)
 .venv/bin/python tools/sandbox_server.py \
   --bundle /absolute/path/to/approved/empireofgold \
-  --host 127.0.0.1 --lobby-port 8090 --game-port 8091 --throttle-kbps 0
+  --host 127.0.0.1 --lobby-port 8090 --game-port 8091
+
+# with throttle (recommended on fast machines so progress bar is visible)
+.venv/bin/python tools/sandbox_server.py \
+  --bundle /absolute/path/to/approved/empireofgold \
+  --host 127.0.0.1 --lobby-port 8090 --game-port 8091 --throttle-kbps 25000
 # Open http://127.0.0.1:8090/lobby.html (not the server's printed sandbox.html link)
 ```
 
@@ -131,6 +137,11 @@ On PowerShell, substitute `.\.venv\Scripts\python` for `.venv/bin/python`.
 Only the provider bundle directory—not the raw hackathon data directory—should
 be supplied to `--bundle`. Reviewer access to this bundle requires an approved
 secure handoff. A clone alone does not include it; that handoff remains a release gate.
+
+> **Throttle guide:** On fast laptops the 29 MB warm completes in under a second,
+> so the progress bar and state transitions are invisible. Use
+> `--throttle-kbps 25000` (~25 Mbps, warm visible in ~2s) to make the demo
+> readable. On slower machines or when you want instant results, omit the flag.
 
 The default lobby requests `/game/{slot}/...` on **its own origin**; the server
 also provides a second origin on port 8091. Two listening ports do not make the
