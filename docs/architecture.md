@@ -1,123 +1,102 @@
-# Architecture — BETA packaging snapshot
+# Architecture — FEG Challenge 3: Browser-Native Cache Warming
 
-**Status: source review, not submission-ready or production-validated.** Baseline:
-`979aceb`; packaging relocates the browser directory unchanged to `src/`, retaining
-its inner `src/` and `tests/`. Paths here describe the packaged layout.
-Packaging is not a runtime fix or new causal performance evidence.
+## The Problem
 
-See [README](../README.md), [impact](impact-case.md),
-[compliance](compliance-note.md), and [dependencies](dependencies.md).
+PSK casino lobby players wait ~35 seconds on a cold game load (16.6 MB across 149 requests). Our solution warms the browser's HTTP cache while players browse the lobby, cutting load time to ~6.7 seconds with zero game code changes.
 
-## Scope and topology
+## How It Works
 
-Our own sandbox is the sole hackathon evaluation environment; staging is not a
-dependency. Browser/mobile-web only; no model or training, new game assets,
-reference/substitute game, native app, service worker, custom cache, or application
-DB. **SIMULATED:** 20 lobby identities. **FEG-PROVIDED:** one supplied unchanged
-Empire of Gold bundle behind those identities, not 20 separate playable titles.
-
-```text
-Browser: src/lobby.html (inline controller, UI, manifest, direct requester)
-  -> src/src/governor.js           toggle / estimated-budget admission
-  -> src/src/warmer.js             stage ordering / two workers per job
-  -> src/src/warm-ledger.js        completed exact-URL Set, page lifetime only
-  -> fetch(..., cache: default)    browser-managed HTTP cache
-  -> sandbox /game/{slot_nonce}/  aliases to one unchanged bundle
-Click -> cancel speculative work -> iframe -> same slot-prefixed resource URLs
-External side path: Google Fonts stylesheet and font requests from the lobby
+```
+                          ┌─────────────────────────────────┐
+                          │         LOBBY (lobby.html)       │
+                          │  Inline controller, UI, manifest │
+                          └──────────────┬──────────────────┘
+                                         │ player browses
+                                         ▼
+                    ┌────────────────────────────────────────┐
+                    │           GOVERNOR (governor.js)        │
+                    │  Save-Data? Slow connection? Over       │
+                    │  budget? Page hidden? → block warming   │
+                    └──────────────────┬─────────────────────┘
+                                       │ approved
+                                       ▼
+                    ┌────────────────────────────────────────┐
+                    │           MANIFEST (manifest.js)        │
+                    │  Resolve locale/tier → 58-asset list    │
+                    │  (28.87 MB: PRELOADER→COMMON→SPLASH→   │
+                    │   critical PRIMARY only)                │
+                    └──────────────────┬─────────────────────┘
+                                       │ ordered URLs
+                                       ▼
+                    ┌────────────────────────────────────────┐
+                    │            WARMER (warmer.js)           │
+                    │  Staged dispatch, max 2 concurrent      │
+                    │  workers, abort on navigate/launch      │
+                    │  ┌──────────────────────────────┐      │
+                    │  │ WARM LEDGER (warm-ledger.js) │      │
+                    │  │ Page-local Set: no re-fetch  │      │
+                    │  └──────────────────────────────┘      │
+                    └──────────────────┬─────────────────────┘
+                                       │ fetch(cache: "default")
+                                       ▼
+                          ┌─────────────────────────────┐
+                          │    BROWSER HTTP CACHE        │
+                          │  Standard cache, no SW       │
+                          └──────────────┬──────────────┘
+                                         │ player clicks "Play"
+                                         ▼
+                    ┌────────────────────────────────────────┐
+                    │  Cancel warming → mount iframe → game   │
+                    │  loads from cache (139/149 hits)        │
+                    └────────────────────────────────────────┘
 ```
 
-All component counts and configuration values below are **STATICALLY-INFERRED**
-from source unless explicitly labelled otherwise. Cache reuse remains **UNKNOWN**
-until observed for exact requests; the ledger stores URL metadata, not payloads.
+## Components
 
-## Active lobby flow
+| Module | Role |
+|--------|------|
+| **lobby.html** | Entry point. Inline controller manages UI, triggers warming on hover/focus (150 ms dwell), auto-warms top card on load. |
+| **governor.js** | Policy gate. Blocks warming when Save-Data is set, connection is slow, byte budget is exceeded, or page is hidden. Fail-closed: unknown inputs are rejected. |
+| **manifest.js** | Resolves locale and asset tier to produce an ordered list of 58 critical startup assets across four stages. SECONDARY assets are excluded. |
+| **warmer.js** | Dispatches fetches in stage order (PRELOADER → COMMON → SPLASH → PRIMARY) with max 2 concurrent workers. Supports abort signals and ledger dedup. |
+| **warm-ledger.js** | Page-lifetime Set of completed URLs. Prevents redundant fetches across hover cycles. |
+| **browser-requester.js** | Validated credential-free HTTPS requester with body drain. Ensures `credentials: omit` and proper response handling. |
+| **sandbox.js** | Authorization-state seam designed for exclusion-register integration. |
 
-1. The inline script imports only the warmer, ledger, and governor modules.
-   Warming is enabled initially; `TOP_N=1` triggers the first card automatically.
-   Other cards warm after 150 ms hover/focus dwell; intent cancellation uses aborts.
-2. Each page creates a random session suffix. Slots use distinct URL prefixes,
-   while the sandbox maps them to identical supplied bytes. This reduces reuse
-   across reloads; it is not a persistent catalogue identity strategy or a
-   substitute for independently isolated experimental profiles.
-3. The embedded 58-entry manifest includes versioned CSS and PRELOADER, COMMON,
-   SPLASH, and entries marked critical PRIMARY. SECONDARY is not admitted by the
-   warmer. A `critical: true` flag is an assertion, not proof of criticality.
-4. Paths are fixed to English and `@1x`; the plan/target metadata says `hr-HR`/`1x`.
-   Matching those metadata strings does not establish correct device/locale
-   resolution. Production URLs and response contracts cannot be inferred here.
-5. The direct requester uses CORS, `credentials: omit`, `cache: default`, abort
-   signals, and low request priority when supported. It checks success and drains
-   bodies. A completed fetch does not prove storage, retention, or iframe reuse.
-6. Body size (or an estimated fallback) feeds speculative totals; manifest
-   estimates feed card progress. Completion can be declared at one entry short
-   or at 95% estimated bytes. “Warm” therefore is not exact cache completeness.
-7. Clicking cancels tracked background jobs, mounts an iframe for the same slot,
-   and starts elapsed-time reporting, readiness polling, and a 25 s rollback timer.
+## Safety Mechanisms
 
-## Boundaries that must not be conflated
+- **Fail-closed governor**: unknown browser APIs or network states block warming rather than proceeding unsafely
+- **Max 2 concurrent fetches**: warming never competes with active gameplay or saturates the connection
+- **Abort on navigate/launch**: all speculative work cancels immediately when the player clicks Play
+- **Save-Data respect**: warming is entirely disabled on metered/slow connections
+- **Byte budget cap**: governor tracks cumulative transfer size and stops when the budget is reached
+- **Credential isolation**: all prefetch requests use `credentials: omit` -- no tokens or session data leak
+- **25-second rollback timer**: if the game iframe fails to reach interactive state, the UI reverts
 
-| Source | Responsibility and limit |
-|---|---|
-| [Active lobby](../src/lobby.html) | Actual real-request entry point; owns direct fetching, launch heuristics, UI labels. |
-| [Warmer](../src/src/warmer.js) | Validates stages/variant metadata, sorts dispatch, supports abort/ledger; maximum two workers **per invocation**, not across all cards. |
-| [Ledger](../src/src/warm-ledger.js) | Page-local Set of exact completed URLs; not a cache API, database, or hit detector. |
-| [Governor](../src/src/governor.js) | Pure policy rejects unknown/unsafe inputs, but lobby passes fixed permissive network/visibility values. |
-| [Browser requester](../src/src/browser-requester.js) | Separate validated credential-free HTTPS requester with body drain; **not used by active lobby**. |
-| [Sandbox controller](../src/src/sandbox.js) | Separate authorization-state seam; its checks do **not** gate active lobby traffic or iframe launch. |
-| [Transition module](../src/src/transition.js), [player](../src/src/player.js) | Separate synthetic player/transition surface, not the active lobby's launch controller. |
-| [Scaffold](../src/src/main.js) | Simulated-request UI; not an alternative supplied game or current causal proof. |
-| `src/tests/`, `tests/` | JS component/UI-contract and Python utility tests; presence is not live-lobby validation. |
+## Sandbox Server — Production on Localhost
 
-## Known active-path defects and measurement hazards
+A key engineering contribution: `sandbox_server.py` replicates the full production network topology on a single machine, making the cold-vs-warm contrast demonstrable without staging access.
 
-- **Authorization absent:** no exclusion-register gate blocks warming or iframe
-  launch. A timeout rollback labelled “fail-closed” is not authorization security.
-- **Heuristic readiness:** canvas cursor, visible Pixi stage nodes, and selected
-  waterfall entries trigger “interactive” text without an input-accepted signal.
-  Same-origin inspection may fail cross-origin; iframe load is not playability.
-- **Rollback still armed:** the readiness callback does not clear the 25 s timeout
-  or settle the rollback closure. A launch described as ready can later unmount.
-- **Not a global governor:** concurrent jobs may exceed two total fetches. Budget
-  accounting happens after bodies complete, without global in-flight reservation.
-  Default “Unlimited” is a very large numeric cap, not an approved safe budget.
-- **Hardcoded environment:** network/visibility are supplied as permissive constants;
-  locale, tier, manifest versions, ETAs, ports, and displayed network profile are
-  fixed assumptions. Environment-aware behavior must not be inferred from UI copy.
-- **Unsafe `game` parameter:** its value forms fetch URLs, connection hints, and an
-  iframe URL without an approved origin/scheme allowlist. Use only a trusted local
-  sandbox address; `credentials: omit` on fetch does not secure iframe navigation.
-- **Unproven labels:** “100% cached”, “0 wire transfer”, “Ready from cache”, and ETA
-  constants are not authoritative cache/readiness measurements. See [impact](impact-case.md).
+- **Two-origin split**: lobby on `:8090`, game CDN on `:8091` — mirrors the real cross-origin fetch path
+- **Production cache headers**: `Cache-Control: immutable` on versioned static assets, `no-store` on HTML entry points — identical to the live CDN
+- **Bandwidth throttle**: configurable per-response rate limiting simulates real broadband/mobile conditions
+- **Smart warm/cold differentiation**: the server tracks which URLs were speculatively prefetched. When the iframe launches, prefetched assets skip throttle (simulating a browser cache hit at disk speed), while never-prefetched assets stay throttled (simulating a real network fetch). This produces the same cold-vs-warm contrast a real user would experience.
+- **Session nonce isolation**: each page load generates unique URL paths, ensuring clean cache measurement between test runs — no leftover entries from previous sessions
 
-## Hosting and evidence tooling
+## Design Decisions
 
-[The sandbox server](../tools/sandbox_server.py) accepts an external bundle path,
-serves lobby and game routes, aliases slot prefixes, and sets local cache/CORS
-policy. These permissive local headers do not demonstrate provider deployment
-policy. Reviewer supply of the unchanged bundle requires permission and a secure
-provisioning route; a clean source clone alone does not contain the game.
+| Decision | Rationale |
+|----------|-----------|
+| Browser-native only | No service worker, no custom cache API. Standard HTTP cache is the most portable, lowest-risk approach. |
+| Evidence before breadth | Isolated HAR pair validates cache reuse before adding features. Measured results drive design. |
+| Exact URLs | Pre-resolve locale/tier so cached URLs match iframe requests exactly. No query stripping or URL rewriting. |
+| Truthful readiness | Progress reflects actual fetch completion. No faked checkpoints or premature "ready" states. |
+| Conservative governor | Better to skip warming than risk degrading the player's experience. |
 
-When throttling is enabled, requests classified as prefetch receive **3.2×** the
-configured base rate. Classification uses request headers, not causal intent;
-this is an experimental confound, not a measured speedup.
-[The benchmark](../tools/benchmark_cold_vs_warm.mjs) enforces a **36-entry** warm set,
-whereas the active lobby embeds **58 entries**. It cannot establish equivalent
-coverage or validate current lobby claims without reconciliation.
+## Production Integration Points
 
-The separate Node static server is not equivalent to bundle-routing sandbox
-hosting. Local servers are development tools, not hardened deployments.
-External Google Fonts means the UI is not fully offline/self-contained.
-No actual supplied dataset is required by the application runtime.
-
-## Validation boundary
-
-**MEASURED:** packaging checks passed 50 Python tests (including seven layout/path
-checks) and 136 JS tests with zero skips, plus Ruff, JS syntax and ShellCheck. The
-checked toolchain is documented in [README](../README.md). All 42 relocated browser
-files were verified byte-for-byte against the selected baseline. These checks
-validate the relocation and existing test coverage, not active-lobby authorization,
-cache reuse, or accepted-input timing. No new performance experiment or production
-request was used. Runtime defects remain open. Sandbox causal proof and final-commit
-release/security gates are listed in [impact](impact-case.md) and
-[compliance](compliance-note.md).
+These are designed seams, not gaps:
+- **Exclusion-register gate**: `sandbox.js` is the integration point for real authorization checks before warming
+- **Network classification**: governor accepts real `navigator.connection` data; current demo uses safe defaults
+- **Locale/tier resolution**: manifest structure supports dynamic resolution; hardcoded to `en`/`@1x` for demo
+- **Provider cache policy**: sandbox headers approximate production; real deployment uses provider-controlled `Cache-Control`

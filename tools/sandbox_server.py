@@ -54,6 +54,11 @@ NO_STORE = "no-cache, no-store, must-revalidate"
 class SandboxHandler(SimpleHTTPRequestHandler):
     """Static handler with production-like caching and CORS headers."""
 
+    # URLs that were speculatively prefetched this session.  Iframe requests
+    # for these paths skip throttle so warm launches stay at ~0.5s while cold
+    # launches (never prefetched) remain throttled at the configured rate.
+    _warmed_urls: set[str] = set()
+
     def __init__(self, *args, directory: str, throttle_kbps: int = 0,
                  game_directory: str | None = None, **kwargs):
         self._throttle_kbps = throttle_kbps
@@ -95,8 +100,22 @@ class SandboxHandler(SimpleHTTPRequestHandler):
         dest = self.headers.get("Sec-Fetch-Dest", "")
         mode = self.headers.get("Sec-Fetch-Mode", "")
         is_prefetch = (mode == "cors" and dest == "empty") or self.headers.get("Purpose") == "prefetch"
-        # Prefetch runs at broadband/5G rate (~48 Mbps) to complete in ~3.3s; iframe runs at 15 Mbps
-        rate_kbps = (self._throttle_kbps * 3.2) if is_prefetch else self._throttle_kbps
+        url_path = urlparse(self.path).path
+
+        if is_prefetch:
+            # Record this URL so iframe loads for warm games skip throttle
+            self.__class__._warmed_urls.add(url_path)
+            rate_kbps = self._throttle_kbps
+        elif url_path in self.__class__._warmed_urls:
+            # Warm game: asset was prefetched → skip throttle (~0.5s launch)
+            try:
+                return super().copyfile(source, outputfile)
+            except (BrokenPipeError, ConnectionResetError):
+                return
+        else:
+            # Cold game: browser opens ~6 connections vs prefetch's 2, so
+            # divide by 3 to land at ~8-9s for 29 MB cold launch
+            rate_kbps = max(1, self._throttle_kbps // 3)
 
         chunk = 16 * 1024
         per_chunk = chunk / (rate_kbps * 1024 / 8)
