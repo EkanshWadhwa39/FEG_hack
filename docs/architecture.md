@@ -73,6 +73,18 @@ PSK casino lobby players wait ~35 seconds on a cold game load (16.6 MB across 14
 - **Credential isolation**: all prefetch requests use `credentials: omit` -- no tokens or session data leak
 - **25-second rollback timer**: if the game iframe fails to reach interactive state, the UI reverts
 
+## Why Prefetching Is Sustainable
+
+The biggest question with speculative prefetching is "does it waste bandwidth?" Three reasons it doesn't:
+
+1. **Same bytes, moved earlier.** The 58-asset manifest (28.87 MB) is the critical startup set — the minimum needed to reach the Play button. If the player clicks the game, these bytes download anyway. Prefetching shifts the transfer to before the click, not on top of it. The only "extra" cost is for games warmed but never launched.
+
+2. **Only the critical set.** Big-win animations, bonus scenes, secondary spine packs are all excluded. We prefetch ~29 MB out of a potentially 100+ MB game. SECONDARY assets are filtered out by the warmer.
+
+3. **Demand-driven.** Auto-warm covers only the top slot (TOP_N=1). Every other game warms only on hover — meaning the player showed real intent. A typical session: browse, hover 2-3 games, click one. Extra transfer: ~30-60 MB on a fast unmetered connection. Payoff: 35s → 0.5s load time.
+
+The governor ensures this cost is never paid on metered plans, slow connections, or background tabs.
+
 ## Sandbox Server — Production on Localhost
 
 A key engineering contribution: `sandbox_server.py` replicates the full production network topology on a single machine, making the cold-vs-warm contrast demonstrable without staging access.
