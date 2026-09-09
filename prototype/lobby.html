@@ -3,27 +3,32 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Casino Lobby — FEG Sandbox</title>
+  <title>PSK Casino</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,700;1,900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./styles/player.css">
   <style>
     :root {
-      --surface-page: #080b12;
-      --surface-panel: #10151f;
-      --surface-inset: #0b101b;
-      --surface-raised: #1b2434;
-      --text-primary: #edf2ff;
-      --text-secondary: #aeb8cf;
-      --text-muted: #94a3b8;
-      --accent: #67e8f9;
-      --accent-glow: rgba(103, 232, 249, 0.4);
-      --ok: #5eead4;
-      --ok-glow: rgba(94, 234, 212, 0.4);
-      --warn: #fcd34d;
-      --warn-glow: rgba(252, 211, 77, 0.35);
-      --danger: #fca5a5;
-      --border-control: #64748b;
-      --border-decorative: #263247;
+      --surface-page: #0e0e11;
+      --surface-panel: #17171c;
+      --surface-inset: #121216;
+      --surface-raised: #1c1c22;
+      --text-primary: #ffffff;
+      --text-secondary: #c8c8d0;
+      --text-muted: #9a9aa6;
+      --accent: #1752bf;
+      --accent-active: #1447a6;
+      --accent-glow: rgba(23, 82, 191, 0.35);
+      --ok: #3d9a4a;
+      --ok-glow: rgba(61, 154, 74, 0.3);
+      --warn: #d97706;
+      --warn-glow: rgba(217, 119, 6, 0.28);
+      --danger: #dc4a4a;
+      --border-control: #5a5a68;
+      --border-decorative: #2a2a32;
       --focus-ring: #fbbf24;
+      --brand: #1752bf;
     }
 
     * { box-sizing: border-box; }
@@ -34,70 +39,110 @@
       background: var(--surface-page);
       color: var(--text-primary);
       line-height: 1.5;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+      font-family: Roboto, Arial, sans-serif;
     }
 
     :where(a, button, input, select, [tabindex]):focus-visible {
       outline: 3px solid var(--focus-ring);
       outline-offset: 3px;
-      border-radius: 6px;
+      border-radius: 4px;
+    }
+
+    .psk-brand-bar :where(a, button, [tabindex]):focus-visible {
+      outline-color: #ffffff;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
     }
 
     .shell {
-      width: min(1120px, calc(100% - 32px));
+      width: 100%;
+      max-width: none;
+      margin: 0;
+      padding: 0 0 48px;
+    }
+
+    .inner {
+      width: min(1280px, calc(100% - 32px));
       margin: 0 auto;
-      padding: 14px 0 36px;
     }
 
-    /* ── Compact Header ── */
-    .lobby-header {
-      margin-bottom: 12px;
+    /* ── PSK brand bar ── */
+    .psk-brand-bar {
+      background: var(--brand);
+      color: #fff;
+      height: 48px;
     }
-    .header-titles {
+    .psk-brand-inner {
+      height: 100%;
       display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: 12px;
-      margin-bottom: 4px;
+      align-items: center;
+      gap: 20px;
     }
-    .eyebrow {
-      margin: 0;
-      color: var(--accent);
-      font-size: 0.72rem;
-      font-weight: 800;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-    }
-    h1 {
-      margin: 0;
-      font-size: 1.55rem;
+    .psk-wordmark {
+      font-style: italic;
       font-weight: 900;
-      letter-spacing: -0.02em;
+      font-size: 1.35rem;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      flex-shrink: 0;
     }
-    .header-speed-badge {
-      font-size: 0.72rem;
-      font-weight: 800;
-      padding: 3px 8px;
-      border-radius: 999px;
-      background: #164e63;
-      color: #a5f3fc;
-      vertical-align: middle;
+    .psk-nav {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      height: 100%;
+      min-width: 0;
+      overflow: auto hidden;
+    }
+    .psk-nav a {
+      display: flex;
+      align-items: center;
+      height: 48px;
+      padding: 0 12px;
+      color: #fff;
+      text-decoration: none;
+      font-size: 0.78rem;
+      font-weight: 500;
+      text-transform: uppercase;
       letter-spacing: 0.04em;
+      white-space: nowrap;
     }
-    .lede {
-      margin: 4px 0 0;
-      max-width: 82ch;
-      color: var(--text-secondary);
-      font-size: 0.86rem;
+    .psk-nav a[aria-current="page"] {
+      background: var(--accent-active);
+    }
+    .psk-header-right {
+      margin-left: auto;
+      font-size: 0.78rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      opacity: 0.9;
     }
 
-    /* ── Sleek Above-The-Fold Operator Toolbar ── */
+    /* ── Dark operator / category strip ── */
+    .psk-subbar {
+      background: #121216;
+      border-bottom: 1px solid var(--border-decorative);
+    }
     .toolbar-panel {
-      padding: 12px 16px;
-      border: 1px solid var(--border-decorative);
-      border-radius: 12px;
-      background: var(--surface-panel);
-      margin-bottom: 16px;
+      padding: 10px 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      margin: 0;
     }
 
     .toolbar-row {
@@ -116,30 +161,43 @@
       user-select: none;
     }
     .toggle-wrap input[type="checkbox"] {
-      width: 20px;
-      height: 20px;
-      accent-color: var(--accent);
+      width: 18px;
+      height: 18px;
+      accent-color: var(--brand);
       cursor: pointer;
     }
     .toggle-label-text {
       display: flex;
       flex-direction: column;
-      font-size: 0.84rem;
+      font-size: 0.8rem;
     }
     .toggle-label-text small {
-      font-size: 0.72rem;
+      font-size: 0.68rem;
       color: var(--text-muted);
     }
     .state-badge {
       display: inline-block;
       padding: 2px 7px;
       border-radius: 4px;
-      font-size: 0.68rem;
-      font-weight: 800;
-      letter-spacing: 0.05em;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
     }
-    .state-badge.warm-state { background: #134e4a; color: #5eead4; }
-    .state-badge.cold-state { background: #334155; color: #cbd5e1; }
+    .state-badge.warm-state { background: #1a3d22; color: #8fd196; }
+    .state-badge.cold-state { background: #2a2a32; color: #c8c8d0; }
+
+    .psk-cats {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+    .psk-cats strong {
+      color: #fff;
+      font-weight: 500;
+    }
 
     .toolbar-item {
       display: flex;
@@ -176,21 +234,21 @@
       font-variant-numeric: tabular-nums;
     }
     .metric-chip .chip-label { color: var(--text-muted); font-size: 0.72rem; }
-    .metric-chip strong { color: var(--accent); }
+    .metric-chip strong { color: #9db7e8; }
 
     .btn-diagnostics {
       padding: 6px 12px;
-      border: 1px solid var(--border-control);
+      border: 1px solid var(--border-decorative);
       border-radius: 6px;
       background: var(--surface-raised);
       color: var(--text-secondary);
-      font-size: 0.8rem;
-      font-weight: 600;
+      font-size: 0.78rem;
+      font-weight: 500;
       cursor: pointer;
-      transition: background 120ms, color 120ms;
+      transition: background 160ms, color 160ms;
     }
     .btn-diagnostics:hover {
-      background: #25334a;
+      background: #25252c;
       color: var(--text-primary);
     }
 
@@ -198,18 +256,17 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-top: 10px;
+      margin-top: 8px;
       padding-top: 8px;
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
-      font-size: 0.8rem;
-      color: var(--text-secondary);
+      border-top: 1px solid var(--border-decorative);
+      font-size: 0.75rem;
+      color: var(--text-muted);
     }
     .status-indicator-dot {
-      width: 7px;
-      height: 7px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
       background: var(--ok);
-      box-shadow: 0 0 8px var(--ok);
       flex-shrink: 0;
     }
 
@@ -265,147 +322,277 @@
       letter-spacing: 0.08em;
       text-transform: uppercase;
     }
-    .label.simulated { color: #a5f3fc; background: #164e63; }
-    .label.measured { color: #5eead4; background: #134e4a; }
-    .label.statically-inferred { color: #fde68a; background: #713f12; }
-    .label.warn { color: #fde68a; background: #713f12; }
-    .label.danger { color: #fca5a5; background: #7f1d1d; }
+    .label.simulated { color: #c5d4f0; background: #1a3260; }
+    .label.measured { color: #b8e0be; background: #1a3d22; }
+    .label.statically-inferred { color: #f3d39a; background: #4a3510; }
+    .label.warn { color: #f3d39a; background: #4a3510; }
+    .label.danger { color: #f5b4b4; background: #5a1d1d; }
 
-    /* ── 20-Game Grid (Above The Fold) ── */
+    /* ── Catalog ── */
+    .catalog {
+      padding-top: 22px;
+    }
+    .section-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .section-head h2 {
+      margin: 0;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #fff;
+    }
+    .section-see-all {
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
     .lobby-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-      gap: 14px;
+      grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+      gap: 12px;
     }
 
     .game-card {
       position: relative;
-      padding: 14px;
-      border: 1px solid var(--border-decorative);
-      border-radius: 12px;
+      padding: 0;
+      border: 1px solid transparent;
+      border-radius: 8px;
       background: var(--surface-panel);
       cursor: pointer;
       user-select: none;
-      transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+      overflow: hidden;
+      aspect-ratio: 1 / 1;
+      transition: border-color 160ms ease, filter 160ms ease;
     }
     .game-card:hover, .game-card:focus-visible {
-      transform: translateY(-4px);
-      border-color: var(--accent);
-      box-shadow: 0 8px 24px rgba(103, 232, 249, 0.25), 0 0 16px var(--accent-glow);
+      border-color: rgba(255, 255, 255, 0.55);
     }
-    .game-card[data-state="prefetching"] {
-      border-color: var(--accent);
-      box-shadow: 0 0 14px var(--accent-glow);
-    }
-    .game-card[data-state="partial"] {
-      border-color: var(--warn);
-      box-shadow: 0 0 10px var(--warn-glow);
-    }
-    .game-card[data-state="warm"] {
-      border-color: var(--ok);
-      box-shadow: 0 0 12px var(--ok-glow);
-    }
-    .game-card[data-state="launching"] {
-      border-color: var(--accent);
-    }
+    .game-card[data-state="prefetching"] { border-color: var(--brand); }
+    .game-card[data-state="partial"] { border-color: var(--warn); }
+    .game-card[data-state="warm"] { border-color: var(--ok); }
+    .game-card[data-state="launching"] { border-color: var(--brand); }
 
+    .card-poster {
+      position: absolute;
+      inset: 0;
+      transition: filter 180ms ease;
+    }
     .card-thumb {
+      position: absolute;
+      inset: 0;
       width: 100%;
-      aspect-ratio: 16/10;
-      border-radius: 8px;
-      background: linear-gradient(135deg, var(--surface-raised) 0%, #151e2e 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2.3rem;
-      margin-bottom: 10px;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-    }
-    .card-title {
-      margin: 0 0 2px;
-      font-size: 0.85rem;
-      font-weight: 700;
-      color: var(--text-primary);
-      white-space: nowrap;
+      height: 100%;
+      margin: 0;
+      border-radius: 0;
       overflow: hidden;
-      text-overflow: ellipsis;
     }
-    .card-sub {
-      margin: 0 0 6px;
-      font-size: 0.7rem;
-      color: var(--text-muted);
+    .card-thumb::before,
+    .card-thumb::after {
+      content: "";
+      position: absolute;
+      pointer-events: none;
     }
 
-    /* Real-Time Animated Progress Bar on Card */
+    .motif-gold { background: linear-gradient(160deg, #3a2a12 0%, #8a6418 42%, #1a140c 100%); }
+    .motif-gold::before { inset: 18% 22%; border: 2px solid rgba(232, 196, 92, 0.55); transform: rotate(12deg); }
+    .motif-gold::after { width: 42%; height: 42%; left: 29%; top: 22%; border-radius: 50%; background: radial-gradient(circle, #e8c45c 0%, transparent 70%); opacity: 0.45; }
+
+    .motif-deluxe { background: linear-gradient(200deg, #241810 0%, #6b4a14 50%, #120e0a 100%); }
+    .motif-deluxe::before { left: 12%; right: 12%; top: 28%; height: 2px; background: rgba(232, 196, 92, 0.5); }
+    .motif-deluxe::after { left: 12%; right: 12%; bottom: 28%; height: 2px; background: rgba(232, 196, 92, 0.5); }
+
+    .motif-platinum { background: linear-gradient(150deg, #2a3038 0%, #6d7684 45%, #14181e 100%); }
+    .motif-platinum::before { inset: 22%; border: 2px solid rgba(220, 226, 234, 0.4); border-radius: 50%; }
+
+    .motif-crown { background: linear-gradient(180deg, #1c1630 0%, #4a3480 55%, #0e0c18 100%); }
+    .motif-crown::before { left: 50%; top: 18%; width: 0; height: 0; border-left: 28px solid transparent; border-right: 28px solid transparent; border-bottom: 36px solid rgba(232, 196, 92, 0.55); transform: translateX(-50%); }
+
+    .motif-aztec { background: linear-gradient(165deg, #2c1808 0%, #b45309 48%, #140c08 100%); }
+    .motif-aztec::before { left: 50%; top: 20%; width: 56%; padding-bottom: 40%; transform: translateX(-50%); background: rgba(0,0,0,0.2); clip-path: polygon(10% 100%, 50% 0, 90% 100%); }
+
+    .motif-pharaoh { background: linear-gradient(180deg, #1a2430 0%, #0e4a6e 50%, #081018 100%); }
+    .motif-pharaoh::before { left: 50%; bottom: 18%; width: 70%; height: 46%; transform: translateX(-50%); background: rgba(232, 196, 92, 0.28); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+
+    .motif-dynasty { background: linear-gradient(160deg, #1a0c0c 0%, #7f1d1d 50%, #0c0808 100%); }
+    .motif-dynasty::after { width: 54%; height: 54%; left: 23%; top: 16%; border: 2px solid rgba(232, 196, 92, 0.4); border-radius: 50% 50% 50% 0; transform: rotate(-20deg); }
+
+    .motif-quest { background: linear-gradient(200deg, #102018 0%, #14532d 50%, #0a120c 100%); }
+    .motif-quest::before { left: 18%; top: 22%; width: 64%; height: 48%; border: 2px dashed rgba(196, 220, 160, 0.4); }
+
+    .motif-treasure { background: linear-gradient(150deg, #1c1428 0%, #4c1d95 48%, #0e0a16 100%); }
+    .motif-treasure::after { left: 30%; top: 24%; width: 40%; height: 40%; background: radial-gradient(circle, #e8c45c 0%, transparent 68%); opacity: 0.5; }
+
+    .motif-rush { background: linear-gradient(170deg, #2a1c08 0%, #92400e 50%, #120c08 100%); }
+    .motif-rush::before { left: 20%; top: 30%; width: 60%; height: 8px; background: repeating-linear-gradient(90deg, rgba(232,196,92,0.5) 0 8px, transparent 8px 14px); }
+
+    .motif-midas { background: linear-gradient(160deg, #2c2208 0%, #a16207 46%, #161208 100%); }
+    .motif-midas::after { left: 28%; top: 20%; width: 44%; height: 44%; border-radius: 50%; box-shadow: 0 0 0 3px rgba(232, 196, 92, 0.45); }
+
+    .motif-vault { background: linear-gradient(180deg, #16161c 0%, #334155 50%, #0c0c10 100%); }
+    .motif-vault::before { left: 22%; top: 22%; right: 22%; bottom: 22%; border: 3px solid rgba(180, 190, 210, 0.35); border-radius: 50%; }
+
+    .motif-fortune { background: linear-gradient(155deg, #14101c 0%, #3730a3 50%, #0c0a14 100%); }
+    .motif-fortune::before { left: 18%; top: 36%; width: 64%; height: 28%; border-radius: 8px; background: rgba(255,255,255,0.06); }
+
+    .motif-dragon { background: linear-gradient(170deg, #1c0a0a 0%, #9a3412 48%, #0e0606 100%); }
+    .motif-dragon::after { left: 20%; top: 28%; width: 60%; height: 36%; border-radius: 40% 40% 20% 20%; background: rgba(232, 196, 92, 0.22); }
+
+    .motif-colosseum { background: linear-gradient(180deg, #241810 0%, #57534e 50%, #120e0c 100%); }
+    .motif-colosseum::before { left: 16%; right: 16%; top: 30%; height: 40%; border: 2px solid rgba(220, 200, 170, 0.4); border-bottom: 0; border-radius: 40px 40px 0 0; }
+
+    .motif-ancient { background: linear-gradient(165deg, #1c140c 0%, #78716c 48%, #0e0c0a 100%); }
+    .motif-ancient::before { left: 28%; top: 22%; width: 44%; height: 50%; background: rgba(232, 196, 92, 0.18); clip-path: polygon(20% 100%, 20% 30%, 50% 8%, 80% 30%, 80% 100%); }
+
+    .motif-nile { background: linear-gradient(180deg, #08201c 0%, #0f766e 50%, #061210 100%); }
+    .motif-nile::before { left: 10%; right: 10%; top: 42%; height: 3px; background: rgba(153, 246, 228, 0.4); }
+    .motif-nile::after { left: 38%; top: 22%; width: 24%; height: 24%; border-radius: 50%; background: rgba(253, 224, 71, 0.35); }
+
+    .motif-pyramid { background: linear-gradient(180deg, #1a2438 0%, #1e3a5f 40%, #c4a15a 100%); }
+    .motif-pyramid::before { left: 50%; bottom: 16%; width: 72%; height: 58%; transform: translateX(-50%); background: rgba(20, 16, 8, 0.35); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+
+    .motif-sultan { background: linear-gradient(160deg, #1c1020 0%, #6b21a8 50%, #0e0812 100%); }
+    .motif-sultan::before { left: 30%; top: 18%; width: 40%; height: 28%; border: 2px solid rgba(232, 196, 92, 0.4); border-radius: 40px 40px 0 0; }
+
+    .motif-strike { background: linear-gradient(150deg, #1c1408 0%, #b45309 46%, #120c08 100%); }
+    .motif-strike::after { left: 50%; top: 22%; width: 8px; height: 46%; background: rgba(253, 224, 71, 0.55); transform: translateX(-50%) rotate(18deg); }
+
+    .card-title {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      margin: 0;
+      padding: 28px 8px 8px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.25;
+      background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.82) 70%);
+      z-index: 2;
+    }
+    .card-sub { display: none; }
+
+    .card-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 14px 10px 22px;
+      background: rgba(8, 8, 12, 0.55);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 180ms ease;
+    }
+    .card-blurb {
+      margin: 0;
+      font-size: 0.72rem;
+      line-height: 1.4;
+      color: #f3f3f6;
+      font-weight: 400;
+    }
+
+    .game-card:hover .card-poster,
+    .game-card:focus .card-poster,
+    .game-card:focus-visible .card-poster {
+      filter: blur(6px) brightness(0.45);
+    }
+    .game-card:hover .card-overlay,
+    .game-card:focus .card-overlay,
+    .game-card:focus-visible .card-overlay {
+      opacity: 1;
+    }
+    .game-card:hover .card-title,
+    .game-card:focus .card-title,
+    .game-card:focus-visible .card-title {
+      opacity: 0;
+    }
+
     .card-progress-track {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 4;
       width: 100%;
-      height: 5px;
-      border-radius: 999px;
-      background: var(--surface-inset);
+      height: 3px;
+      border-radius: 0;
+      background: rgba(0, 0, 0, 0.45);
       overflow: hidden;
-      margin: 6px 0 8px;
-      border: 1px solid rgba(255, 255, 255, 0.04);
+      margin: 0;
+      border: 0;
     }
     .card-progress-bar {
       height: 100%;
       width: 0%;
-      background: var(--accent);
-      border-radius: 999px;
+      background: var(--brand);
+      border-radius: 0;
       transition: width 120ms ease;
     }
-    .game-card[data-state="warm"] .card-progress-bar {
-      background: var(--ok);
-      box-shadow: 0 0 6px var(--ok);
-    }
-    .game-card[data-state="partial"] .card-progress-bar {
-      background: var(--warn);
-      box-shadow: 0 0 6px var(--warn);
-    }
-    .game-card[data-state="prefetching"] .card-progress-bar {
-      background: linear-gradient(90deg, var(--accent) 0%, #a5f3fc 100%);
-      box-shadow: 0 0 8px var(--accent);
-    }
+    .game-card[data-state="warm"] .card-progress-bar { background: var(--ok); }
+    .game-card[data-state="partial"] .card-progress-bar { background: var(--warn); }
+    .game-card[data-state="prefetching"] .card-progress-bar { background: #4d7fd4; }
 
     .card-time {
       margin: 0;
-      font-size: 0.72rem;
+      font-size: 0.65rem;
       font-variant-numeric: tabular-nums;
-      min-height: 1.1em;
+      min-height: 1em;
       color: var(--text-muted);
     }
-    .card-time.eta-descending { color: var(--accent); font-weight: 800; }
-    .card-time.eta-partial    { color: var(--warn); font-weight: 700; }
-    .card-time.warm-time      { color: var(--ok); font-weight: 800; }
+    .card-time.eta-descending { color: #9db7e8; font-weight: 500; }
+    .card-time.eta-partial    { color: #f3d39a; font-weight: 500; }
+    .card-time.warm-time      { color: #8fd196; font-weight: 500; }
 
     .card-badge {
       position: absolute;
-      top: 8px; right: 8px;
-      padding: 3px 8px;
-      border-radius: 999px;
-      font-size: 0.6rem;
-      font-weight: 900;
-      letter-spacing: 0.08em;
+      top: 6px;
+      right: 6px;
+      z-index: 5;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
       text-transform: uppercase;
       pointer-events: none;
       opacity: 0;
     }
-    .badge-top1     { opacity: 1; background: #713f12; color: #fde68a; }
-    .badge-fetching { opacity: 1; background: #0e374e; color: #7dd3fc; border: 1px solid #0284c7; animation: pulse-badge 1s infinite alternate; }
-    .badge-partial  { opacity: 1; background: #451a03; color: #fdba74; border: 1px solid #ea580c; }
-    .badge-warm     { opacity: 1; background: #134e4a; color: #5eead4; border: 1px solid #0d9488; }
-
-    @keyframes pulse-badge {
-      from { opacity: 0.75; transform: scale(0.98); }
-      to   { opacity: 1.0; transform: scale(1.02); }
-    }
+    .badge-top1     { opacity: 1; background: #111; color: #fff; }
+    .badge-fetching { opacity: 1; background: var(--brand); color: #fff; }
+    .badge-partial  { opacity: 1; background: #9a3412; color: #fff; }
+    .badge-warm     { opacity: 1; background: var(--ok); color: #fff; }
 
     /* ── Active Game Panel & Launch Viewport ── */
     .panel {
-      margin-top: 24px;
-      padding: 20px;
+      margin-top: 28px;
+      padding: 16px 18px 20px;
       border: 1px solid var(--border-decorative);
-      border-radius: 14px;
+      border-radius: 8px;
       background: var(--surface-panel);
+    }
+    .panel .eyebrow {
+      margin: 0 0 4px;
+      color: var(--text-muted);
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .panel h2 {
+      font-size: 1.15rem;
+      font-weight: 700;
     }
     .panel-head {
       display: flex;
@@ -432,6 +619,25 @@
       cursor: pointer;
     }
     .btn-warn:hover { background: #231d10; }
+    .panel-actions button {
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .panel-actions .primary,
+    #btn-retry-launch {
+      background: var(--brand);
+      border: 1px solid var(--brand);
+      color: #fff;
+    }
+    #close-game,
+    #btn-dismiss-fallback {
+      background: var(--surface-raised);
+      border: 1px solid var(--border-control);
+      color: var(--text-primary);
+    }
 
     .frame-host {
       position: relative;
@@ -468,15 +674,15 @@
     .launch-overlay {
       position: relative;
       margin-bottom: 14px;
-      padding: 16px 18px;
+      padding: 14px 16px;
       border: 1px solid var(--border-decorative);
-      border-radius: 10px;
+      border-radius: 8px;
       background: var(--surface-inset);
-      transition: opacity 250ms ease, transform 250ms ease;
+      transition: opacity 200ms ease;
     }
     .launch-overlay.minimized {
       padding: 8px 14px;
-      background: rgba(11, 16, 27, 0.9);
+      background: #121216;
       cursor: pointer;
     }
     .launch-overlay.minimized .launch-message,
@@ -507,9 +713,9 @@
       letter-spacing: 0.08em;
       text-transform: uppercase;
     }
-    .badge-arm.warm    { background: #134e4a; color: #5eead4; }
-    .badge-arm.partial { background: #451a03; color: #fdba74; }
-    .badge-arm.cold    { background: #334155; color: #cbd5e1; }
+    .badge-arm.warm    { background: #1a3d22; color: #8fd196; }
+    .badge-arm.partial { background: #4a3510; color: #f3d39a; }
+    .badge-arm.cold    { background: #2a2a32; color: #c8c8d0; }
 
     .launch-clock-block {
       display: flex;
@@ -524,9 +730,9 @@
       color: var(--text-muted);
     }
     .clock-value {
-      font-size: 1.35rem;
-      font-weight: 900;
-      color: var(--accent);
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #9db7e8;
       font-variant-numeric: tabular-nums;
     }
 
@@ -535,7 +741,7 @@
       width: 18px;
       height: 18px;
       border: 2px solid var(--border-control);
-      border-top-color: var(--accent);
+      border-top-color: var(--brand);
       border-radius: 50%;
       animation: spin 700ms linear infinite;
       flex-shrink: 0;
@@ -544,7 +750,6 @@
       border-color: var(--ok);
       background: var(--ok);
       animation: none;
-      box-shadow: 0 0 10px var(--ok);
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -561,7 +766,7 @@
       display: block;
       height: 100%;
       width: 40%;
-      background: var(--accent);
+      background: var(--brand);
       border-radius: 999px;
       animation: sweep 1.2s infinite ease-in-out;
     }
@@ -592,7 +797,7 @@
       align-items: center;
       gap: 4px;
     }
-    .stat-pill strong { color: var(--accent); }
+    .stat-pill strong { color: #9db7e8; }
 
     /* Fail-Closed Fallback Notice */
     .fallback-notice {
@@ -631,7 +836,8 @@
       gap: 10px;
     }
 
-    @media (max-width: 640px) {
+    @media (max-width: 720px) {
+      .psk-nav { display: none; }
       .toolbar-row { flex-direction: column; align-items: flex-start; }
       .launch-overlay-header { flex-direction: column; align-items: flex-start; }
       .lobby-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
@@ -644,6 +850,13 @@
         transition-duration: 0.001ms !important;
       }
       .game-card { transition: none; }
+      .card-poster { transition: none; filter: none !important; }
+      .game-card:hover .card-poster,
+      .game-card:focus .card-poster,
+      .game-card:focus-visible .card-poster {
+        filter: none !important;
+      }
+      .card-overlay { transition: none; }
       .launch-spinner { animation: none; }
       .pulse span { width: 100%; animation: none; }
     }
@@ -651,25 +864,29 @@
 </head>
 
 <body>
-<main class="shell">
-
-  <!-- 1. Sleek Header -->
-  <header class="lobby-header">
-    <div class="header-titles">
-      <p class="eyebrow">FEG Sandbox Prototype</p>
-      <h1>Casino Lobby <span class="header-speed-badge">5G / 65 Mbps SIMULATED</span></h1>
+<header class="psk-header">
+  <nav class="psk-brand-bar" aria-label="PSK primary">
+    <div class="psk-brand-inner inner">
+      <span class="psk-wordmark">PSK</span>
+      <ul class="psk-nav">
+        <li><a href="#lobby-grid">Sport</a></li>
+        <li><a href="#lobby-grid">Uživo</a></li>
+        <li><a href="#lobby-grid" aria-current="page">Casino</a></li>
+        <li><a href="#lobby-grid">Live Casino</a></li>
+        <li><a href="#lobby-grid">Loto</a></li>
+      </ul>
+      <span class="psk-header-right">Prijava</span>
     </div>
-    <p class="lede">
-      20 game slots with isolated cache namespaces (<code>/game/{slot}/</code>).
-      Compare <strong>warmed launch (~3.5s)</strong> vs <strong>cold baseline (~10.3s)</strong>.
-      Hover any card to stream critical startup assets into browser disk cache before click.
-    </p>
-  </header>
+  </nav>
 
-  <!-- 2. Compact Operator Toolbar (Above-The-Fold) -->
-  <section class="toolbar-panel" role="region" aria-label="Lobby Controls">
+  <div class="psk-subbar">
+  <section class="toolbar-panel inner" role="region" aria-label="Lobby Controls">
     <div class="toolbar-row">
-      <!-- Prefetch Toggle -->
+      <div class="psk-cats" aria-hidden="true">
+        <strong>Lobby</strong>
+        <span>Favoriti</span>
+      </div>
+
       <label class="toggle-wrap" for="prefetch-toggle">
         <input type="checkbox" id="prefetch-toggle" checked aria-describedby="toggle-desc">
         <span class="toggle-label-text">
@@ -678,7 +895,6 @@
         </span>
       </label>
 
-      <!-- Data Budget Cap -->
       <div class="toolbar-item">
         <label for="budget-selector">Budget Cap:</label>
         <select id="budget-selector" aria-describedby="budget-desc">
@@ -689,7 +905,6 @@
         <small id="budget-desc" class="sr-only">Governor halts speculative prefetching once cap is reached</small>
       </div>
 
-      <!-- Quick Metrics Chips -->
       <div class="toolbar-chips">
         <div class="metric-chip">
           <span class="chip-label">Warmed:</span>
@@ -713,7 +928,6 @@
         </div>
       </div>
 
-      <!-- Diagnostics Toggle Button -->
       <button id="btn-toggle-telemetry" type="button" class="btn-diagnostics" aria-expanded="false" aria-controls="telemetry-details">
         Diagnostics ▾
       </button>
@@ -757,12 +971,19 @@
       </span>
     </div>
   </section>
+  </div>
+</header>
 
-  <!-- 3. 20-Game Grid: Front, Center, Above The Fold! -->
-  <div class="lobby-grid" id="lobby-grid" role="list" aria-label="Game lobby"></div>
+<main class="shell">
+  <section class="catalog inner">
+    <div class="section-head">
+      <h2>PSK Favoriti</h2>
+      <span class="section-see-all">Vidi sve 20</span>
+    </div>
+    <div class="lobby-grid" id="lobby-grid" role="list" aria-label="Game lobby"></div>
+  </section>
 
-  <!-- 4. Active Game Panel & Robust Launch Overlay -->
-  <section class="panel" id="game-panel" hidden aria-labelledby="active-game-title">
+  <section class="panel inner" id="game-panel" hidden aria-labelledby="active-game-title">
     <div class="panel-head">
       <div>
         <p class="eyebrow" id="launch-eyebrow">GAME VIEWPORT</p>
@@ -847,26 +1068,26 @@ const SESSION = Math.random().toString(36).slice(2, 8);
 
 // ── 20 game slots ─────────────────────────────────────────────────────────────
 const GAMES = [
-  { id:  1, name: 'Empire of Gold',            emoji: '🏛️' },
-  { id:  2, name: 'Golden Empire Deluxe',      emoji: '✨' },
-  { id:  3, name: 'Empire of Gold: Platinum',  emoji: '⚡' },
-  { id:  4, name: 'Crown & Fortune',            emoji: '👑' },
-  { id:  5, name: 'Aztec Riches',               emoji: '🌞' },
-  { id:  6, name: 'Golden Pharaoh',             emoji: '🔱' },
-  { id:  7, name: 'Dynasty of Wealth',          emoji: '🐉' },
-  { id:  8, name: 'El Dorado Quest',            emoji: '🗺️' },
-  { id:  9, name: 'Treasure Kingdom',           emoji: '💎' },
-  { id: 10, name: 'Gold Rush Fever',            emoji: '⛏️' },
-  { id: 11, name: 'King Midas Touch',           emoji: '🤴' },
-  { id: 12, name: 'Royal Vault',                emoji: '🏦' },
-  { id: 13, name: "Fortune's Empire",           emoji: '🎰' },
-  { id: 14, name: 'Golden Dragon Rise',         emoji: '🐲' },
-  { id: 15, name: 'Colosseum of Gold',          emoji: '🏟️' },
-  { id: 16, name: 'Ancient Treasures',          emoji: '🏺' },
-  { id: 17, name: 'Jewels of the Nile',         emoji: '💍' },
-  { id: 18, name: 'Pyramid of Riches',          emoji: '🔺' },
-  { id: 19, name: 'Sultans of Slots',           emoji: '🕌' },
-  { id: 20, name: 'Empire Strike Gold',         emoji: '⭐' },
+  { id:  1, name: 'Empire of Gold',           emoji: '🏛️', motif: 'gold',      blurb: 'Five-reel kingdom slot. Splash art and primary reels are the critical startup set before the play button appears.' },
+  { id:  2, name: 'Golden Empire Deluxe',     emoji: '✨', motif: 'deluxe',    blurb: 'Deluxe variant of the kingdom theme. Same preloader and splash path; extra reel-frame assets load with the primary set.' },
+  { id:  3, name: 'Empire of Gold: Platinum', emoji: '⚡', motif: 'platinum',  blurb: 'Platinum skin on the same engine. Locale and resolution are resolved before any speculative cache request.' },
+  { id:  4, name: 'Crown & Fortune',           emoji: '👑', motif: 'crown',     blurb: 'Crown-table slot. Common panel CSS and bitmap fonts sit in the shared startup manifest.' },
+  { id:  5, name: 'Aztec Riches',              emoji: '🌞', motif: 'aztec',     blurb: 'Sun-temple five-reel game. Hover dwell streams preloader, common, and splash only — never secondary bonus scenes.' },
+  { id:  6, name: 'Golden Pharaoh',            emoji: '🔱', motif: 'pharaoh',   blurb: 'Nile-court slot. Startup stops at the green play button; later spine scenes stay off the warm list.' },
+  { id:  7, name: 'Dynasty of Wealth',         emoji: '🐉', motif: 'dynasty',   blurb: 'East-court reel game. Pixi vendor plus core-engine are the heavy preloader pair on a cold launch.' },
+  { id:  8, name: 'El Dorado Quest',           emoji: '🗺️', motif: 'quest',     blurb: 'Map-trail slot. Critical primary textures are the proven subset; scatter and chest packs are excluded.' },
+  { id:  9, name: 'Treasure Kingdom',          emoji: '💎', motif: 'treasure',  blurb: 'Vault-theme five-reeler. Isolated cache namespace per slot so a cold title cannot reuse another card’s keys.' },
+  { id: 10, name: 'Gold Rush Fever',           emoji: '⛏️', motif: 'rush',      blurb: 'Prospecting reel set. Reading this blurb is perceived wait; the wire transfer is a separate MEASURED path.' },
+  { id: 11, name: 'King Midas Touch',          emoji: '🤴', motif: 'midas',     blurb: 'Midas-court slot. King character and reel-frame spines sit in the critical primary subset.' },
+  { id: 12, name: 'Royal Vault',               emoji: '🏦', motif: 'vault',     blurb: 'Lock-and-reel game. Control-panel and symbol atlases are warmed; runtime big-win movies are not.' },
+  { id: 13, name: "Fortune's Empire",          emoji: '🎰', motif: 'fortune',   blurb: 'Classic reel layout. Sound beds in the primary set include the generic button cue and base-game music file.' },
+  { id: 14, name: 'Golden Dragon Rise',        emoji: '🐲', motif: 'dragon',    blurb: 'Dragon-rise five-reeler. Same 58-asset critical list as the other slots in this sandbox catalogue.' },
+  { id: 15, name: 'Colosseum of Gold',         emoji: '🏟️', motif: 'colosseum', blurb: 'Arena-theme slot. Splash background and loader animation are the first painted frames after iframe mount.' },
+  { id: 16, name: 'Ancient Treasures',         emoji: '🏺', motif: 'ancient',   blurb: 'Relic-trail game. English locale packs are fixed before prefetch so the wrong language set is never cached.' },
+  { id: 17, name: 'Jewels of the Nile',        emoji: '💍', motif: 'nile',      blurb: 'Jewel-grid slot. @1x texture tier is selected from the lobby viewport before any warm request fires.' },
+  { id: 18, name: 'Pyramid of Riches',         emoji: '🔺', motif: 'pyramid',   blurb: 'Pyramid five-reeler. Prefetch concurrency stays at two so the lobby thread is not crowded.' },
+  { id: 19, name: 'Sultans of Slots',          emoji: '🕌', motif: 'sultan',    blurb: 'Court-and-dome reel game. Hover starts the warm after 150 ms; leaving the tile cancels in-flight work.' },
+  { id: 20, name: 'Empire Strike Gold',        emoji: '⭐', motif: 'strike',    blurb: 'Strike variant of the empire set. Cold baseline is the unprimed 28.9 MB startup batch on this title.' },
 ];
 
 // ── Exact 58-asset Critical Startup Manifest (28.87 MB) ───────────────────────
@@ -1157,7 +1378,7 @@ async function requestSlotAsset(slotId, url, opts = {}) {
         const timing = card.querySelector('.card-time');
         if (timing) {
           timing.className = 'card-time eta-descending';
-          timing.textContent = `ETA ~${cur.eta.toFixed(1)}s ⤓`;
+          timing.textContent = `Caching startup assets · perceived wait · ETA ~${cur.eta.toFixed(1)}s`;
         }
       }
     }
@@ -1250,9 +1471,7 @@ function setCardState(id, state, meta, pct) {
       if (bar) bar.style.width = '100%';
       if (timing) {
         timing.className = 'card-time warm-time';
-        timing.textContent = meta != null && meta > 100
-          ? `${(meta / 1000).toFixed(1)}s WARM (Ready)`
-          : '3.5s WARM (Ready)';
+        timing.textContent = 'Ready from cache · MEASURED';
       }
       break;
     case 'partial':
@@ -1270,7 +1489,9 @@ function setCardState(id, state, meta, pct) {
       if (timing) {
         timing.className = 'card-time eta-descending';
         const cur = slotProgress.get(id);
-        timing.textContent = cur ? `ETA ~${cur.eta.toFixed(1)}s ⤓` : 'ETA ~10.3s ⤓';
+        timing.textContent = cur
+          ? `Caching startup assets · perceived wait · ETA ~${cur.eta.toFixed(1)}s`
+          : 'Caching startup assets · perceived wait';
       }
       break;
     case 'launching':
@@ -1284,7 +1505,7 @@ function setCardState(id, state, meta, pct) {
       if (bar) bar.style.width = '0%';
       if (timing) {
         timing.className = 'card-time';
-        timing.textContent = isTop1 ? 'ETA ~10.3s' : 'ETA ~10.3s (Cold)';
+        timing.textContent = 'Hover to read · cold launch';
       }
   }
 }
@@ -1354,16 +1575,20 @@ function buildGrid() {
     card.dataset.state  = 'cold';
     card.setAttribute('role', 'listitem');
     card.setAttribute('tabindex', '0');
-    card.setAttribute('aria-label', `Launch ${game.name}`);
+    card.setAttribute('aria-label', `Launch ${game.name}. ${game.blurb}`);
     card.innerHTML = `
       <span class="card-badge ${isTop1 ? 'badge-top1' : ''}">${isTop1 ? 'TOP 1' : ''}</span>
-      <div class="card-thumb" aria-hidden="true">${game.emoji}</div>
-      <p class="card-title" title="${game.name}">${game.name}</p>
-      <p class="card-sub">FEG · slot&nbsp;${game.id}</p>
+      <div class="card-poster" aria-hidden="true">
+        <div class="card-thumb motif-${game.motif}"></div>
+        <p class="card-title" title="${game.name}">${game.name}</p>
+      </div>
+      <div class="card-overlay">
+        <p class="card-blurb">${game.blurb}</p>
+        <p class="card-time">${isTop1 ? 'Caching startup assets · perceived wait' : 'Hover to read · cold launch'}</p>
+      </div>
       <div class="card-progress-track" aria-hidden="true">
         <div class="card-progress-bar" style="width: 0%"></div>
       </div>
-      <p class="card-time">${isTop1 ? 'Auto-warming…' : 'ETA ~10.3s (Cold)'}</p>
     `;
 
     // Robust hover listeners (mouse + pointer)
