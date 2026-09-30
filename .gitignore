@@ -29,6 +29,7 @@
 /002.zip
 *.har
 *.mp4
+*.mov
 
 # Generated/private evidence
 /evidence/private/
