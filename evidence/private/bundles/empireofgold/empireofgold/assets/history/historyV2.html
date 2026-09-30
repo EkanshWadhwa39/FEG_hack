@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport"
+    content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <title>Betting History – Gold Premium</title>
+</head>
+
+<body>
+  <div class="betting-overlay" id="bettingOverlay">
+    <div id="goldParticles"></div>
+
+    <header class="header-section">
+      <div class="header-content">
+        <div class="title-section">
+          <div class="left-spacer"></div>
+          <h1 class="balance-amount game-rules" data-game="gameName" style="text-transform: uppercase"></h1>
+          <div class="close-button" id="h-close_btn"></div>
+        </div>
+      </div>
+      <div class="game-footer">
+        <div class="footer-item" data-section="rules">
+          <span data-common="rules" class="common-rules footer-text"></span>
+        </div>
+        <div class="footer-item" data-section="paytable">
+          <span data-common="paytable" class="common-rules footer-text"></span>
+        </div>
+        <div class="footer-item" data-section="history">
+          <span data-common="history" class="common-rules footer-text"></span>
+        </div>
+      </div>
+    </header>
+
+    <div class="tab-content-section">
+      <section class="content-section">
+        <div class="table-container">
+          <div class="table-header">
+            <div data-common="game"></div>
+            <div data-common="type"></div>
+            <div data-common="betAmount"></div>
+            <div data-common="winAmount"></div>
+            <div data-common="roundId"></div>
+            <div data-common="action"></div>
+          </div>
+          <div class="table-body" id="tableBody">
+            <div style="text-align: center; padding: 40px; color: #ffd700">
+              Loading…
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="tabs-section">
+        <div class="tabs-container">
+          <button class="tab-button active" data-tab="bh">
+            <img class="tab-icon" src="assets/history/footerIcons/history-active.png" alt="" />
+            <span data-common="betHistory"></span>
+          </button>
+          <button class="tab-button" data-tab="bw-cg">
+            <img class="tab-icon" src="assets/history/footerIcons/current-inactive.png" alt="" />         
+              <span data-common="winCurrent"></span>           
+          </button>
+          <button class="tab-button" data-tab="bw-ag">
+            <img class="tab-icon" src="assets/history/footerIcons/global-inactive.png" alt="" />
+              <span data-common="winAll"></span>     
+          </button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+
+
+  <script src="../../assets/history/panelControllerV2.ts"></script>
+  <script src="../panel/ts/zoomDisable.ts"></script>
+</body>
+
+</html>

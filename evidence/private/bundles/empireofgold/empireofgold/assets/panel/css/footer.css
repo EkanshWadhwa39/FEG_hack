@@ -1,0 +1,147 @@
+/* ─── Shared footer (gamerules + history panels) ────────────────────────────── */
+
+.game-footer {
+  width: 100%;
+  background-color: #1a1a1a;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 12px 20px;
+  border-top: 1px solid #333;
+  border-bottom: 2px solid #242324;
+  min-height: 60px;
+  position: relative;
+  z-index: 1;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.footer-item {
+  cursor: pointer;
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.footer-text {
+  font-size: 16px;
+  text-transform: uppercase;
+  color: #a4a9b7;
+  font-weight: 700;
+  text-align: center;
+  display: block;
+  margin: 0;
+  padding: 0;
+}
+
+.footer-icon {
+  width: 25px;
+  height: 25px;
+  object-fit: contain;
+  transition: transform 0.2s ease;
+  margin: 0;
+}
+
+.footer-item:hover {
+  transform: scale(1.05);
+  background-color: rgba(241, 196, 109, 0.1);
+}
+
+.footer-item.active {
+  background: linear-gradient(90deg, #ffbd00 0%, #ffe301 50%, #ffbd00 100%);
+  border-radius: 12px;
+  outline: none;
+}
+
+.footer-item.active .footer-text {
+  color: #000000;
+}
+
+.footer-item.active::before {
+  display: none !important;
+}
+
+.footer-item.active:hover {
+  background: linear-gradient(90deg, #ffbd00 0%, #ffe301 50%, #ffbd00 100%);
+}
+
+/* Touch targets */
+.footer-item,
+.tab-button,
+.action-button,
+#close_btn,
+#h-close_btn,
+.close-button {
+  touch-action: manipulation !important;
+  user-select: none !important;
+}
+
+@media (orientation: portrait) {
+  .game-footer {
+    min-height: 60px;
+    height: auto;
+  }
+
+  .footer-icon {
+    height: 50%;
+  }
+
+  .footer-item {
+    min-width: 100px;
+  }
+}
+
+@media (orientation: portrait) and (max-width: 480px) {
+  .footer-item {
+    min-width: 80px;
+    padding: 6px 8px;
+  }
+
+  .footer-text {
+    font-size: 16px;
+  }
+}
+
+/* ─── Mobile phone (portrait + landscape): shorter footer ───────────────────── */
+@media (orientation: portrait) and (max-width: 480px),
+       (orientation: landscape) and (max-height: 500px) {
+  .game-footer {
+    min-height: 40px;
+    padding: 6px 20px;
+  }
+
+  .footer-item {
+    padding: 4px 12px;
+  }
+}
+
+@media (orientation: portrait) and (max-width: 380px) {
+  .game-footer {
+    padding: 6px 4px;
+    gap: 2px;
+  }
+
+  .footer-item {
+    min-width: 0;
+    flex: 1;
+    padding: 6px 4px;
+  }
+
+  .footer-text {
+    font-size: 16px;
+    letter-spacing: 0;
+  }
+}

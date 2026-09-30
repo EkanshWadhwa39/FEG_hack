@@ -1,0 +1,59 @@
+{
+  "_meta": {
+    "tool": "tools/measure_har.py",
+    "inputs": {
+      "cold": "casino.psk.hr_cold.har (not committed — private/dev_hars)",
+      "warm": "casino.psk.hr_warm.har (not committed — private/dev_hars)"
+    },
+    "note": "No URLs, headers, cookies, or request-level data in this file. Aggregate only.",
+    "warnings": [
+      "cold HAR has 27 confirmed cache hits — not a truly cold cache. Some assets were pre-cached.",
+      "elapsed_ms is HAR entry span (first request start to last request end), NOT click-to-interactive.",
+      "Prior CODE.md claims of 35.5s/6.7s use an unreconciled measurement method — do not conflate."
+    ]
+  },
+  "cold": {
+    "confirmed_hits": 27,
+    "confirmed_hits_label": "MEASURED",
+    "confirmed_misses": 148,
+    "confirmed_misses_label": "MEASURED",
+    "elapsed_ms": 76357.676,
+    "elapsed_ms_label": "MEASURED",
+    "request_count": 177,
+    "request_count_label": "MEASURED",
+    "unknowns": 2,
+    "unknowns_label": "MEASURED",
+    "wire_bytes": 16597198,
+    "wire_bytes_label": "MEASURED",
+    "wire_bytes_unknown_requests": 0,
+    "wire_bytes_unknown_requests_label": "MEASURED"
+  },
+  "warm": {
+    "confirmed_hits": 140,
+    "confirmed_hits_label": "MEASURED",
+    "confirmed_misses": 14,
+    "confirmed_misses_label": "MEASURED",
+    "elapsed_ms": 16252.864,
+    "elapsed_ms_label": "MEASURED",
+    "request_count": 155,
+    "request_count_label": "MEASURED",
+    "unknowns": 1,
+    "unknowns_label": "MEASURED",
+    "wire_bytes": 12431,
+    "wire_bytes_label": "MEASURED",
+    "wire_bytes_unknown_requests": 0,
+    "wire_bytes_unknown_requests_label": "MEASURED"
+  },
+  "comparison": {
+    "confirmed_hits_delta": 113,
+    "confirmed_hits_delta_label": "MEASURED",
+    "elapsed_ms_saved": 60104.812,
+    "elapsed_ms_saved_label": "MEASURED",
+    "request_count_delta": -22,
+    "request_count_delta_label": "MEASURED",
+    "unknowns_delta": -1,
+    "unknowns_delta_label": "MEASURED",
+    "wire_bytes_saved": 16584767,
+    "wire_bytes_saved_label": "MEASURED"
+  }
+}

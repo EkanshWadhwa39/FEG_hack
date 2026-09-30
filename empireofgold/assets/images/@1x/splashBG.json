@@ -1,0 +1,20 @@
+{"frames": {
+
+"splashbg":
+{
+	"frame": {"x":2,"y":2,"w":1920,"h":887},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":1920,"h":887},
+	"sourceSize": {"w":1920,"h":887}
+}},
+"meta": {
+	"app": "https://www.codeandweb.com/texturepacker",
+	"version": "1.1",
+	"image": "splashBG.jpg",
+	"format": "RGB888",
+	"size": {"w":1924,"h":891},
+	"scale": "1",
+	"smartupdate": "$TexturePacker:SmartUpdate:6d61ca77b5984b16f7408c2f8c72004a:0fe0a85940a33b332d4024ff77d94fb3:c5a25ab805b165890f2ededcbed9de21$"
+}
+}

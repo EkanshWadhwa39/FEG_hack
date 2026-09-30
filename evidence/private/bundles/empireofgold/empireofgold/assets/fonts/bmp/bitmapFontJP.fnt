@@ -1,0 +1,19 @@
+info face="bitmapFontJP" size=400 bold=0 italic=0 charset="" unicode=1 stretchH=100 smooth=1 aa=1 padding=20,20,20,20 spacing=1,1 outline=0
+common lineHeight=400 base=288 scaleW=1024 scaleH=1024 pages=1 packed=0 alphaChnl=1 redChnl=0 greenChnl=0 blueChnl=0
+page id=0 file="bitmapFont_JP.png"
+chars count=15
+char id=32   x=0     y=0     width=0     height=0     xoffset=0     yoffset=0     xadvance=120   page=0  chnl=15
+char id=160  x=0     y=0     width=0     height=0     xoffset=0     yoffset=0     xadvance=120   page=0  chnl=15
+char id=8239 x=0     y=0     width=0     height=0     xoffset=0     yoffset=0     xadvance=75    page=0  chnl=15
+char id=44   x=678   y=244   width=103   height=138   xoffset=17    yoffset=217   xadvance=145   page=0  chnl=15
+char id=46   x=782   y=244   width=95    height=94    xoffset=25    yoffset=218   xadvance=145   page=0  chnl=15
+char id=48   x=511   y=0     width=169   height=223   xoffset=-12   yoffset=90    xadvance=145   page=0  chnl=15
+char id=49   x=504   y=224   width=173   height=214   xoffset=-10   yoffset=94    xadvance=145   page=0  chnl=15
+char id=50   x=164   y=227   width=162   height=218   xoffset=-9    yoffset=90    xadvance=145   page=0  chnl=15
+char id=51   x=340   y=0     width=170   height=223   xoffset=-13   yoffset=90    xadvance=145   page=0  chnl=15
+char id=52   x=327   y=226   width=176   height=214   xoffset=-16   yoffset=94    xadvance=145   page=0  chnl=15
+char id=53   x=849   y=0     width=171   height=219   xoffset=-14   yoffset=94    xadvance=145   page=0  chnl=15
+char id=54   x=170   y=0     width=169   height=225   xoffset=-12   yoffset=87    xadvance=145   page=0  chnl=15
+char id=55   x=0     y=227   width=163   height=219   xoffset=-9    yoffset=94    xadvance=145   page=0  chnl=15
+char id=56   x=681   y=0     width=167   height=223   xoffset=-11   yoffset=90    xadvance=145   page=0  chnl=15
+char id=57   x=0     y=0     width=169   height=226   xoffset=-12   yoffset=90    xadvance=145   page=0  chnl=15

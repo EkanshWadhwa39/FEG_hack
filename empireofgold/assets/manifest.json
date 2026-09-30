@@ -1,0 +1,22 @@
+{
+    "bundles": [
+    {
+        "name": "default",
+        "assets": []
+    },
+    {
+        "name": "preloader",
+        "assets": [
+            {"alias": "TextConfig.json", "src": ["assets/locale/en/TextConfig.json"]},
+            {"alias": "gameContent.json", "src": ["assets/locale/en/gameContent.json"]}
+        ]
+    },
+    {
+        "name": "primary",
+        "assets": [
+
+
+        ]
+    }
+]
+}

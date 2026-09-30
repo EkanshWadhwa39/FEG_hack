@@ -1,0 +1,21 @@
+{"frames": {
+
+"jpBG":
+{
+	"frame": {"x":3,"y":3,"w":1558,"h":720},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":1558,"h":720},
+	"sourceSize": {"w":1558,"h":720}
+}},
+"meta": {
+	"app": "https://www.codeandweb.com/texturepacker",
+	"version": "1.1",
+	"image": "jackpotBG0.png",
+	"format": "RGBA8888",
+	"size": {"w":1564,"h":726},
+	"scale": "0.5",
+	"related_multi_packs": [ "jackpotBG1.json" ],
+	"smartupdate": "$TexturePacker:SmartUpdate:6e4b57b9dd0ee80e079b8b42e6130ae3:3d1bba41fddc6702a7b96d3ff2fab1b9:83f5e7932fa377b20e316e63e2896fb8$"
+}
+}

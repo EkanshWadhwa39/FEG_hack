@@ -1,0 +1,102 @@
+{
+  "_meta": {
+    "tool": "tools/benchmark_cold_vs_warm.mjs",
+    "timestamp": "2026-09-08T18:07:38.828Z",
+    "topology": {
+      "lobby": "http://127.0.0.1:8090",
+      "game": "http://127.0.0.1:8091"
+    },
+    "invariants": {
+      "isolated_browser_contexts": true,
+      "disk_cache_enabled": true,
+      "disk_cache_size_bytes": 104857600,
+      "prefetch_concurrency": 2,
+      "verified_manifest_count": 36,
+      "link_throttle_kbps": 12000,
+      "link_throttle_label": "SIMULATED",
+      "milestone_definition": "engine-canvas-present inside #gameStage (not authoritative interactive, backend absent in sandbox)",
+      "milestone_label": "MEASURED"
+    }
+  },
+  "cold": {
+    "slot_tag": "cold_1788890825640",
+    "total_requests": 142,
+    "total_requests_label": "MEASURED",
+    "wire_bytes": 46273664,
+    "wire_bytes_label": "MEASURED",
+    "cache_hits": 0,
+    "cache_hits_label": "MEASURED",
+    "cache_misses": 141,
+    "cache_misses_label": "MEASURED",
+    "critical_36_hits": 0,
+    "critical_36_hits_label": "MEASURED",
+    "critical_36_misses": 36,
+    "critical_36_misses_label": "MEASURED",
+    "critical_36_hit_pct": 0,
+    "critical_36_hit_pct_label": "MEASURED",
+    "critical_36_wire_bytes": 5760138,
+    "critical_36_wire_bytes_label": "MEASURED",
+    "time_to_canvas_ms": 1370,
+    "time_to_canvas_ms_label": "MEASURED",
+    "observation_window_ms": 14000,
+    "observation_window_ms_label": "MEASURED"
+  },
+  "warm": {
+    "slot_tag": "warm_1788890825640",
+    "warm_phase": {
+      "attempted": 36,
+      "attempted_label": "MEASURED",
+      "ok": 36,
+      "ok_label": "MEASURED",
+      "fail": 0,
+      "fail_label": "MEASURED",
+      "concurrency": 2,
+      "duration_ms": 2341,
+      "duration_ms_label": "MEASURED",
+      "wire_bytes": 5760138,
+      "wire_bytes_label": "MEASURED"
+    },
+    "launch_phase": {
+      "total_requests": 142,
+      "total_requests_label": "MEASURED",
+      "wire_bytes": 40513526,
+      "wire_bytes_label": "MEASURED",
+      "cache_hits": 36,
+      "cache_hits_label": "MEASURED",
+      "cache_misses": 105,
+      "cache_misses_label": "MEASURED",
+      "critical_36_hits": 36,
+      "critical_36_hits_label": "MEASURED",
+      "critical_36_misses": 0,
+      "critical_36_misses_label": "MEASURED",
+      "critical_36_hit_pct": 100,
+      "critical_36_hit_pct_label": "MEASURED",
+      "critical_36_wire_bytes": 0,
+      "critical_36_wire_bytes_label": "MEASURED",
+      "unwarmed_wire_bytes": 40513526,
+      "unwarmed_wire_bytes_label": "MEASURED",
+      "time_to_canvas_ms": 113,
+      "time_to_canvas_ms_label": "MEASURED",
+      "observation_window_ms": 14000,
+      "observation_window_ms_label": "MEASURED"
+    }
+  },
+  "comparison": {
+    "launch_wire_bytes_saved": 5760138,
+    "launch_wire_bytes_saved_label": "MEASURED",
+    "launch_wire_bytes_saved_pct": 12.447983371275722,
+    "launch_wire_bytes_saved_pct_label": "MEASURED",
+    "critical_36_wire_bytes_saved": 5760138,
+    "critical_36_wire_bytes_saved_label": "MEASURED",
+    "critical_36_wire_bytes_saved_pct": 100,
+    "critical_36_wire_bytes_saved_pct_label": "MEASURED",
+    "critical_36_hit_pct_improvement": 100,
+    "critical_36_hit_pct_improvement_label": "MEASURED",
+    "time_to_canvas_saved_ms": 1257,
+    "time_to_canvas_saved_ms_label": "MEASURED",
+    "time_to_canvas_speedup_pct": 91.75182481751824,
+    "time_to_canvas_speedup_pct_label": "MEASURED",
+    "zero_byte_cache_reuse_verified": true,
+    "zero_byte_cache_reuse_verified_label": "MEASURED"
+  }
+}

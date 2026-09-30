@@ -1,0 +1,105 @@
+EOG_Logo_Anim.png
+size:1964,1848
+filter:Linear,Linear
+pma:true
+Comp 95_00001
+bounds:880,578,917,286
+Comp 95_00002
+bounds:2,290,917,286
+Comp 95_00003
+bounds:921,290,917,286
+Comp 95_00004
+bounds:2,2,917,286
+Comp 95_00005
+bounds:921,2,917,286
+Comp 96_00000
+bounds:73,1729,716,117
+Comp 96_00001
+bounds:791,1729,716,117
+Comp 96_00002
+bounds:2,1610,716,117
+Comp 96_00003
+bounds:720,1610,716,117
+Comp 96_00004
+bounds:2,1491,716,117
+Comp 96_00005
+bounds:720,1491,716,117
+Comp 96_00006
+bounds:2,1372,716,117
+Comp 96_00007
+bounds:720,1372,716,117
+Comp 96_00008
+bounds:2,1253,716,117
+Comp 96_00009
+bounds:720,1253,716,117
+Comp 96_00010
+bounds:2,1134,716,117
+Comp 96_00011
+bounds:720,1134,716,117
+Comp 96_00012
+bounds:1845,1130,716,117
+rotate:90
+Comp 96_00013
+bounds:2,1015,716,117
+Comp 96_00014
+bounds:720,1015,716,117
+Comp 96_00015
+bounds:1438,1001,716,117
+rotate:90
+Comp 96_00016
+bounds:1557,927,716,117
+rotate:90
+Comp 96_00017
+bounds:1676,927,716,117
+rotate:90
+Gem_ball
+bounds:2,1778,69,68
+Gem_ball copy
+bounds:2,613,876,251
+Glow_blue
+bounds:1640,1645,203,201
+Group 5
+bounds:2,896,716,117
+Text_Shadow
+bounds:720,866,730,133
+blik3_5
+bounds:1509,1719,127,129
+rotate:90
+
+EOG_Logo_Anim_2.png
+size:2018,1785
+filter:Linear,Linear
+pma:true
+Comp 95_00006
+bounds:2,866,917,286
+rotate:90
+Comp 95_00007
+bounds:2,578,917,286
+Comp 95_00008
+bounds:2,290,917,286
+Comp 95_00009
+bounds:2,2,917,286
+Comp 95_00010
+bounds:290,866,917,286
+rotate:90
+Comp 95_00011
+bounds:578,866,917,286
+rotate:90
+Comp 95_00012
+bounds:866,866,917,286
+rotate:90
+Comp 95_00013
+bounds:921,578,917,286
+Comp 95_00014
+bounds:921,290,917,286
+Comp 95_00015
+bounds:921,2,917,286
+Comp 95_00016
+bounds:1154,866,917,286
+rotate:90
+Comp 95_00017
+bounds:1442,866,917,286
+rotate:90
+Group 4
+bounds:1730,866,917,286
+rotate:90

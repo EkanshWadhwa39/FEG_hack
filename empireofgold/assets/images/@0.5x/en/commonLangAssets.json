@@ -1,0 +1,28 @@
+{"frames": {
+
+"longPressText":
+{
+	"frame": {"x":6,"y":6,"w":92,"h":50},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":4,"w":92,"h":50},
+	"sourceSize": {"w":100,"h":100}
+},
+"YouwinJP":
+{
+	"frame": {"x":108,"y":6,"w":252,"h":47},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":0,"y":1,"w":252,"h":47},
+	"sourceSize": {"w":252,"h":48}
+}},
+"meta": {
+	"app": "https://www.codeandweb.com/texturepacker",
+	"version": "1.1",
+	"image": "commonLangAssets.webp",
+	"format": "RGBA8888",
+	"size": {"w":366,"h":62},
+	"scale": "0.5",
+	"smartupdate": "$TexturePacker:SmartUpdate:0cc88bd44351417f4d17ec6e0b65478f:4e288770e382fea1d8d4841a6eed4210:ca945da0e2cffa4174844b1ca443d5fd$"
+}
+}

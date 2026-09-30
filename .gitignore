@@ -31,10 +31,6 @@
 *.mp4
 *.mov
 
-# Generated/private evidence
-/evidence/private/
-/evidence/derived/*
-!/evidence/derived/.gitkeep
 *.duckdb
 *.db
 
@@ -62,8 +58,15 @@ CLAUDE.md
 # Bulk hackathon asset bundle (3.9GB uncompressed) — never commit
 /assets.zip
 /assets/
-/empireofgold/
 *.zip
 *.png
 # Allow demo screenshots
 !demo/screenshots/*.png
+# Allow included game assets + evidence
+!/empireofgold/
+!/empireofgold/**
+!/empireofgold.zip
+!/evidence/private/
+!/evidence/private/**
+!/evidence/derived/
+!/evidence/derived/**

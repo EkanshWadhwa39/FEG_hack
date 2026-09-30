@@ -1,0 +1,604 @@
+<div class="betting-overlay" id="bettingOverlay">
+  <header class="header-section">
+    <div class="header-content">
+      <div class="title-section">
+        <div class="left-spacer"></div>
+        <h1 class="balance-amount game-rules" data-game="gameName" style="text-transform: uppercase"></h1>
+        <div class="close-button" id="close_btn"></div>
+      </div>
+    </div>
+    <div class="game-footer">
+      <div class="footer-item" data-section="rules">
+        <span data-common="rules" class="common-rules footer-text"></span>
+      </div>
+      <div class="footer-item" data-section="paytable">
+        <span data-common="paytable" class="common-rules footer-text"></span>
+      </div>
+      <div class="footer-item" data-section="history">
+        <span data-common="history" class="common-rules footer-text"></span>
+      </div>
+    </div>
+  </header>
+
+  <div class="lower" id="lower">
+    <div class="spinner-border text-light" role="status" id="loading-rules">
+      <span class="sr-only">Loading...</span>
+    </div>
+
+    <div id="lower_container">
+      <div class="section common_rule">
+        <ul>
+          <li data-game="gameText" class="game-rules info_contentText"></li>
+        </ul>
+      </div>
+
+      <div class="section common_rule">
+        <h2 data-game="tumbleFeatue_heading" class="game-rules info_headings"></h2>
+        <hr class="horizontalLine">
+        <div>
+          <ul>
+            <li data-game="tumbleFeature1" class="game-rules info_contentText"></li>
+            <li data-game="tumbleFeature2" class="game-rules info_contentText"></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="section common_rule">
+        <h2 data-game="multiplierSymbols_heading" class="game-rules info_headings"></h2>
+        <hr class="horizontalLine">
+        <div>
+          <ul>
+            <li data-game="multiplierSymbols1" class="game-rules info_contentText"></li>
+            <li data-game="multiplierSymbols2" class="game-rules info_contentText"></li>
+            <li data-game="multiplierSymbols3" class="game-rules info_contentText"></li>
+            <li data-game="multiplierSymbols4" class="game-rules info_contentText"></li>
+            <div class="centerAlign">
+              <img src="assets/payTableImages/multi_blue.png" alt="" class="treasure-image" />
+              <img src="assets/payTableImages/multi_green.png" alt="" class="treasure-image" />
+              <img src="assets/payTableImages/multi_purple.png" alt="" class="treasure-image" />
+              <img src="assets/payTableImages/multi_red.png" alt="" class="treasure-image" />
+            </div>
+          </ul>
+        </div>
+      </div>
+
+      <div class="section common_rule">
+        <h2 data-game="freeSpins_heading" class="game-rules info_headings"></h2>
+        <hr class="horizontalLine">
+        <div>
+          <ul>
+            <li data-game="freeSpins1" class="game-rules info_contentText"></li>
+            <li data-game="freeSpins2" class="game-rules info_contentText"></li>
+            <li data-game="freeSpins3" class="game-rules info_contentText"></li>
+            <li data-game="freeSpins4" class="game-rules info_contentText"></li>
+            <li data-game="freeSpins5" class="game-rules info_contentText"></li>
+            <li data-game="freeSpins6" class="game-rules info_contentText"></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="section common_rule">
+        <h2 data-common="play_heading" class="common-rules info_headings"></h2>
+        <hr class="horizontalLine">
+        <div>
+          <ul>
+            <li data-common="betText1" class="common-rules info_contentText"></li>
+            <li data-common="betText4" class="common-rules info_contentText"></li>
+            <li data-common="betText2" class="common-rules info_contentText"></li>
+            <li data-common="betText3" class="common-rules info_contentText"></li>
+            <li data-common="playText1" class="common-rules info_contentText"></li>
+          </ul>
+        </div>
+      </div>
+
+      
+      <div class="section common_rule">
+        <h2 data-common="win_heading" class="common-rules info_headings"></h2>
+        <hr class="horizontalLine">
+        <div>
+          <ul>
+            <li data-game="winGameText1" class="game-rules info_contentText"></li>
+            <li data-common="winText2" class="common-rules info_contentText"></li>
+            <li data-common="winText3" class="common-rules info_contentText"></li>
+            <li data-game="winGameText2" class="game-rules info_contentText"></li>
+            <div class="centerAlign">
+              <img src="assets/payTableImages/Wins.png" alt="" class="treasure-image" />
+            </div>
+          </ul>
+        </div>
+      </div>
+
+      <div class="section common_rule">
+        <h2 data-game="anteBet_heading" class="game-rules info_headings"></h2>
+        <hr class="horizontalLine">
+        <div>
+          <ul>
+            <li data-common="anteBet1" class="game-rules info_contentText"></li>
+            <li data-game="anteBet2" class="game-rules info_contentText"></li>
+            <div class="ante-img-box">
+              <img src="assets/payTableImages/ante_frame_gold.png" />
+              <span class="text" data-common="anteBet_heading"></span>
+              <span data-game="onText" class="on-text"></span>
+            </div>
+
+            <div class="ante-img-box">
+              <img src="assets/payTableImages/ante_frame_slver.png" />
+              <span class="text" data-common="anteBet_heading"></span>
+              <span data-game="offText" class="off-text"></span>
+            </div>
+          </ul>
+        </div>
+      </div>
+
+      <div class="section" data-section="maxWin">
+        <h2 data-common="maxWin" class="info_headings common-rules"></h2>
+        <hr class="horizontalLine">
+        <div>
+          <ul>
+            <li id="min-bet" data-common="minBetText" class="common-rules info_contentText"></li>
+            <li id="max-bet" data-common="maxBetText" class="common-rules info_contentText"></li>
+            <li id="bb-max-bet" data-common="bbMaxBetText" class="common-rules info_contentText"></li>
+            <li id="max-win" data-common="maxWinRule1" class="common-rules info_contentText"></li>
+
+          </ul>
+        </div>
+      </div>
+
+      <div class="section common_rule">
+        <h2 data-common="quickSpin_heading" class="common-rules info_headings"></h2>
+        <hr class="horizontalLine">
+        <div>
+          <ul>
+            <li data-common="quickSpinText1" class="common-rules info_contentText"></li>
+            <li data-common="quickSpinText2" class="common-rules info_contentText"></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="section common_rule">
+        <h2 data-common="quickStop_heading" class="common-rules info_headings"></h2>
+        <hr class="horizontalLine">
+        <div>
+          <ul>
+            <li data-common="quickStopText1" class="common-rules info_contentText"></li>
+            <li data-common="quickStopText2" class="common-rules info_contentText"></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="section common_rule">
+        <h2 data-common="buyFreeSpinTitle" class="common-rules info_headings"></h2>
+        <hr class="horizontalLine">
+        <div>
+          <ul>
+            <li data-common="buyBonus1" class="common-rules info_contentText"></li>
+            <li data-common="buyBonus2" class="common-rules info_contentText"></li>
+            <li data-common="buyBonus3" class="common-rules info_contentText"></li>
+            <li data-common="buyBonus4" class="common-rules info_contentText"></li>
+            <li data-game="buyBonus5" class="game-rules info_contentText"></li>
+            <div class="img-box">
+              <img src="assets/payTableImages/bbBtn.png" alt="" />
+              <span class="text" data-common="BuyText"></span>
+            </div>
+          </ul>
+        </div>
+      </div>
+
+      <div class="section common_rule">
+        <h2 data-common="turboSpin" class="common-rules info_headings"></h2>
+        <hr class="horizontalLine">
+        <ul>
+          <li data-common="turboSpin1" class="common-rules info_contentText"></li>
+          <li data-common="turboSpin2" class="common-rules info_contentText"></li>
+        </ul>
+      </div>
+
+      <div class="section common_rule">
+        <h2 data-common="autoSpin" class="common-rules info_headings"></h2>
+        <hr class="horizontalLine">
+        <ul>
+          <li data-common="autospin7" class="common-rules info_contentText"></li>
+          <li data-common="autospin1" class="common-rules info_contentText"></li>
+          <li data-common="autospin2" class="common-rules info_contentText"></li>
+          <li data-common="autospin3" class="common-rules info_contentText"></li>
+          <li data-common="autospin4" class="common-rules info_contentText"></li>
+          <li data-common="autospin9" class="common-rules info_contentText"></li>
+          <li data-common="autospin5" class="common-rules info_contentText"></li>
+          <li data-common="autospin6" class="common-rules info_contentText"></li>
+          <li data-common="autospin8" class="common-rules info_contentText"></li>
+        </ul>
+      </div>
+
+      <div class="section common_rule">
+        <h2 data-common="howtoPlay" class="common-rules info_headings"></h2>
+        <hr class="horizontalLine">
+        <ul>
+          <li data-common="howtoPlay1" class="common-rules info_contentText"></li>
+          <li data-common="howtoPlay2" class="common-rules info_contentText"></li>
+          <li data-common="howtoPlay3" class="common-rules info_contentText"></li>
+          <li data-common="howtoPlay4" class="common-rules info_contentText"></li>
+          <li data-common="howtoPlay5" class="common-rules info_contentText"></li>
+          <li data-common="howtoPlay6" class="common-rules info_contentText"></li>
+        </ul>
+      </div>
+
+      <div class="section common_rule game-controls-section">
+        <h2 data-common="gameControls" class="common-rules info_headings"></h2>
+        <hr class="horizontalLine">
+        <table class="button-table">
+          <thead>
+            <tr>
+              <th data-common="buttontxt" class="common-rules"></th>
+              <th data-common="buttonImage" class="common-rules"></th>
+              <th data-common="buttonDesc" class="common-rules"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><img src="assets/panel/images/gameControlImages/spinBtn.png" alt="Spin Button" class="button-image"></td>
+              <td data-common="spinButton" class="common-rules"></td>
+              <td data-common="spinButtonDesc" class="common-rules"></td>
+            </tr>
+            <tr>
+              <td><img src="assets/panel/images/gameControlImages/stopSpinBtn.png" alt="Stop Button" class="button-image"></td>
+              <td data-common="stoButton" class="common-rules"></td>
+              <td data-common="stoButtonDesc" class="common-rules"></td>
+            </tr>
+            <tr>
+              <td><img src="assets/panel/images/gameControlImages/betBtn.png" alt="Bet Button" class="button-image"></td>
+              <td data-common="betButton" class="common-rules"></td>
+              <td data-common="betButtonDesc" class="common-rules"></td>
+            </tr>
+            <tr>
+              <td><img src="assets/panel/images/gameControlImages/turboBtn.png" alt="Turbo Disabled" class="button-image">
+              </td>
+              <td data-common="turboDisable" class="common-rules"></td>
+              <td data-common="turboDisableDesc" class="common-rules"></td>
+            </tr>
+            <tr>
+              <td><img src="assets/panel/images/gameControlImages/turboSelectedBtn.png" alt="Turbo Enabled" class="button-image">
+              </td>
+              <td data-common="turboEnable" class="common-rules"></td>
+              <td data-common="turboEnableDesc" class="common-rules"></td>
+            </tr>
+            <tr>
+              <td><img src="assets/panel/images/gameControlImages/menuBtn.png" alt="Menu Button" class="button-image"></td>
+              <td data-common="menuButton" class="common-rules"></td>
+              <td data-common="menuButtonDesc" class="common-rules"></td>
+            </tr>
+            <tr>
+              <td><img src="assets/panel/images/gameControlImages/infoBtn.png" alt="Game Info" class="button-image"></td>
+              <td data-common="gameInfoButton" class="common-rules"></td>
+              <td data-common="gameInfoButtonDesc" class="common-rules"></td>
+            </tr>
+            <tr>
+              <td class="sound-buttons-cell">
+                <div class="sound-buttons-container">
+                  <img src="assets/panel/images/gameControlImages/soundOnBtn.png" alt="Sound On" class="button-image">
+                  <img src="assets/panel/images/gameControlImages/soundOffBtn.png" alt="Sound Off" class="button-image">
+                </div>
+              </td>
+              <td data-common="soundButton" class="common-rules"></td>
+              <td data-common="soundButtonDesc" class="common-rules"></td>
+            </tr>
+            <tr>
+              <td><img src="assets/panel/images/gameControlImages/close.png" alt="Close" class="button-image"></td>
+              <td data-common="closeButton" class="common-rules"></td>
+              <td data-common="closeButtonDesc" class="common-rules"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="section common_rule">
+        <h2 data-common="termsAndConditions" class="common-rules info_headings"></h2>
+        <hr class="horizontalLine">
+        <ul>
+          <li data-common="termsAndConditions11" class="common-rules info_contentText"></li>
+          <li id="rtp-value" data-common="tc11" class="common-rules info_contentText"></li>
+          <li id="bb-rtp-1" class="common-rules info_contentText" ></li>
+          <li id="bb-rtp-2" class="common-rules info_contentText" ></li>
+          <li data-common="termsAndConditions2" class="common-rules info_contentText"></li>
+          <li data-common="termsAndConditions4" class="common-rules info_contentText"></li>
+          <li data-common="termsAndConditions9" class="common-rules info_contentText"></li>
+          <li data-common="termsAndConditions10" class="common-rules info_contentText"></li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="pay_table" class="pay-table-section">
+
+      <div class="section common_rule">
+        <h2 data-game="freespin_featute" class="game-rules info_headings"></h2>
+        <hr class="horizontalLine">
+        <div>
+          <ul>
+            <li data-game="paytable1" class="game-rules info_contentText"></li>
+            <li data-game="paytable2" class="game-rules info_contentText"></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="section common_rule">
+        <h2 data-common="paytableHeading" class="common-rules info_headings"></h2>
+        <hr class="horizontalLine">
+        <div>
+          <ul>
+            <li data-common="paytableText3" class="common-rules info_contentText"></li>
+            <li data-common="paytableText4" class="common-rules info_contentText"></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="section common_rule">
+        <h2 data-common="symbolPayoutHeading" class="common-rules info_headings"></h2>
+        <hr class="horizontalLine">
+        <div class="sc-treasure-item">
+          <div class="scatter-layout">
+            <div class="item-details">
+              <div class="level-row">
+                <span>x4</span> <span>:</span>
+                <span class="points-amount">30</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+            </div>
+            <img src="assets/payTableImages/SC.png" alt="" class="treasure-image" />
+          </div>
+          <div style="padding:5px 15px;">
+            <span data-game="scatterContent" class="game-rules info_contentText"></span>
+          </div>
+        </div>
+
+        <div class="treasure-layout symbol-payout-grid">
+
+          <div class="treasure-item">
+            <div class="item-details">
+              <div class="level-row">
+                <span>x4</span> <span>:</span>
+                <span class="points-amount">30</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+            </div>
+            <img src="assets/payTableImages/H1.png" alt="" class="treasure-image" />
+          </div>
+
+          <div class="treasure-item">
+            <div class="item-details">
+              <div class="level-row">
+                <span>x4</span> <span>:</span>
+                <span class="points-amount">24</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">8</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+            </div>
+            <img src="assets/payTableImages/H2.png" alt="" class="treasure-image" />
+          </div>
+
+          <div class="treasure-item">
+            <div class="item-details">
+              <div class="level-row">
+                <span>x4</span> <span>:</span>
+                <span class="points-amount">18</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">6</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+            </div>
+            <img src="assets/payTableImages/H3.png" alt="" class="treasure-image" />
+          </div>
+
+          <div class="treasure-item">
+            <div class="item-details">
+
+              <div class="level-row">
+                <span>x4</span> <span>:</span>
+                <span class="points-amount">12</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">4</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+            </div>
+            <img src="assets/payTableImages/H4.png" alt="" class="treasure-image" />
+          </div>
+
+          <div class="treasure-item">
+            <div class="item-details">
+              <div class="level-row">
+                <span>x4</span> <span>:</span>
+                <span class="points-amount">6</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">2</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+            </div>
+            <img src="assets/payTableImages/L1.png" alt="" class="treasure-image" />
+          </div>
+
+          <div class="treasure-item">
+            <div class="item-details">
+              <div class="level-row">
+                <span>x4</span> <span>:</span>
+                <span class="points-amount">6</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">2</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+            </div>
+            <img src="assets/payTableImages/L2.png" alt="" class="treasure-image" />
+          </div>
+
+          <div class="treasure-item">
+            <div class="item-details">
+              <div class="level-row">
+                <span>x4</span> <span>:</span>
+                <span class="points-amount">3</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">1</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+            </div>
+            <img src="assets/payTableImages/L3.png" alt="" class="treasure-image" />
+          </div>
+
+          <div class="treasure-item">
+            <div class="item-details">
+              <div class="level-row">
+                <span>x4</span> <span>:</span>
+                <span class="points-amount">3</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">1</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+            </div>
+            <img src="assets/payTableImages/L4.png" alt="" class="treasure-image" />
+          </div>
+
+          <div class="treasure-item">
+            <div class="item-details">
+              <div class="level-row">
+                <span>x4</span> <span>:</span>
+                <span class="points-amount">3</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">1</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+              <div class="level-row">
+                <span>x3</span> <span>:</span>
+                <span class="points-amount">10</span>
+              </div>
+            </div>
+            <img src="assets/payTableImages/L5.png" alt="" class="treasure-image" />
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="game-version" data-common="gameVersion" class="game-version"></div>
+  </div>
+
+</div>
+<style></style>
+<script src="assets/panel/ts/slotRule.ts"></script>
+<script src="assets/history/historyV2.ts"></script>
